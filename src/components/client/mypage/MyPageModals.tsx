@@ -1,7 +1,8 @@
 import React from 'react';
 import PremiumProposalReportModal from '../../common/PremiumProposalReportModal';
 import { getIncomeExpenseProgress, getPropertyProgress, getStatementProgress } from '../docDrafts';
-import { updateCrmClientExtension } from '../../../services/crmService';
+import { submitBankAuditToOffice } from '../../../services/bankAuditSubmit';
+import { submitClientCaseDraft } from '../../../services/crmService';
 import { submitClientVault } from '../../../services/vault/certificateVaultService';
 import CreditorMeetingGuideModal from '../companion/CreditorMeetingGuideModal';
 import ClientCertificateSubmissionModal from '../vault/ClientCertificateSubmissionModal';
@@ -106,9 +107,11 @@ export default function MyPageModals({ vm }: { vm: MyPageModel }) {
             clientName={profile?.name || userAlias || '신청인'}
             onSyncToLawyerCrm={async (updates) => {
               const targetId = activeRequest?.id || requests[0]?.id || 'client-self';
-              const ok = updates ? await updateCrmClientExtension(targetId, updates) : false;
+              if (!updates) return false;
+              const r = await submitClientCaseDraft(targetId, 'property', updates.propertyListD5102 as unknown as Record<string, unknown>);
               setRefreshTick(c => c + 1);
-              return ok;
+              if (!r.ok) throw new Error(r.message || '사무소로 보내지 못했어요.');
+              return true;
             }}
           />
         </React.Suspense>
@@ -125,11 +128,9 @@ export default function MyPageModals({ vm }: { vm: MyPageModel }) {
             initialD5103={crmExt?.incomeExpenseD5103 || null}
             onSaveD5103={async (updatedData) => {
               const targetId = activeRequest?.id || requests[0]?.id || 'client-self';
-              const ok = await updateCrmClientExtension(targetId, {
-                incomeExpenseD5103: updatedData
-              });
+              const r = await submitClientCaseDraft(targetId, 'income_expense', updatedData as unknown as Record<string, unknown>);
               setRefreshTick(c => c + 1);
-              if (!ok) throw new Error('서버 저장 실패');
+              if (!r.ok) throw new Error(r.message || '사무소로 보내지 못했어요.');
             }}
           />
         </React.Suspense>
@@ -148,7 +149,11 @@ export default function MyPageModals({ vm }: { vm: MyPageModel }) {
             onSubmittedSuccess={() => {
               setRefreshTick(c => c + 1);
             }}
-            onSyncToCrm={(data) => updateCrmClientExtension(activeRequest?.id || requests[0]?.id || 'client-self', { bankStatementAudit: data })}
+            onSyncToCrm={(data) => submitBankAuditToOffice(activeRequest?.id || requests[0]?.id, data, {
+              clientName: profile?.name || userAlias || '신청인',
+              caseNumber: crmExt?.courtCase?.caseNumber || (activeRequest as any)?.caseNumber || '',
+              courtName: crmExt?.courtCase?.courtName || activeRequest?.court || '',
+            })}
           />
         </React.Suspense>
       )}

@@ -219,56 +219,15 @@ function OverdueDefenseGuideModalInner({
                 </div>
               </div>
 
-              {/* 법원별 실무 기준 비교표 */}
-              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
-                    <Landmark className="w-4 h-4 text-brand dark:text-brand-light" aria-hidden="true" />
-                    <span>법원별 폐지 검토 경향 비교</span>
-                  </h4>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">참고용 일반 경향 (재판부마다 다름)</span>
-                </div>
-
-                <div className="space-y-2 text-xs">
-                  <div className={`p-3 rounded-xl border flex items-start gap-3 ${
-                    courtThreshold.courtName.includes('서울') 
-                      ? 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-300 text-slate-800 dark:text-slate-200 font-medium'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}>
-                    <span className="px-2 py-0.5 rounded-md bg-emerald-700 text-white font-bold text-xs shrink-0">
-                      서울회생법원
-                    </span>
-                    <div>
-                      <strong className="text-slate-900 dark:text-white">비교적 유연한 경향:</strong> 연체 초기에 독촉·소명 기회를 주는 경우가 많습니다. 몇 회에서 폐지를 검토할지는 정해져 있지 않습니다.
-                    </div>
-                  </div>
-
-                  <div className={`p-3 rounded-xl border flex items-start gap-3 ${
-                    courtThreshold.courtName.includes('수원') || courtThreshold.courtName.includes('부산')
-                      ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 text-slate-800 dark:text-slate-200 font-medium'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}>
-                    <span className="px-2 py-0.5 rounded-md bg-amber-700 text-white font-bold text-xs shrink-0">
-                      수원·부산회생법원
-                    </span>
-                    <div>
-                      <strong className="text-slate-900 dark:text-white">3회 안팎 연체 시 폐지 검토 가능:</strong> 연체가 누적되면 납부 독촉과 폐지 검토가 진행될 수 있습니다. (재판부·사정에 따라 다름)
-                    </div>
-                  </div>
-
-                  <div className={`p-3 rounded-xl border flex items-start gap-3 ${
-                    courtThreshold.leniencyLevel === 'STRICT'
-                      ? 'bg-rose-50 dark:bg-rose-950/30 border-rose-300 text-slate-800 dark:text-slate-200 font-medium'
-                      : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
-                  }`}>
-                    <span className="px-2 py-0.5 rounded-md bg-rose-700 text-white font-bold text-xs shrink-0">
-                      기타 지방법원
-                    </span>
-                    <div>
-                      <strong className="text-slate-900 dark:text-white">비교적 엄격한 경향:</strong> 연체 누적에 엄격한 경우가 있어 미납이 생기면 바로 담당 변호사와 상의하는 것이 안전합니다.
-                    </div>
-                  </div>
-                </div>
+              {/* 법원별 기준 안내 — 근거 없는 '법원별 경향' 비교는 삭제(LS-6) */}
+              <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 space-y-2">
+                <h4 className="text-xs font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
+                  <Landmark className="w-4 h-4 text-brand dark:text-brand-light" aria-hidden="true" />
+                  <span>{courtThreshold.courtName}의 처리 기준</span>
+                </h4>
+                <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
+                  {courtThreshold.description} 위 단계는 모든 법원에 같은 일반 안내예요. 회생위원 연락이나 법원 문서가 오면 그 안내가 기준입니다.
+                </p>
               </div>
 
             </div>

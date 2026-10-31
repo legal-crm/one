@@ -141,8 +141,7 @@ export interface CourtRepealThreshold {
   courtName: string;
   cautionRounds: number;       // 1~2회 주의
   warningRounds: number;       // 3회 경고 (폐지예고 통지서)
-  repealRiskRounds: number;    // 폐지 착수 임계치 (서울 4~5회, 수원/부산 3회, 지방 3회 즉시)
-  leniencyLevel: 'HIGH_FLEXIBLE' | 'MODERATE' | 'STRICT'; // 서울(유연) / 수원·부산(보통) / 지방(엄격)
+  repealRiskRounds: number;    // 일반 안내 단계 (4회 이상). 법원별 기준 아님 — 근거 없는 법원별 구분은 삭제(LS-6)
   description: string;
   goldenTimeNotice: string;
 }

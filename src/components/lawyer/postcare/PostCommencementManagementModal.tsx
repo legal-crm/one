@@ -622,12 +622,12 @@ function PostCommencementManagementModalInner({
                   </div>
 
                   <div className="p-3 rounded-xl bg-slate-800/80 border border-slate-700 space-y-1">
-                    <span className="text-slate-400 text-xs block">관할 법원 폐지 임계치</span>
+                    <span className="text-slate-400 text-xs block">폐지 검토 참고 단계</span>
                     <span className="text-base font-black text-red-400">
-                      {courtThreshold.repealRiskRounds}회 이상 연체 시
+                      미납 {courtThreshold.repealRiskRounds}회 이상
                     </span>
                     <span className="text-xs text-slate-400 block truncate">
-                      {courtThreshold.leniencyLevel === 'HIGH_FLEXIBLE' ? '비교적 유연한 경향' : courtThreshold.leniencyLevel === 'MODERATE' ? '보통' : '비교적 엄격한 경향'} (재판부마다 다름)
+                      일반 안내 · 법원별 기준 없음 (재판부마다 다름)
                     </span>
                   </div>
 
@@ -643,7 +643,7 @@ function PostCommencementManagementModalInner({
                 </div>
 
                 <div className="p-3 rounded-xl bg-slate-800/60 border border-slate-700/80 text-xs text-slate-300 leading-relaxed">
-                  💡 <strong className="text-white">{courtThreshold.courtName} 실무 동향:</strong> {courtThreshold.description}
+                  💡 <strong className="text-white">{courtThreshold.courtName} 참고:</strong> {courtThreshold.description}
                 </div>
               </div>
 

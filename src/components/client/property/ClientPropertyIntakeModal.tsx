@@ -147,12 +147,12 @@ export default function ClientPropertyIntakeModal({
 
     setIsSubmitting(true);
     try {
-      const { data: submitted, synced } = await ClientPropertyService.submitToLawyer(data, onSyncToLawyerCrm);
+      const { data: submitted, synced, syncMessage } = await ClientPropertyService.submitToLawyer(data, onSyncToLawyerCrm);
       setData(submitted);
       markSaved();
       setEditedAfterSubmit(false);
       if (canSync && !synced) {
-        toast.warning('재산 기초자료는 이 기기에 저장되었지만 변호사에게 전달하지 못했습니다. 잠시 후 다시 전달해 주세요.');
+        toast.warning('재산 기초자료는 이 기기에 저장돼 있어요. 사무소로 보내지 못했어요.', { description: syncMessage || '잠시 후 다시 보내 주세요.' });
         return;
       }
       toast.success(

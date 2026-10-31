@@ -7,7 +7,7 @@ import type {
   DebtGrowthStory
 } from '../types/statementTypes';
 import { secureGetItem, secureSetItem } from '../utils/secureStorage';
-import { loadCrmData, saveCrmClient } from './crmService';
+import { loadCrmData, saveCrmClient, submitClientCaseDraft } from './crmService';
 
 const STATEMENT_STORAGE_KEY_PREFIX = 'legal_crm_statement_';
 
@@ -147,56 +147,14 @@ export class StatementService {
     // 1. 로컬 저장
     secureSetItem(this.getKey(statement.clientId), JSON.stringify(statement));
 
-    // 2. CRM 확장 데이터 동기화 및 가상 첨부파일 생성
-    try {
-      const crmStore = await loadCrmData();
-      let ext = crmStore[statement.clientId];
-      if (!ext) {
-        ext = {
-          crmStatus: 'document',
-          documents: [],
-          notes: [],
-          activities: [],
-          lastActivityAt: new Date().toISOString()
-        };
-      }
-
-      ext.courtStatement = statement;
-
-      // 활동 로그 추가
-      const isRehab = statement.caseType === 'rehab';
-      ext.activities.unshift({
-        id: `act-stmt-${Date.now()}`,
-        type: 'status_change',
-        clientId: statement.clientId,
-        actorId: 'client',
-        actorRole: 'CLIENT',
-        actorName: `${statement.applicantName} (의뢰인)`,
-        description: `[서류제출] 법원 제출용 ${isRehab ? '개인회생' : '개인파산'} 진술서 작성 완료 — 의뢰인이 AI 스마트 진술서 작성을 완료하고 변호사 사무실로 자동 전달하였습니다. (사유: ${statement.story.initialCauseKeywords.join(', ')})`,
-        createdAt: new Date().toISOString(),
-        timestamp: new Date().toISOString()
-      });
-
-      // 진술서는 구조화 데이터(ext.courtStatement)로 전달한다.
-      // (이전: 열리지 않는 가짜 PDF를 첨부하고, 이름에 '진술서'가 들어간 기존 업로드 파일을 모두 삭제하던 로직 제거)
-      const synced = await saveCrmClient(statement.clientId, ext);
-      if (!synced) {
-        return {
-          ok: false,
-          message: '진술서는 이 기기에 저장되었지만 서버 전송에 실패했습니다. 네트워크 확인 후 다시 제출해 주세요.'
-        };
-      }
-
-      return {
-        ok: true,
-        message: '진술서를 담당 변호사 사건 기록에 저장했습니다. 변호사가 검토 후 법원 제출용으로 확정합니다.'
-      };
-    } catch (e: any) {
-      console.warn('[StatementService] CRM deliver error', e);
-      return {
-        ok: false,
-        message: '진술서는 이 기기에 저장되었지만 변호사에게 전달하지 못했습니다. 잠시 후 다시 제출해 주세요.'
-      };
+    // 2. 사무소 사건 기록으로 보내기 (서버 함수 — 의뢰인은 사건 기록을 직접 쓸 수 없다)
+    const r = await submitClientCaseDraft(statement.clientId, 'statement', statement as unknown as Record<string, unknown>);
+    if (!r.ok) {
+      return { ok: false, message: `진술서는 이 기기에 저장돼 있어요. ${r.message || '사무소로 보내지 못했어요.'}` };
     }
+    return {
+      ok: true,
+      message: '진술서를 담당 사무소 사건 기록에 보냈어요. 변호사가 검토한 뒤 법원 제출용으로 확정합니다.'
+    };
   }
 }

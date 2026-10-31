@@ -696,7 +696,7 @@ export default function Stage6PostCareDischargeView({
                       : '정상 변제 적립 중 (미납 내역 없음)'}
                   </strong>
                   <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-white/70">
-                    {courtName} 실무 기준: {courtThreshold.warningRounds}회 경고 / {courtThreshold.repealRiskRounds}회 이상 연체 시 폐지
+                    일반 안내 단계: 미납 {courtThreshold.warningRounds}회 독촉·소명 / {courtThreshold.repealRiskRounds}회 이상 폐지 검토 가능 (법원·재판부마다 다름)
                   </span>
                 </div>
                 <p className="text-xs text-slate-600 leading-relaxed">

@@ -2,6 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { X, Upload, FileSpreadsheet, AlertTriangle, Check, Download, ArrowRight, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style';
+import * as XLSXRead from 'xlsx'; // 엑셀 읽기는 SheetJS CE 0.20.3(CVE-2023-30533·CVE-2024-22363 수정판), 스타일 쓰기만 xlsx-js-style
 import type { SalesLead } from '../../../types/leadTypes';
 import type { ConsultRequest } from '../../../types';
 import { formatPhone, normalizeBirthYear, normalizeKrPhoneDigits } from '../../../services/leadService';
@@ -84,11 +85,11 @@ export default function ImportLeadsModal({
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
-        const workbook = XLSX.read(data, { type: 'array' });
+        const workbook = XLSXRead.read(data, { type: 'array' });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
+        const jsonData = XLSXRead.utils.sheet_to_json(worksheet, { header: 1 }) as any[][];
         if (jsonData.length < 1) {
           toast.error('파일에 데이터가 없습니다.');
           return;

@@ -549,43 +549,18 @@ export interface OverdueRiskEvaluation {
 }
 
 /**
- * 법원별 미납 폐지 실무 기준 조회
- * - 서울회생법원: 실무상 4~5회 연체 시까지 유예/독촉 기회 부여 (유연)
- * - 수원/부산회생법원: 3회 이상 연체 시 폐지 착수 (보통)
- * - 기타 지방법원: 3회 연체 즉시 엄격 직권 폐지 심리 (엄격)
+ * 미납 폐지 참고 단계 (LS-6)
+ * 법원별 '유연/엄격' 구분과 법원마다 다른 회차 기준은 근거가 없어 삭제했다 (이전: 서울 4회·수원/부산 3회·지방 3회 즉시 엄격 등).
+ * 회차 단계(1~2회 · 3회 · 4회 이상)는 모든 법원에 같은 일반 안내로만 쓴다. 실제 처리는 재판부가 정한다.
  */
 export function getCourtRepealStandard(courtName: string = ''): CourtRepealThreshold {
   const norm = (courtName || '').trim();
-  if (norm.includes('서울')) {
-    return {
-      courtName: '서울회생법원',
-      cautionRounds: 2,
-      warningRounds: 3,
-      repealRiskRounds: 4,
-      leniencyLevel: 'HIGH_FLEXIBLE',
-      description: '참고용 일반 경향: 서울회생법원은 연체 초기에 독촉·소명 기회를 주는 경우가 많습니다. 실제 처리는 재판부와 사정에 따라 다릅니다.',
-      goldenTimeNotice: '폐지결정에 불복하려면 즉시항고 기간(공고가 있으면 공고일부터 14일) 안에 제기해야 합니다. 인용 여부는 법원이 판단합니다.'
-    };
-  }
-  if (norm.includes('수원') || norm.includes('부산')) {
-    const name = norm.includes('수원') ? '수원회생법원' : '부산회생법원';
-    return {
-      courtName: name,
-      cautionRounds: 2,
-      warningRounds: 3,
-      repealRiskRounds: 3,
-      leniencyLevel: 'MODERATE',
-      description: `참고용 일반 경향: ${name}은 3회 안팎 연체 시 폐지 절차를 검토하는 경우가 있습니다. 실제 처리는 재판부와 사정에 따라 다릅니다.`,
-      goldenTimeNotice: '폐지결정에 불복하려면 즉시항고 기간(공고가 있으면 공고일부터 14일) 안에 제기해야 합니다. 인용 여부는 법원이 판단합니다.'
-    };
-  }
   return {
-    courtName: norm || '지방법원',
+    courtName: norm || '관할 법원',
     cautionRounds: 1,
-    warningRounds: 2,
-    repealRiskRounds: 3,
-    leniencyLevel: 'STRICT',
-    description: '참고용 일반 경향: 지방법원은 연체 누적에 비교적 엄격한 경우가 있습니다. 실제 처리는 재판부와 사정에 따라 다릅니다.',
+    warningRounds: 3,
+    repealRiskRounds: 4,
+    description: '폐지를 검토하는 시점과 절차는 법원·재판부와 사정에 따라 다르고, 정해진 회차는 없습니다. 독촉이나 소명 요구 문서를 받으면 담당 변호사에게 바로 보여 주세요.',
     goldenTimeNotice: '폐지결정에 불복하려면 즉시항고 기간(공고가 있으면 공고일부터 14일) 안에 제기해야 합니다. 인용 여부는 법원이 판단합니다.'
   };
 }
@@ -597,7 +572,7 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
   const roundNumbers = overdueRounds.map(r => r.round);
   const threshold = getCourtRepealStandard(caseData.courtName);
 
-  if (count >= 4 || (count >= 3 && threshold.leniencyLevel === 'STRICT')) {
+  if (count >= threshold.repealRiskRounds) {
     return {
       overdueCount: count,
       unpaidRoundNumbers: roundNumbers,
@@ -606,7 +581,7 @@ export function evaluateOverdueRisk(caseData: RehabCompanionCase): OverdueRiskEv
       stageInfo: {
         stageNumber: 3,
         stageName: '참고 기준 도달',
-        description: `참고용 경향 기준(${threshold.courtName} ${threshold.repealRiskRounds}회)에 도달했습니다. 실제 폐지 여부는 재판부가 판단합니다.`,
+        description: `미납이 ${threshold.repealRiskRounds}회 이상 쌓인 일반 안내 단계예요. 실제 폐지 여부는 ${threshold.courtName} 재판부가 판단합니다.`,
         actionTip: '담당 변호사와 미납금 분납, 변제계획 변경신청, 특별면책 가능 여부를 서둘러 상의하세요.'
       },
       message: `납부 기록이 없는 회차 ${count}건: 폐지 검토로 이어질 수 있어요. 담당 변호사와 바로 상의하세요.`,

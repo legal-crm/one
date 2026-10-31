@@ -2,7 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { BarChart3, BookMarked, Landmark, Radar } from 'lucide-react';
-import * as XLSX from 'xlsx-js-style';
+import * as XLSXRead from 'xlsx'; // 엑셀 읽기는 SheetJS CE 0.20.3(CVE-2023-30533·CVE-2024-22363 수정판), 스타일 쓰기만 xlsx-js-style
 import type { CourtEvent } from '../../../types';
 import {
   deletePrecedent, loadCorrectionStats, loadPrecedents, savePrecedent, updateCorrectionItem,
@@ -62,9 +62,9 @@ async function readTable(file: File): Promise<unknown[][]> {
     if (text.includes('\uFFFD')) text = new TextDecoder('euc-kr').decode(buf);
     return parseCsv(text.replace(/^\uFEFF/, ''));
   }
-  const wb = XLSX.read(buf, { type: 'array', cellDates: false });
+  const wb = XLSXRead.read(buf, { type: 'array', cellDates: false });
   const ws = wb.Sheets[wb.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }) as unknown[][];
+  return XLSXRead.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' }) as unknown[][];
 }
 
 export function T2ImportButton({ item, onDone }: { item: CorrectionItem; onDone: () => void }) {

@@ -3,7 +3,7 @@ import { X, Send, CheckCircle, ShieldAlert, FileText, ArrowRight, HeartHandshake
 import { CrisisReasonType, LifeCrisisReport } from '../../../types';
 import { submitLifeCrisisReport } from '../../../services/companionService';
 import { toast } from 'sonner';
-import { updateCrmClientExtension, getCrmClientSync } from '../../../services/crmService';
+import { submitClientCaseDraft } from '../../../services/crmService';
 
 interface LifeCrisisModalProps {
   isOpen: boolean;
@@ -58,8 +58,8 @@ function LifeCrisisModalInner({
     // 마이김변 의뢰가 있으면 담당 변호사 CRM에 기록 (없으면 이 기기에만 저장됨을 사실대로 안내)
     let delivered = false;
     if (clientId) {
-      const prev = (getCrmClientSync(clientId) as any)?.lifeCrisisReports || [];
-      delivered = await updateCrmClientExtension(clientId, { lifeCrisisReports: [report, ...prev].slice(0, 20) } as any);
+      const r = await submitClientCaseDraft(clientId, 'life_change', report as unknown as Record<string, unknown>);
+      delivered = r.ok;
     }
     setDeliveredToLawyer(delivered);
     setIsSubmitted(true);

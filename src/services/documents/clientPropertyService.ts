@@ -80,7 +80,7 @@ export class ClientPropertyService {
   static async submitToLawyer(
     data: PropertyListD5102Data,
     onSyncCrmExt?: (updates: { propertyListD5102: PropertyListD5102Data }) => Promise<boolean | void> | boolean | void
-  ): Promise<{ data: PropertyListD5102Data; synced: boolean }> {
+  ): Promise<{ data: PropertyListD5102Data; synced: boolean; syncMessage?: string }> {
     const submittedData: PropertyListD5102Data = {
       ...recalculateD5102Totals(data),
       clientIntakeStatus: 'submitted_to_lawyer',
@@ -93,16 +93,18 @@ export class ClientPropertyService {
 
     // 변호사 CRM 동기화 — 완료까지 기다리고 결과를 반환 (기존: 결과 확인 없이 성공 안내)
     let synced = false;
+    let syncMessage: string | undefined;
     if (onSyncCrmExt) {
       try {
         const res = await onSyncCrmExt({ propertyListD5102: submittedData });
         synced = res !== false;
-      } catch (e) {
+      } catch (e: any) {
+        syncMessage = e?.message;
         console.warn('[ClientPropertyService] Failed to sync to lawyer CRM:', e);
       }
     }
 
-    return { data: submittedData, synced };
+    return { data: submittedData, synced, syncMessage };
   }
 
   /**

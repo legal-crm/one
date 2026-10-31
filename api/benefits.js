@@ -7,6 +7,16 @@ import { checkMultiTierRateLimit, RATE_LIMIT_TIERS } from './_lib/rate-limiter.j
 
 const CACHE_TTL_SECONDS = 3600; // 1시간 캐시
 
+// 회생·파산 의뢰인에게 맞는 공공서비스만 남긴다 (이전: 전체 공공서비스 앞 30건을 그대로 보여 줘 농업·창업 지원 등이 섞였다)
+const RELEVANT_TERMS = ['생계', '긴급', '주거', '임대', '전세', '월세', '채무', '신용', '서민', '금융', '대출', '고용', '실업', '취업', '구직', '의료', '복지', '기초생활', '차상위', '한부모', '양육', '돌봄', '에너지', '통신비'];
+const EXCLUDE_TERMS = ['농업', '농가', '어업', '축산', '임업', '수출', '창업기업', '연구개발', '기업 지원', '법인'];
+function isRelevantService(item) {
+  const text = [item?.svcNm, item?.svcPurp, item?.svcFieldNm, item?.trgtDesc].filter(Boolean).join(' ');
+  if (!text) return false;
+  if (EXCLUDE_TERMS.some(t => text.includes(t))) return false;
+  return RELEVANT_TERMS.some(t => text.includes(t));
+}
+
 // ─────────────────────────────────────────────────────────────
 // [PART 4] 국세청 사업자등록 진위확인 중계 (POST /api/benefits?action=nts-validate)
 //   이전: VITE_NTS_SERVICE_KEY가 브라우저 번들에 포함되어 누구나 공공데이터포털 인증키를 볼 수 있었다.
@@ -90,7 +100,7 @@ export default async function handler(req, res) {
   if (apiKey) {
     try {
       // 행정안전부 대한민국 공공서비스 혜택 API (REST/JSON)
-      const dataGoKrUrl = `https://apis.data.go.kr/1741000/public_services_info/getServicesInfo?serviceKey=${encodeURIComponent(apiKey)}&pageNo=1&numOfRows=30&type=JSON`;
+      const dataGoKrUrl = `https://apis.data.go.kr/1741000/public_services_info/getServicesInfo?serviceKey=${encodeURIComponent(apiKey)}&pageNo=1&numOfRows=300&type=JSON`;
       
       const response = await fetch(dataGoKrUrl, {
         headers: { 'Accept': 'application/json' },
@@ -99,7 +109,8 @@ export default async function handler(req, res) {
 
       if (response.ok) {
         const json = await response.json();
-        const items = json?.response?.body?.items || [];
+        const allItems = json?.response?.body?.items || [];
+        const items = (Array.isArray(allItems) ? allItems : []).filter(isRelevantService).slice(0, 20);
 
         // 수신된 공공데이터 파싱 및 회생 혜택 스키마로 변환
         const livePrograms = items.map((item, idx) => ({
@@ -118,7 +129,7 @@ export default async function handler(req, res) {
           targetStages: ['preparing', 'submitted', 'started', 'approved', 'completed'],
           region: item.jurOrgNm?.includes('서울') ? '서울' : '전국',
           criteriaTags: ['공공데이터포털실시간', item.svcFieldNm || '복지'],
-          safetyNotice: '공공데이터포털(data.go.kr) 실시간 연동 정보입니다.'
+          safetyNotice: '공공데이터포털(data.go.kr) 정보입니다. 지원 요건과 신청 기간은 기관 안내에서 꼭 확인하세요.'
         }));
 
         res.setHeader('Cache-Control', `s-maxage=${CACHE_TTL_SECONDS}, stale-while-revalidate`);

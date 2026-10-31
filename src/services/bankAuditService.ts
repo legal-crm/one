@@ -5,6 +5,7 @@
 
 import { getAuthHeaders } from '../supabaseClient';
 import * as XLSX from 'xlsx-js-style';
+import * as XLSXRead from 'xlsx'; // 엑셀 읽기는 SheetJS CE 0.20.3(CVE-2023-30533·CVE-2024-22363 수정판), 스타일 쓰기만 xlsx-js-style
 import type { 
   AuditTransactionItem, 
   AuditRiskCategory, 
@@ -370,10 +371,10 @@ export function parseRawBankStatementText(text: string, filterThreshold: number 
 export async function parseExcelBankStatement(file: File, filterThreshold: number = 0): Promise<AuditTransactionItem[]> {
   const buffer = await file.arrayBuffer();
   // cellDates + raw:false → 엑셀 날짜 일련번호(예: 45890)를 'yyyy-mm-dd' 문자열로 받음
-  const workbook = XLSX.read(buffer, { type: 'array', cellDates: true });
+  const workbook = XLSXRead.read(buffer, { type: 'array', cellDates: true });
   const firstSheetName = workbook.SheetNames[0];
   const worksheet = workbook.Sheets[firstSheetName];
-  const jsonData: any[][] = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+  const jsonData: any[][] = XLSXRead.utils.sheet_to_json(worksheet, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
 
   if (!jsonData || jsonData.length === 0) return [];
 
@@ -885,10 +886,48 @@ export function exportToCourtStandardExcel(
 export function exportAuditStatementToExcel(
   items: AuditTransactionItem[],
   clientName: string = '신청인',
-  caseNumber: string = '2026개회 108492호',
+  caseNumber: string = '',
   thresholdAmount: number = 1000000
 ) {
   exportToCourtStandardExcel(items, { clientName, caseNumber, thresholdAmount });
+}
+
+/**
+ * 의뢰인이 사무소에 내는 '금융거래 사용처 소명표' HTML (CR-5).
+ * 글자 PDF(/api/pdf)로 만들어 사건 서류함(case-files)에 올린다 — 이전엔 의뢰인 기기에만 남고
+ * 사무소 사건 기록(crm_clients)에는 의뢰인이 쓸 수 없어 제출이 늘 실패했다.
+ */
+export function buildAuditStatementHtml(
+  items: AuditTransactionItem[],
+  options: CourtExcelOptions = {}
+): string {
+  const { clientName = '신청인', caseNumber = '', courtName = '', thresholdAmount = 1000000 } = options;
+  const esc = (v: unknown) => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c] as string));
+  const target = items.filter(i => i.amount >= thresholdAmount);
+  const total = target.reduce((acc, i) => acc + i.amount, 0);
+  const label = thresholdAmount >= 10000 ? `${(thresholdAmount / 10000).toLocaleString()}만 원` : `${thresholdAmount.toLocaleString()}원`;
+  const rows = target.map((i, n) => `<tr><td class="c">${n + 1}</td><td class="c">${esc(i.date)}</td><td>${esc(i.bankOrCard)}${i.accountNumberMasked ? ' ' + esc(i.accountNumberMasked) : ''}</td><td>${esc(i.counterparty)}</td><td class="r">${i.amount.toLocaleString()}</td><td>${esc(i.explanation) || '<span class="muted">(작성 전)</span>'}</td><td>${esc(i.evidenceType)}</td></tr>`).join('');
+  const today = new Date();
+  const ymd = `${today.getFullYear()}. ${today.getMonth() + 1}. ${today.getDate()}.`;
+  return `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8" /><title>금융거래 사용처 소명표</title><style>
+body{font-family:'NanumMyeongjo',serif;font-size:10.5pt;color:#000;margin:18mm 14mm}
+h1{text-align:center;font-size:17pt;letter-spacing:4px;margin:0 0 6mm}
+.meta{margin:0 0 4mm;line-height:1.7}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th,td{border:1px solid #000;padding:4px 5px;vertical-align:top;word-break:break-all}
+th{background:#eee;font-weight:bold;text-align:center}
+.c{text-align:center}.r{text-align:right}.muted{color:#666}
+tfoot td{font-weight:bold}
+.note{margin-top:5mm;font-size:9.5pt;line-height:1.6}
+</style></head><body>
+<h1>금융거래 사용처 소명표</h1>
+<div class="meta">사건번호: ${esc(caseNumber) || '(접수 전)'}${courtName ? ` · 법원: ${esc(courtName)}` : ''}<br/>신청인: ${esc(clientName)}<br/>대상: ${label} 이상 출금·결제 ${target.length}건</div>
+<table><colgroup><col style="width:6%"/><col style="width:12%"/><col style="width:15%"/><col style="width:17%"/><col style="width:12%"/><col style="width:26%"/><col style="width:12%"/></colgroup>
+<thead><tr><th>번호</th><th>거래일</th><th>금융기관</th><th>적요·상대방</th><th>금액(원)</th><th>사용처 소명</th><th>증빙</th></tr></thead>
+<tbody>${rows || '<tr><td colspan="7" class="c">대상 거래가 없습니다.</td></tr>'}</tbody>
+<tfoot><tr><td colspan="4" class="c">합계</td><td class="r">${total.toLocaleString()}</td><td colspan="2"></td></tr></tfoot></table>
+<p class="note">위 내용은 신청인이 직접 정리한 것입니다. 담당 변호사가 확인한 뒤 법원 제출용으로 고칠 수 있습니다.<br/>작성일: ${ymd}</p>
+</body></html>`;
 }
 
 // ═══════════════════════════════════════════════

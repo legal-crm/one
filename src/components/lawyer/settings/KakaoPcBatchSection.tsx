@@ -41,7 +41,7 @@ export default function KakaoPcBatchSection({ officeId, dailyLimit }: { officeId
     if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하 파일만 읽을 수 있어요.'); return; }
     setBusy(true);
     try {
-      const XLSX = await import('xlsx-js-style');
+      const XLSX = await import('xlsx'); // 읽기는 SheetJS CE 0.20.3
       const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const ws = wb.Sheets['카톡문자발송'] || wb.Sheets[wb.SheetNames[0]];
       const table = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: '' }) as unknown[][];

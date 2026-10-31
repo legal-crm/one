@@ -1,4 +1,4 @@
-import * as XLSX from 'xlsx-js-style'; // 주의: xlsx-js-style 1.2.0은 SheetJS 0.18.5 기반 — CVE-2023-30533(0.19.3에서 수정)·CVE-2024-22363 미해결. 파일 크기·행 수 제한으로 노출만 줄임
+import * as XLSX from 'xlsx-js-style'; // 스타일 쓰기 전용. 파일 읽기는 'xlsx'(SheetJS CE 0.20.3)로 한다 — 0.18.5의 CVE-2023-30533·CVE-2024-22363은 읽기 경로 문제
 
 // ── localStorage 키 목록 ──
 // 사무소 업무 데이터만 백업한다.

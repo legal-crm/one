@@ -621,7 +621,7 @@ export default function ClientMonthlyIncomeExpenseModal({
       onClose();
     } catch (err) {
       console.error(err);
-      toast.error('수지표를 저장하지 못했습니다. 입력한 내용은 화면에 그대로 있으니 잠시 후 다시 시도해 주세요.');
+      toast.error('수지표를 보내지 못했어요. 입력한 내용은 화면에 그대로 있어요.', { description: (err as any)?.message || '잠시 후 다시 시도해 주세요.' });
     } finally {
       setIsSubmitting(false);
     }

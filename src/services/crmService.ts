@@ -112,6 +112,52 @@ export async function updateCrmClientExtension(clientId: string, updates: Partia
   return saveCrmClient(clientId, updated);
 }
 
+/**
+ * 의뢰인이 직접 쓴 서류 초안을 사무소 사건 기록으로 보낸다 (20261101002300 client_submit_case_draft).
+ * 의뢰인은 crm_clients를 직접 쓸 수 없어(사무소 권한 RLS) 이전 경로(updateCrmClientExtension)는 늘 실패했다.
+ * 서버는 정해진 칸 하나만 넣고, 사무소가 이미 확인한 서류는 덮어쓰지 않는다.
+ */
+export type ClientCaseDraftKind = 'statement' | 'property' | 'income_expense' | 'bank_audit' | 'life_change';
+const CLIENT_DRAFT_FIELD: Record<ClientCaseDraftKind, keyof CrmClientExtension | string> = {
+  statement: 'courtStatement',
+  property: 'propertyListD5102',
+  income_expense: 'incomeExpenseD5103',
+  bank_audit: 'bankStatementAudit',
+  life_change: 'lifeCrisisReports',
+};
+export async function submitClientCaseDraft(
+  caseKey: string | undefined,
+  kind: ClientCaseDraftKind,
+  payload: Record<string, unknown>
+): Promise<{ ok: boolean; message?: string }> {
+  if (!caseKey || caseKey === 'client-self' || caseKey === 'client-temp') {
+    return { ok: false, message: '상담을 맡은 사무소가 없어 보낼 곳이 없어요. 작성한 내용은 이 기기에 저장돼 있어요.' };
+  }
+  const field = CLIENT_DRAFT_FIELD[kind] as string;
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  const current = (store[caseKey] || createDefaultCrmExtension(caseKey)) as any;
+  const nextValue = kind === 'life_change' ? [payload, ...((current[field] as unknown[]) || [])].slice(0, 20) : payload;
+  if (!isSupabaseConfigured) {
+    const ok = await updateCrmClientExtension(caseKey, { [field]: nextValue } as Partial<CrmClientExtension>);
+    return ok ? { ok: true } : { ok: false, message: '저장하지 못했어요.' };
+  }
+  const { error } = await supabase.rpc('client_submit_case_draft', { p_key: caseKey, p_kind: kind, p_payload: payload });
+  if (error) {
+    const m = error.message || '';
+    const message = /already reviewed/.test(m) ? '사무소가 이미 확인한 서류예요. 고칠 내용은 담당 사무소에 말씀해 주세요.'
+      : /resident number/.test(m) ? '주민등록번호는 넣을 수 없어요. 해당 칸을 지우고 다시 보내 주세요.'
+      : /no office/.test(m) ? '아직 상담을 맡은 사무소가 없어요. 사무소가 정해진 뒤 보내 주세요.'
+      : /too large/.test(m) ? '내용이 너무 길어요. 나눠서 보내거나 사무소에 문의해 주세요.'
+      : /not your case|suspended|login/.test(m) ? '이 사건에 보낼 권한이 없어요. 다시 로그인해 주세요.'
+      : '사무소로 보내지 못했어요. 잠시 뒤 다시 시도해 주세요.';
+    return { ok: false, message };
+  }
+  // 의뢰인 화면 사본만 갱신 (원본은 사무소 사건 기록)
+  store[caseKey] = { ...current, [field]: nextValue, lastActivityAt: new Date().toISOString() };
+  setLocalData(CRM_STORAGE_KEY, store);
+  return { ok: true };
+}
+
 // ── CRM Client Extension 관리 ──
 
 export type CrmDataStore = Record<string, CrmClientExtension>;

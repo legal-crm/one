@@ -1,7 +1,8 @@
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { X, Upload, FileSpreadsheet, AlertTriangle, Check, Download, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
-import * as XLSX from 'xlsx-js-style'; // 주의: xlsx-js-style 1.2.0은 SheetJS 0.18.5 기반 — CVE-2023-30533(0.19.3에서 수정)·CVE-2024-22363 미해결. 파일 크기·행 수 제한으로 노출만 줄임
+import * as XLSX from 'xlsx-js-style';
+import * as XLSXRead from 'xlsx'; // 엑셀 읽기는 SheetJS CE 0.20.3(CVE-2023-30533·CVE-2024-22363 수정판), 스타일 쓰기만 xlsx-js-style
 import RecentImportsList from './RecentImportsList';
 import { IntakeChannel, INTAKE_CHANNEL_CONFIG } from '../../types';
 import { formatPhone, isValidKoreanPhone } from '../../services/crmService';
@@ -121,11 +122,11 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
             fileMetaRef.current = { fileName: file.name, fileHash: Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('') };
           }).catch(() => { fileMetaRef.current = { fileName: file.name, fileHash: null }; });
         } else fileMetaRef.current = { fileName: file.name, fileHash: null };
-        const workbook = XLSX.read(data, { type: 'array', sheetRows: MAX_IMPORT_ROWS + 1 });
+        const workbook = XLSXRead.read(data, { type: 'array', sheetRows: MAX_IMPORT_ROWS + 1 });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
         
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true }) as any[][];
+        const jsonData = XLSXRead.utils.sheet_to_json(worksheet, { header: 1, raw: true }) as any[][];
         if (jsonData.length < 2) {
           toast.error('파일에 데이터 행이 없습니다. 첫 줄은 제목, 둘째 줄부터 고객 정보를 넣어 주세요.');
           return;

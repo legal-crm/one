@@ -25,8 +25,8 @@ interface ClientBankAuditModalProps {
   caseNumber?: string;
   courtName?: string;
   onSubmittedSuccess?: () => void;
-  /** 제출 시 변호사 CRM(서버)에 동기화 — 성공 여부 반환 */
-  onSyncToCrm?: (data: BankStatementAuditData) => Promise<boolean>;
+  /** 제출 시 사무소로 보냄(글자 PDF → 사건 서류함) — 성공 여부·실패 이유 반환 */
+  onSyncToCrm?: (data: BankStatementAuditData) => Promise<boolean | { ok: boolean; message?: string }>;
 }
 
 /** '[…기재]' 안내 문구가 남아 있으면 미작성으로 간주 */
@@ -255,13 +255,15 @@ export default function ClientBankAuditModal({
       const updated = submitBankAuditToLawyer(clientId);
       setAuditData(updated);
       setSavedAt(Date.now());
-      const synced = onSyncToCrm ? await onSyncToCrm(updated) : false;
+      const result = onSyncToCrm ? await onSyncToCrm(updated) : false;
+      const synced = typeof result === 'boolean' ? result : result.ok;
       if (!synced) {
-        toast.warning('소명표는 이 기기에 저장되었지만 서버 전송에 실패했습니다. 잠시 후 다시 제출해 주세요.');
+        const why = typeof result === 'object' && result?.message ? result.message : '잠시 후 다시 제출해 주세요.';
+        toast.warning('소명표를 사무소로 보내지 못했어요. 표는 이 기기에 저장돼 있어요.', { description: why });
         return;
       }
-      toast.success('소명표를 담당 변호사 사건 기록에 제출했습니다.', {
-        description: '변호사가 검토 후 필요한 보완을 요청하거나 법원 제출용으로 정리합니다.'
+      toast.success('소명표를 사무소 사건 서류함에 냈어요.', {
+        description: "사무소 '서류 자료함'에 PDF로 올라갔어요. 확인 결과는 '내 사건 › 서류'에서 볼 수 있어요."
       });
       onSubmittedSuccess?.();
       onClose();

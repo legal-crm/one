@@ -226,6 +226,10 @@ export default function ClientFooter({ platformConfig, onNavigate, onStartCheck,
               <span>전화번호: 070-4187-2882</span>
               <span>고객문의: support@mykim.kr</span>
             </p>
+            <p className="flex flex-wrap gap-x-4 gap-y-0.5">
+              <span>개인정보 보호책임자: 진성호(대표)</span>
+              <span>호스팅 서비스 제공자: Vercel Inc.</span>
+            </p>
             <p className="text-xs text-slate-400">Founded April 2026</p>
           </div>
 
