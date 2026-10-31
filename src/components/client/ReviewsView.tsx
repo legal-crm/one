@@ -99,6 +99,13 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
               변호사 찾아보기
             </Button>
           </Card>
+        ) : !rev.lawyerName ? (
+          <Card as="section" padded={false} className="mt-6 p-5">
+            <p className="text-sm text-slate-600 break-keep">후기는 이용자의 주관적인 의견이며, 사건 결과는 개별 사정에 따라 달라요.</p>
+            <Button className="mt-4 w-full sm:w-auto" onClick={() => onReviewClick(rev)} rightIcon={<ArrowRight className="h-4 w-4" aria-hidden="true" />}>
+              변호사 찾아보기
+            </Button>
+          </Card>
         ) : (
           <Card as="section" padded={false} className="mt-6 p-5">
             <h2 className="text-sm font-bold text-slate-600">담당 변호사</h2>
@@ -163,7 +170,7 @@ export default function ReviewsView({ reviews, onReviewClick }: ReviewsViewProps
                 <span className="mt-2 block text-base font-bold leading-snug text-slate-900 break-keep sm:text-lg">{rev.title}</span>
                 <span className="mt-2 block text-sm leading-relaxed text-slate-600 line-clamp-2 break-keep">{rev.content}</span>
                 <span className="mt-3 flex items-center justify-between gap-3 text-sm text-slate-600">
-                  <span className="min-w-0 truncate">{rev.isExample ? '상담 절차 예시' : `${rev.author} 님 · ${rev.lawyerName}`}</span>
+                  <span className="min-w-0 truncate">{rev.isExample ? '상담 절차 예시' : rev.lawyerName ? `${rev.author} 님 · ${rev.lawyerName}` : `${rev.author} 님`}</span>
                   <span className="inline-flex shrink-0 items-center gap-0.5 font-bold text-brand">
                     자세히 보기
                     <ChevronRight className="h-4 w-4" aria-hidden="true" />

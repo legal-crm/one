@@ -1989,8 +1989,11 @@ export interface SuccessReview {
   title: string;
   category: string;
   author: string;
-  originalDebt: number;
-  remainingDebt: number;
+  /** @deprecated CT-9: 후기 금액 칸 삭제 (예전 데이터 호환용, 화면에 쓰지 않음) */
+  originalDebt?: number;
+  /** @deprecated CT-9 */
+  remainingDebt?: number;
+  /** 빈 값이면 변호사 표시 안 함 */
   lawyerId: string;
   lawyerName: string;
   lawyerAvatar: string;
@@ -1999,7 +2002,21 @@ export interface SuccessReview {
   rating?: number;
   /** 실제 이용 후기가 아닌 가상 상담 절차 예시 (별점·이용 인증·변호사 연결 미표시) */
   isExample?: boolean;
+  /** CT-9: 실제 후기의 이용자 게시 동의 기록 (관리자 화면에서만 씀, 공개 화면 미표시) */
+  consent?: {
+    method: ReviewConsentMethod;
+    consentedOn: string;
+    noPiiChecked?: boolean;
+  };
 }
+
+export type ReviewConsentMethod = 'written' | 'electronic' | 'email' | 'message';
+export const REVIEW_CONSENT_METHOD_LABEL: Record<ReviewConsentMethod, string> = {
+  written: '서면 동의서',
+  electronic: '전자 동의(화면)',
+  email: '이메일 회신',
+  message: '문자·카카오톡 회신',
+};
 
 export interface MainBanner {
   id: string;

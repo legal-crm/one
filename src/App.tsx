@@ -640,7 +640,7 @@ export default function App() {
     }),
   });
 
-  const [popupConfig, setPopupConfig] = useServerConfig<PopupConfig>({
+  const [popupConfig, setPopupConfig, popupConfigMeta] = useServerConfig<PopupConfig>({
     table: 'popup_config',
     label: '팝업 설정',
     canWrite: canWriteContent,
@@ -1074,6 +1074,7 @@ export default function App() {
                 setInquiries={setInquiries}
                 popupConfig={popupConfig}
                 setPopupConfig={setPopupConfig}
+                savePopupConfig={popupConfigMeta.saveNow}
                 lawyerInquiries={lawyerInquiries}
                 setLawyerInquiries={setLawyerInquiries}
               />

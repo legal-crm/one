@@ -4,7 +4,8 @@
  * 기능:
  * - 팝업 ON/OFF 토글
  * - 팝업 아이템 추가/삭제/순서변경
- * - 이미지 업로드 (FileReader Base64) + URL 직접 입력
+ * - 이미지 업로드 (공개 저장소 site-media, CT-7) + https 주소 직접 입력
+ * - 고친 내용은 '저장'을 눌러야 서버에 반영 (CT-7, 이전: 바꿀 때마다 바로 저장)
  * - 클릭 동작 설정 (링크 이동 / 폼 스크롤 / 채팅 오픈)
  * - PC/모바일 별도 크기/위치 설정
  * - 슬라이더 옵션 (autoPlay, interval, slideEffect)
@@ -12,7 +13,8 @@
  * - "오늘 하루 보지 않기" / 오버레이 옵션
  * - 실시간 프리뷰 패널
  */
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
+import { isSafeLink, uploadSiteMedia } from '../../services/cms/siteMediaService';
 import { toast } from 'sonner';
 import { useDialog } from '../common/DialogProvider';
 import { PopupConfig, PopupItem, PopupTargetAudience } from '../../types';
@@ -22,17 +24,63 @@ import PopupContainer from './PopupContainer';
 interface PopupEditorProps {
     popupConfig: PopupConfig;
     onChange: (config: PopupConfig) => void;
+    /** 서버 응답을 기다리는 저장 (없으면 onChange로 넘김) */
+    onSave?: (config: PopupConfig) => Promise<{ ok: true } | { ok: false; message: string }>;
 }
 
-const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
+/** 저장 전 확인: 이미지·기간·이동 주소 */
+export function popupConfigProblems(c: PopupConfig): string[] {
+    const out: string[] = [];
+    (c.items || []).forEach((it, i) => {
+        const name = it.title || `팝업 ${i + 1}`;
+        if (!it.imageUrl) out.push(`${name}: 이미지를 올려 주세요.`);
+        else if (it.imageUrl.startsWith('data:')) out.push(`${name}: 예전 방식 이미지예요. 이미지를 다시 올려 주세요.`);
+        else if (!isSafeLink(it.imageUrl)) out.push(`${name}: 이미지 주소는 https로 시작해야 해요.`);
+        if (it.startDate && it.endDate && it.startDate > it.endDate) out.push(`${name}: 종료일이 시작일보다 빨라요.`);
+        if ((!it.actionType || it.actionType === 'link_url') && it.linkUrl && !isSafeLink(it.linkUrl)) out.push(`${name}: 이동 주소는 https 주소나 /로 시작하는 사이트 안 경로만 쓸 수 있어요.`);
+    });
+    return out;
+}
+
+const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig: savedConfig, onChange, onSave }) => {
     const dialog = useDialog();
+    // 작업본: '저장'을 눌러야 서버로
+    const [popupConfig, setPopupConfigDraft] = useState<PopupConfig>(savedConfig);
+    const savedKey = useMemo(() => JSON.stringify(savedConfig), [savedConfig]);
+    const dirty = JSON.stringify(popupConfig) !== savedKey;
+    const [saving, setSaving] = useState(false);
+    const [uploadingId, setUploadingId] = useState<string | null>(null);
+    const dirtyRef = useRef(dirty);
+    dirtyRef.current = dirty;
+    useEffect(() => {
+        // 서버 값이 새로 오면(처음 불러오기·다른 탭 저장) 고치는 중이 아닐 때만 받는다
+        if (!dirtyRef.current) setPopupConfigDraft(savedConfig);
+    }, [savedKey]); // eslint-disable-line react-hooks/exhaustive-deps
+    const problems = popupConfigProblems(popupConfig);
+
+    const save = async () => {
+        if (saving) return;
+        if (problems.length > 0) { toast.error(problems[0]); return; }
+        setSaving(true);
+        try {
+            if (onSave) {
+                const r = await onSave(popupConfig);
+                if (r.ok === false) { toast.error(`팝업을 저장하지 못했어요: ${r.message}`); return; }
+            } else {
+                onChange(popupConfig);
+            }
+            toast.success(popupConfig.usePopup ? '팝업을 저장했어요. 게시 기간 안이면 방문자에게 보여요.' : '팝업을 저장했어요. 지금은 팝업을 쓰지 않음 상태예요.');
+        } finally {
+            setSaving(false);
+        }
+    };
     const [previewDevice, setPreviewDevice] = useState<'pc' | 'mobile'>('pc');
     const [showPreview, setShowPreview] = useState(false);
     const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
     // Helpers
     const updateConfig = (updates: Partial<PopupConfig>) => {
-        onChange({ ...popupConfig, ...updates });
+        setPopupConfigDraft({ ...popupConfig, ...updates });
     };
 
     const updateItem = (idx: number, updates: Partial<PopupItem>) => {
@@ -57,17 +105,15 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
         updateConfig({ items: newItems });
     };
 
-    const handleImageUpload = (idx: number, file: File) => {
-        if (file.size > 5 * 1024 * 1024) {
-            alert('파일 크기가 5MB를 초과합니다.');
-            return;
-        }
-        const reader = new FileReader();
-        reader.onloadend = () => {
-            const result = reader.result as string;
-            updateItem(idx, { imageUrl: result });
-        };
-        reader.readAsDataURL(file);
+    const handleImageUpload = async (idx: number, file: File) => {
+        const id = popupConfig.items[idx]?.id;
+        if (!id) return;
+        setUploadingId(id);
+        const r = await uploadSiteMedia('popup', file);
+        setUploadingId(null);
+        if (r.ok === false) { toast.error(r.message); return; }
+        setPopupConfigDraft(prev => ({ ...prev, items: prev.items.map(it => (it.id === id ? { ...it, imageUrl: r.url } : it)) }));
+        toast.success('이미지를 올렸어요. 저장을 눌러야 반영돼요.');
     };
 
     return (
@@ -87,12 +133,25 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
                             if (!newConfig.items) newConfig.items = [];
                             if (!newConfig.pcStyle) newConfig.pcStyle = { width: 400, top: 100, left: 100, isCentered: true };
                             if (!newConfig.mobileStyle) newConfig.mobileStyle = { width: 300, top: 50, left: 20, isCentered: true };
-                            onChange(newConfig);
+                            setPopupConfigDraft(newConfig);
                         }}
                     >
                         <div className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${popupConfig.usePopup ? 'translate-x-5' : ''}`} />
                     </div>
                 </label>
+            </div>
+
+            <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-gray-200 bg-white/95 backdrop-blur px-3 py-2">
+                <span className={`text-xs font-bold ${dirty ? 'text-amber-700' : 'text-gray-500'}`}>
+                    {dirty ? '저장하지 않은 변경이 있어요.' : '저장된 상태예요.'}
+                    {problems.length > 0 && <span className="block font-normal text-rose-600">{problems[0]}{problems.length > 1 ? ` 외 ${problems.length - 1}건` : ''}</span>}
+                </span>
+                <span className="flex gap-2">
+                    <button type="button" disabled={!dirty || saving} onClick={() => setPopupConfigDraft(savedConfig)}
+                        className="min-h-[40px] px-3 rounded-xl border border-gray-300 bg-white text-xs font-bold text-gray-700 whitespace-nowrap disabled:opacity-40 cursor-pointer">되돌리기</button>
+                    <button type="button" disabled={!dirty || saving} onClick={() => void save()}
+                        className="min-h-[40px] px-4 rounded-xl bg-blue-600 text-white text-xs font-bold whitespace-nowrap disabled:opacity-40 cursor-pointer active:scale-[0.98]">{saving ? '저장 중…' : '저장'}</button>
+                </span>
             </div>
 
             {popupConfig.usePopup && (
@@ -194,11 +253,13 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
                                             className="hidden"
                                             onChange={(e) => {
                                                 const file = e.target.files?.[0];
-                                                if (file) handleImageUpload(idx, file);
+                                                if (file) void handleImageUpload(idx, file);
                                                 e.target.value = '';
                                             }}
                                         />
-                                        {item.imageUrl ? (
+                                        {uploadingId === item.id ? (
+                                            <div className="absolute inset-0 bg-gray-100 animate-pulse" aria-busy="true" aria-label="이미지 올리는 중" />
+                                        ) : item.imageUrl ? (
                                             <img src={item.imageUrl} alt="popup" className="w-full h-full object-contain" />
                                         ) : (
                                             <div className="text-center text-gray-400">
@@ -220,7 +281,7 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
                                                 value={item.imageUrl?.startsWith('data:') ? '' : (item.imageUrl || '')}
                                                 onChange={(e) => updateItem(idx, { imageUrl: e.target.value })}
                                                 className="w-full border rounded-lg p-1.5 text-xs bg-white focus:border-blue-400 outline-none"
-                                                placeholder="https://... (또는 위 영역에 파일 업로드)"
+                                                placeholder="https://… (또는 왼쪽에서 이미지 올리기)"
                                             />
                                         </div>
 
@@ -258,7 +319,7 @@ const PopupEditor: React.FC<PopupEditorProps> = ({ popupConfig, onChange }) => {
                                                         value={item.linkUrl || ''}
                                                         onChange={(e) => updateItem(idx, { linkUrl: e.target.value })}
                                                         className="w-full border rounded-lg p-1.5 text-xs bg-white focus:border-blue-400 outline-none"
-                                                        placeholder="https://..."
+                                                        placeholder="https://… 또는 /lawyers 같은 사이트 안 경로"
                                                     />
                                                 </div>
                                                 <label className="flex items-center gap-1.5 text-xs text-gray-600">

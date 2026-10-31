@@ -102,6 +102,11 @@ export function useServerCollection<T extends { id: string }>(opts: {
   return [items, setItems, { loaded, error, reload }];
 }
 
+export interface ServerConfigMeta<T> extends ServerContentMeta {
+  /** 바로 저장하고 서버 응답을 기다린다 (명시적 '저장' 버튼용, CT-7·CT-16) */
+  saveNow: (next: T) => Promise<{ ok: true } | { ok: false; message: string }>;
+}
+
 export function useServerConfig<T>(opts: {
   table: ConfigTable;
   label: string;
@@ -109,7 +114,7 @@ export function useServerConfig<T>(opts: {
   defaults: T;
   /** 서버 값에 기본값을 겹칠 때 쓰는 함수 (기본: 얕은 병합) */
   merge?: (defaults: T, server: any) => T;
-}): [T, React.Dispatch<React.SetStateAction<T>>, ServerContentMeta] {
+}): [T, React.Dispatch<React.SetStateAction<T>>, ServerConfigMeta<T>] {
   const { table, label, canWrite, defaults } = opts;
   const useLocal = !isSupabaseConfigured;
   const mergeFn = opts.merge || ((d: T, s: any) => (s && typeof s === 'object' && !Array.isArray(s) ? { ...(d as any), ...s } : (s ?? d)) as T);
@@ -165,5 +170,16 @@ export function useServerConfig<T>(opts: {
   }, [value, canWrite, table, label, useLocal]);
 
   const reload = useCallback(() => setManualKey(k => k + 1), []);
-  return [value, setValue, { loaded, error, reload }];
+  const saveNow = useCallback(async (next: T): Promise<{ ok: true } | { ok: false; message: string }> => {
+    if (useLocal) { setValue(next); return { ok: true }; }
+    if (!canWrite) return { ok: false, message: '저장 권한이 없어요.' };
+    const s = stableStringify(next);
+    const res = await saveConfig(table, next);
+    if (res.ok === false) return { ok: false, message: res.message };
+    // 자동 저장 감시가 같은 값을 다시 보내지 않게 먼저 기준을 맞춘다
+    snapshotRef.current = s;
+    setValue(next);
+    return { ok: true };
+  }, [table, useLocal, canWrite]);
+  return [value, setValue, { loaded, error, reload, saveNow }];
 }

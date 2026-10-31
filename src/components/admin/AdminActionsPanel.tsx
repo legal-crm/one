@@ -66,6 +66,19 @@ export default function AdminActionsPanel() {
     void load();
   };
 
+  // CT-16: 지운 콘텐츠는 기록에 남은 원본으로 '초안'으로 되살린다 (공개 화면엔 게시해야 보임)
+  const CONTENT_TABLES = ['news_articles', 'client_qas', 'success_reviews', 'main_banners', 'notices'];
+  const restoreContent = async (r: ActionRow) => {
+    const before = r.before as { data?: unknown; is_example?: boolean } | null;
+    if (!before?.data || !r.targetId || !CONTENT_TABLES.includes(r.targetType)) return;
+    const ok = await dialog.confirm({ title: '지운 글 되살리기', message: '기록에 남은 내용으로 글을 다시 만듭니다. 초안으로 들어가니 확인한 뒤 게시해 주세요.', confirmText: '되살리기' });
+    if (!ok) return;
+    const { error: e } = await supabase.from(r.targetType).insert({ id: r.targetId, data: before.data, status: 'draft', is_example: !!before.is_example });
+    if (e) { toast.error(/duplicate|unique/i.test(e.message) ? '같은 글이 이미 있어요.' : '되살리지 못했어요. 잠시 후 다시 시도해 주세요.'); return; }
+    toast.success('초안으로 되살렸어요. 콘텐츠 제어에서 확인 후 게시해 주세요.');
+    void load();
+  };
+
   return (
     <section className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-4 space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -75,7 +88,7 @@ export default function AdminActionsPanel() {
             className="min-h-9 rounded-xl bg-slate-900 border border-slate-700 px-2 text-xs text-slate-100">
             {RANGE_DAYS.map(d => <option key={d} value={d}>최근 {d}일</option>)}
           </select>
-          <input value={kind} onChange={e => { setKind(e.target.value); setPage(0); }} placeholder="조치 종류 (예: lawyer, office)" aria-label="조치 종류"
+          <input value={kind} onChange={e => { setKind(e.target.value); setPage(0); }} placeholder="조치 종류 (예: settings, content, lawyer)" aria-label="조치 종류"
             className="min-h-9 w-44 rounded-xl bg-slate-900 border border-slate-700 px-2 text-xs text-slate-100 placeholder:text-slate-500" />
           <button type="button" onClick={() => void load()} aria-label="새로고침" className="min-h-9 px-3 rounded-xl bg-slate-800 text-slate-300 active:scale-[0.98]"><RefreshCw className="w-4 h-4" aria-hidden="true" /></button>
         </div>
@@ -120,7 +133,12 @@ export default function AdminActionsPanel() {
                       {r.before !== null && r.before !== undefined && <span className="block text-rose-300/90">이전 {short(r.before)}</span>}
                       {r.after !== null && r.after !== undefined && <span className="block text-emerald-300/90">이후 {short(r.after)}</span>}
                     </td>
-                    <td className="py-2 break-words text-slate-300">{r.reason || ''}</td>
+                    <td className="py-2 break-words text-slate-300">
+                      {r.reason || ''}
+                      {r.action === 'content.delete' && !!(r.before as { data?: unknown } | null)?.data && (
+                        <button type="button" onClick={() => void restoreContent(r)} className="block mt-1 min-h-9 px-3 rounded-xl bg-slate-800 text-slate-100 font-bold whitespace-nowrap active:scale-[0.98]">되살리기(초안)</button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

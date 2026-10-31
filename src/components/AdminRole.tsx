@@ -15,6 +15,8 @@ import PrivacyRequestsPanel from './admin/PrivacyRequestsPanel';
 import OfficeClosurePanel from './admin/OfficeClosurePanel';
 import AdminActionsPanel from './admin/AdminActionsPanel';
 import { ContentStatusCell, ContentStatusSummary, useContentStatuses } from './admin/content/ContentStatusBar';
+import { DEFAULT_PROHIBITED_EXPRESSIONS, findProhibitedExpressions } from '../services/proposalCompliance';
+import { REVIEW_CONSENT_METHOD_LABEL, type ReviewConsentMethod } from '../types';
 import LegalDocumentsPanel from './admin/LegalDocumentsPanel';
 import CreditorRegistryPanel from './admin/CreditorRegistryPanel';
 import PlatformFeaturesPanel from './admin/PlatformFeaturesPanel';
@@ -90,6 +92,8 @@ interface AdminRoleProps {
   setInquiries: React.Dispatch<React.SetStateAction<ClientInquiry[]>>;
   popupConfig: PopupConfig;
   setPopupConfig: React.Dispatch<React.SetStateAction<PopupConfig>>;
+  /** 팝업 '저장' 버튼: 서버 응답을 기다린다 (CT-7) */
+  savePopupConfig?: (next: PopupConfig) => Promise<{ ok: true } | { ok: false; message: string }>;
   lawyerInquiries: LawyerInquiry[];
   setLawyerInquiries: React.Dispatch<React.SetStateAction<LawyerInquiry[]>>;
 }
@@ -122,6 +126,7 @@ export default function AdminRole({
   setInquiries,
   popupConfig,
   setPopupConfig,
+  savePopupConfig,
   lawyerInquiries,
   setLawyerInquiries
 }: AdminRoleProps) {
@@ -216,17 +221,24 @@ export default function AdminRole({
   const [qaLawyerId, setQaLawyerId] = useState<string>('lawyer-1');
   const [qaBadge, setQaBadge] = useState<string>('실시간 답변');
 
-  // CRUD states for Success Reviews (채무 해결 성공후기)
+  // 이용 후기 (CT-9)
   // 후기·예시 글 게시 상태 (CT-3 일부: 초안은 공개 화면에 안 보임)
   const reviewStatuses = useContentStatuses('success_reviews', reviews);
+  const newsStatuses = useContentStatuses('news_articles', newsArticles);
+  const qaStatuses = useContentStatuses('client_qas', qas);
+  const bannerStatuses = useContentStatuses('main_banners', banners);
+  const noticeStatuses = useContentStatuses('notices', notices);
   const [editingReview, setEditingReview] = useState<SuccessReview | null>(null);
   const [isReviewCreateMode, setIsReviewCreateMode] = useState<boolean>(false);
   const [reviewTitle, setReviewTitle] = useState<string>('');
   const [reviewCategory, setReviewCategory] = useState<string>('코인/주식 손실');
   const [reviewAuthor, setReviewAuthor] = useState<string>('');
-  const [reviewOriginalDebt, setReviewOriginalDebt] = useState<number>(5000);
-  const [reviewRemainingDebt, setReviewRemainingDebt] = useState<number>(1000);
-  const [reviewLawyerId, setReviewLawyerId] = useState<string>('lawyer-1');
+  // CT-9: 금액 칸 삭제, 실제 후기는 이용자 동의 기록이 있어야 저장
+  const [reviewIsExample, setReviewIsExample] = useState<boolean>(false);
+  const [reviewConsentMethod, setReviewConsentMethod] = useState<ReviewConsentMethod | ''>('');
+  const [reviewConsentOn, setReviewConsentOn] = useState<string>('');
+  const [reviewNoPiiChecked, setReviewNoPiiChecked] = useState<boolean>(false);
+  const [reviewLawyerId, setReviewLawyerId] = useState<string>('');
   const [reviewContent, setReviewContent] = useState<string>('');
   const [reviewTagsText, setReviewTagsText] = useState<string>('');
 
@@ -3305,7 +3317,7 @@ export default function AdminRole({
                 <div className="space-y-1">
                   <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-2.5 py-0.5 rounded text-xs font-bold uppercase tracking-wider">PLATFORM MULTI-CONTENT CONTROL PANEL</span>
                   <h2 className="text-xl font-black text-white">통합 사이트 콘텐츠 CRUD 제어 센터</h2>
-                  <p className="text-sm text-slate-500">의뢰인 전용 페이지의 주요 칼럼 기사, 고민사례 Q&A, 실제 해결 성공후기, 메인 캐러셀 배너를 실시간 제어합니다.</p>
+                  <p className="text-sm text-slate-500">의뢰인 전용 페이지의 주요 칼럼 기사, 고민사례 Q&A, 이용 후기, 메인 캐러셀 배너를 실시간 제어합니다.</p>
                 </div>
                 
                 {/* New Content Create Button tailored to active subtab */}
@@ -3356,16 +3368,18 @@ export default function AdminRole({
                       setReviewTitle('');
                       setReviewCategory('코인/주식 손실');
                       setReviewAuthor('');
-                      setReviewOriginalDebt(5000);
-                      setReviewRemainingDebt(1000);
-                      setReviewLawyerId(lawyers[0]?.id || 'lawyer-1');
+                      setReviewIsExample(false);
+                      setReviewConsentMethod('');
+                      setReviewConsentOn('');
+                      setReviewNoPiiChecked(false);
+                      setReviewLawyerId('');
                       setReviewContent('');
                       setReviewTagsText('');
                     }}
                     className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>✍️ 새로운 해결 성공후기 등록</span>
+                    <span>이용 후기 등록</span>
                   </button>
                 )}
 
@@ -3423,7 +3437,7 @@ export default function AdminRole({
                   onClick={() => { setContentSubTab('reviews'); setIsReviewCreateMode(false); setEditingReview(null); }}
                   className={`pb-1.5 border-b-2 transition-all cursor-pointer ${contentSubTab === 'reviews' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'}`}
                 >
-                  🏆 해결 성공후기 관리
+                  이용 후기 관리
                 </button>
                 <button 
                   onClick={() => { setContentSubTab('banner'); setIsBannerCreateMode(false); setEditingBanner(null); }}
@@ -3612,11 +3626,13 @@ export default function AdminRole({
                   )}
 
                   {/* Contents Table Data Grid */}
+                  <ContentStatusSummary table="news_articles" map={newsStatuses.map} onChanged={() => void newsStatuses.reload()} />
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">게시</th>
                             <th className="p-3">커버</th>
                             <th className="p-3">기사 분류</th>
                             <th className="p-3">법률 아티클 기사명</th>
@@ -3629,6 +3645,9 @@ export default function AdminRole({
                         <tbody className="divide-y divide-[#1E293B]/30">
                           {newsArticles.map(art => (
                             <tr key={art.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <ContentStatusCell table="news_articles" id={art.id} map={newsStatuses.map} onChanged={() => void newsStatuses.reload()} />
+                              </td>
                               <td className="p-3">
                                 <img 
                                   src={art.imageUrl} 
@@ -3702,7 +3721,7 @@ export default function AdminRole({
 
                           {newsArticles.length === 0 && (
                             <tr>
-                              <td colSpan={7} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">
+                              <td colSpan={8} className="p-8 text-center text-slate-400 font-semibold bg-[#111622]">
                                 게재된 법률 기사 정보가 존재하지 않습니다. 새로운 기사를 작성하여 게시해 보십시오.
                               </td>
                             </tr>
@@ -3912,11 +3931,13 @@ export default function AdminRole({
                   })()}
 
                   {/* Q&A Data Grid */}
+                  <ContentStatusSummary table="client_qas" map={qaStatuses.map} onChanged={() => void qaStatuses.reload()} />
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">게시</th>
                             <th className="p-3">분류</th>
                             <th className="p-3">질문 헤드라인</th>
                             <th className="p-3">의뢰 가명</th>
@@ -3928,6 +3949,9 @@ export default function AdminRole({
                         <tbody className="divide-y divide-[#1E293B]/30">
                           {qas.map(qa => (
                             <tr key={qa.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <ContentStatusCell table="client_qas" id={qa.id} map={qaStatuses.map} onChanged={() => void qaStatuses.reload()} />
+                              </td>
                               <td className="p-3 shrink-0 whitespace-nowrap">
                                 <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-extrabold px-2 py-0.5 rounded">
                                   {qa.category}
@@ -3981,7 +4005,7 @@ export default function AdminRole({
 
                           {qas.length === 0 && (
                             <tr>
-                              <td colSpan={6} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">
+                              <td colSpan={7} className="p-8 text-center text-slate-400 font-semibold bg-[#111622]">
                                 등록된 실시간 고민 Q&A 데이터가 없습니다. 새로운 상담사례를 등록해 주세요.
                               </td>
                             </tr>
@@ -3996,35 +4020,23 @@ export default function AdminRole({
               {/* 3. SUCCESS REVIEWS CRUD SECTION */}
               {contentSubTab === 'reviews' && (
                 <div className="space-y-6 animate-fadeIn">
-                  {/* Creator / Editor Form Panel */}
+                  {/* 이용 후기 작성·수정 (CT-9) */}
                   {(isReviewCreateMode || editingReview) && (
-                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4 animate-slideDown">
-                      <h3 className="font-extrabold text-base text-indigo-400 border-b border-[#1E293B]/50 pb-2.5 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4" />
-                        <span>{isReviewCreateMode ? '신규 채무 해결 성공후기 등록' : '채무 해결 성공후기 수정'}</span>
+                    <div className="bg-[#111622] p-6 rounded-2xl border border-indigo-500/20 space-y-4">
+                      <h3 className="font-extrabold text-base text-indigo-300 border-b border-[#1E293B]/50 pb-2.5">
+                        {isReviewCreateMode ? '이용 후기 등록' : '이용 후기 수정'}
                       </h3>
+
+                      <label className="flex items-center gap-2 text-sm text-slate-200">
+                        <input type="checkbox" checked={reviewIsExample} onChange={e => setReviewIsExample(e.target.checked)} className="w-4 h-4" />
+                        예시(가상) 글 — 실제 이용자 후기가 아니고 상담 절차를 설명하는 글이에요. 공개 화면에 '예시(가상)'로 표시돼요.
+                      </label>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                         <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">후기 대리인 변호사</label>
-                          <select 
-                            value={reviewLawyerId} 
-                            onChange={(e) => setReviewLawyerId(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          >
-                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
-                              <option key={l.id} value={l.id}>{l.name} ({l.region})</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">의뢰 분야 카테고리</label>
-                          <select 
-                            value={reviewCategory} 
-                            onChange={(e) => setReviewCategory(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          >
+                          <label htmlFor="rev-category" className="text-sm text-slate-300 block font-bold">분야</label>
+                          <select id="rev-category" value={reviewCategory} onChange={(e) => setReviewCategory(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200">
                             <option value="코인/주식 손실">코인/주식 손실</option>
                             <option value="신용카드 연체">신용카드 연체</option>
                             <option value="개인파산">개인파산</option>
@@ -4034,131 +4046,130 @@ export default function AdminRole({
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">의뢰인 가명 및 인적 (Author)</label>
-                          <input 
-                            type="text" 
-                            placeholder="예: 홍*동 님 (30대 직장인)"
-                            value={reviewAuthor}
-                            onChange={(e) => setReviewAuthor(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          />
+                          <label htmlFor="rev-author" className="text-sm text-slate-300 block font-bold">작성자 표시 (가명)</label>
+                          <input id="rev-author" type="text" placeholder="예: 홍*동 (30대 직장인)" value={reviewAuthor} onChange={(e) => setReviewAuthor(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-500" />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">기존 채무총액 (원금, 만 원 단위)</label>
-                          <input 
-                            type="number" 
-                            placeholder="예: 8000"
-                            value={reviewOriginalDebt}
-                            onChange={(e) => setReviewOriginalDebt(parseInt(e.target.value) || 0)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">조정 후 갚을 원금 (만 원 단위, 파산 면책은 0)</label>
-                          <input 
-                            type="number" 
-                            placeholder="예: 1200"
-                            value={reviewRemainingDebt}
-                            onChange={(e) => setReviewRemainingDebt(parseInt(e.target.value) || 0)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          />
-                        </div>
-
-                        <div className="space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">해시태그 키워드들 (쉼표로 구분 입력)</label>
-                          <input 
-                            type="text" 
-                            placeholder="예: #코인실패, #추심동결, #탕감율85%"
-                            value={reviewTagsText}
-                            onChange={(e) => setReviewTagsText(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-600"
-                          />
+                          <label htmlFor="rev-lawyer" className="text-sm text-slate-300 block font-bold">변호사 표시</label>
+                          <select id="rev-lawyer" value={reviewLawyerId} onChange={(e) => setReviewLawyerId(e.target.value)} disabled={reviewIsExample}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 disabled:opacity-50">
+                            <option value="">표시 안 함</option>
+                            {lawyers.filter(l => l.role === 'LAWYER').map(l => (
+                              <option key={l.id} value={l.id}>{l.name}</option>
+                            ))}
+                          </select>
                         </div>
 
                         <div className="md:col-span-3 space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">성공후기 매력적인 제목</label>
-                          <input 
-                            type="text" 
-                            placeholder="의뢰인의 극적인 탕감 성과를 한눈에 보여주는 임팩트 있는 제목"
-                            value={reviewTitle}
-                            onChange={(e) => setReviewTitle(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200"
-                          />
+                          <label htmlFor="rev-tags" className="text-sm text-slate-300 block font-bold">태그 (쉼표로 구분)</label>
+                          <input id="rev-tags" type="text" placeholder="예: 신용카드, 상담 과정" value={reviewTagsText} onChange={(e) => setReviewTagsText(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-500" />
                         </div>
 
                         <div className="md:col-span-3 space-y-1.5">
-                          <label className="text-sm text-slate-450 block uppercase font-bold">성공후기 상세 서술 원고 (Content)</label>
-                          <textarea 
-                            rows={6}
-                            placeholder="사건 수임 전 빚 독촉 상황, 소명 방향성, 탕감 성과 및 최종 대리인에 대한 감사 내용 등을 실감나게 서술하세요."
-                            value={reviewContent}
-                            onChange={(e) => setReviewContent(e.target.value)}
-                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 leading-relaxed"
-                          />
+                          <label htmlFor="rev-title" className="text-sm text-slate-300 block font-bold">제목</label>
+                          <input id="rev-title" type="text" placeholder="이용자가 쓴 표현 그대로, 결과를 약속하는 표현 없이" value={reviewTitle} onChange={(e) => setReviewTitle(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 placeholder-slate-500" />
+                        </div>
+
+                        <div className="md:col-span-3 space-y-1.5">
+                          <label htmlFor="rev-content" className="text-sm text-slate-300 block font-bold">내용</label>
+                          <textarea id="rev-content" rows={6} placeholder="이용자가 보낸 후기 원문. 채무액·감면율·변제금 같은 수치는 넣지 않아요." value={reviewContent} onChange={(e) => setReviewContent(e.target.value)}
+                            className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200 leading-relaxed placeholder-slate-500" />
                         </div>
                       </div>
 
+                      {!reviewIsExample && (
+                        <fieldset className="space-y-3 p-4 rounded-xl border border-amber-500/30 bg-amber-500/5 text-sm">
+                          <legend className="px-1 text-amber-300 font-bold">이용자 게시 동의 기록 (필수)</legend>
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                            <label className="space-y-1">
+                              <span className="text-slate-300 block font-bold">동의 받은 방법</span>
+                              <select value={reviewConsentMethod} onChange={e => setReviewConsentMethod(e.target.value as ReviewConsentMethod | '')}
+                                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200">
+                                <option value="">고르기</option>
+                                {(Object.keys(REVIEW_CONSENT_METHOD_LABEL) as ReviewConsentMethod[]).map(k => <option key={k} value={k}>{REVIEW_CONSENT_METHOD_LABEL[k]}</option>)}
+                              </select>
+                            </label>
+                            <label className="space-y-1">
+                              <span className="text-slate-300 block font-bold">동의한 날</span>
+                              <input type="date" value={reviewConsentOn} onChange={e => setReviewConsentOn(e.target.value)}
+                                className="w-full bg-[#07090E] border border-[#1E293B]/80 rounded-xl p-3 text-slate-200" />
+                            </label>
+                            <p className="text-xs text-slate-400 self-end pb-2">후기 글은 누구나 읽는 공개 데이터라 동의서 원본·연락처는 여기에 적지 말고 따로 보관해 주세요.</p>
+                          </div>
+                          <label className="flex items-center gap-2 text-slate-200">
+                            <input type="checkbox" checked={reviewNoPiiChecked} onChange={e => setReviewNoPiiChecked(e.target.checked)} className="w-4 h-4" />
+                            실명·연락처·사건번호·주소 같은 개인 식별 정보가 없는지 확인했어요.
+                          </label>
+                        </fieldset>
+                      )}
+
+                      {(() => {
+                        const hits = findProhibitedExpressions(`${reviewTitle}\n${reviewContent}\n${reviewTagsText}`, undefined, DEFAULT_PROHIBITED_EXPRESSIONS);
+                        return hits.length > 0 ? (
+                          <p role="status" className="text-sm text-amber-300 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3">
+                            광고 규정상 주의할 표현: {hits.join(', ')} — 저장 전에 한 번 더 확인해 주세요.
+                          </p>
+                        ) : null;
+                      })()}
+
                       <div className="flex gap-2 justify-end pt-2">
-                        <button 
-                          onClick={() => {
-                            setIsReviewCreateMode(false);
-                            setEditingReview(null);
-                          }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer"
-                        >
-                          취소하기
+                        <button onClick={() => { setIsReviewCreateMode(false); setEditingReview(null); }}
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-300 font-extrabold px-5 min-h-[44px] rounded-xl text-sm whitespace-nowrap cursor-pointer">
+                          취소
                         </button>
-                        <button 
-                          onClick={() => {
+                        <button
+                          onClick={async () => {
                             if (!reviewTitle.trim() || !reviewContent.trim() || !reviewAuthor.trim()) {
-                              toast.error('후기 제목, 내용 및 의뢰인 작성자명을 모두 기입해 주세요.');
+                              toast.error('제목, 내용, 작성자 표시를 모두 입력해 주세요.');
                               return;
                             }
-                            const targetLawyer = lawyers.find(l => l.id === reviewLawyerId) || lawyers[0];
+                            if (!reviewIsExample) {
+                              if (!reviewConsentMethod || !reviewConsentOn) { toast.error('실제 후기는 동의 받은 방법과 날짜를 적어야 저장할 수 있어요.'); return; }
+                              if (!reviewNoPiiChecked) { toast.error('개인 식별 정보가 없는지 확인해 주세요.'); return; }
+                            }
+                            const hits = findProhibitedExpressions(`${reviewTitle}\n${reviewContent}\n${reviewTagsText}`, undefined, DEFAULT_PROHIBITED_EXPRESSIONS);
+                            if (hits.length > 0) {
+                              const ok = await dialog.confirm({ title: '주의할 표현이 있어요', message: `${hits.join(', ')} 표현이 들어 있습니다. 그대로 저장할까요?`, confirmText: '그대로 저장', variant: 'warning' });
+                              if (!ok) return;
+                            }
+                            const targetLawyer = !reviewIsExample && reviewLawyerId ? lawyers.find(l => l.id === reviewLawyerId) : undefined;
                             const cleanTags = reviewTagsText.trim()
-                              ? reviewTagsText.split(/[,，\s]+/).map(t => t.startsWith('#') ? t.trim() : `#${t.trim()}`).filter(t => t !== '#')
-                              : ["#상담후기"];
-
+                              ? reviewTagsText.split(/[,，]+/).map(t => t.trim().replace(/^#/, '')).filter(Boolean)
+                              : [];
+                            const consent: SuccessReview['consent'] = reviewIsExample ? undefined : {
+                              method: reviewConsentMethod as ReviewConsentMethod,
+                              consentedOn: reviewConsentOn,
+                              noPiiChecked: true,
+                            };
+                            const fields = {
+                              title: reviewTitle.trim(),
+                              category: reviewCategory,
+                              author: reviewAuthor.trim(),
+                              lawyerId: targetLawyer?.id || '',
+                              lawyerName: targetLawyer?.name || '',
+                              lawyerAvatar: targetLawyer?.avatar || '',
+                              content: reviewContent.trim(),
+                              tags: cleanTags,
+                              isExample: reviewIsExample,
+                              consent,
+                            };
                             if (isReviewCreateMode) {
-                              const newRev: SuccessReview = {
-                                id: `rev-${Date.now()}`,
-                                title: reviewTitle.trim(),
-                                category: reviewCategory,
-                                author: reviewAuthor.trim(),
-                                originalDebt: reviewOriginalDebt,
-                                remainingDebt: reviewRemainingDebt,
-                                lawyerId: reviewLawyerId,
-                                lawyerName: targetLawyer.name,
-                                lawyerAvatar: targetLawyer.avatar,
-                                content: reviewContent.trim(),
-                                tags: cleanTags
-                              };
-                              setReviews(prev => [newRev, ...prev]);
-                              toast.success('후기가 게재되었습니다. 실제 이용자 동의를 받은 후기만 게재해 주세요.');
+                              setReviews(prev => [{ id: `rev-${Date.now()}`, ...fields } as SuccessReview, ...prev]);
+                              toast.success('후기를 저장했어요.');
                             } else if (editingReview) {
-                              setReviews(prev => prev.map(r => r.id === editingReview.id ? {
-                                ...r,
-                                title: reviewTitle.trim(),
-                                category: reviewCategory,
-                                author: reviewAuthor.trim(),
-                                originalDebt: reviewOriginalDebt,
-                                remainingDebt: reviewRemainingDebt,
-                                lawyerId: reviewLawyerId,
-                                lawyerName: targetLawyer.name,
-                                lawyerAvatar: targetLawyer.avatar,
-                                content: reviewContent.trim(),
-                                tags: cleanTags
-                              } : r));
-                              toast.success('성공후기 정보가 수정되었습니다');
+                              setReviews(prev => prev.map(r => r.id === editingReview.id ? { ...r, ...fields, originalDebt: undefined, remainingDebt: undefined } : r));
+                              toast.success('후기를 수정했어요.');
                             }
                             setIsReviewCreateMode(false);
                             setEditingReview(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold px-6 min-h-[44px] rounded-xl text-sm whitespace-nowrap shadow-sm cursor-pointer active:scale-[0.98]"
                         >
-                          {isReviewCreateMode ? '✍️ 성공후기 게재' : '💾 변경 사항 저장'}
+                          {isReviewCreateMode ? '저장' : '변경 사항 저장'}
                         </button>
                       </div>
                     </div>
@@ -4170,91 +4181,76 @@ export default function AdminRole({
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
-                          <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                          <tr className="bg-[#161B26] text-slate-400 font-bold border-b border-[#1E293B]/60">
                             <th className="p-3">분류</th>
                             <th className="p-3">제목</th>
                             <th className="p-3">게시</th>
-                            <th className="p-3">금액 기록 (내부)</th>
+                            <th className="p-3">동의 기록</th>
                             <th className="p-3">변호사</th>
                             <th className="p-3">작성자</th>
-                            <th className="p-3">태그</th>
                             <th className="p-3 text-right">관리</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#1E293B]/30">
-                          {reviews.map(rev => {
-                            const hasDebtFigures = !rev.isExample && rev.originalDebt > 0;
-                            const cutPct = hasDebtFigures ? Math.round(((rev.originalDebt - rev.remainingDebt) / rev.originalDebt) * 100) : 0;
-                            return (
-                              <tr key={rev.id} className="hover:bg-[#0B0F19]/25 transition-colors">
-                                <td className="p-3 shrink-0 whitespace-nowrap">
-                                  <span className="bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 text-xs font-extrabold px-2 py-0.5 rounded">
-                                    {rev.category}
-                                  </span>
-                                </td>
-                                <td className="p-3 font-bold text-slate-100 max-w-[200px] truncate">
-                                  <div className="flex flex-col gap-0.5">
-                                    <span>{rev.title}</span>
-                                    {rev.isExample
-                                      ? <span className="text-xs text-slate-400 font-bold">예시(가상) · 공개 화면에 수치 미표시</span>
-                                      : hasDebtFigures && <span className="text-xs text-slate-400 font-mono">내부 기록: 원금 약 {cutPct}% 감면 (공개 화면 미표시)</span>}
-                                  </div>
-                                </td>
-                                <td className="p-3">
-                                  <ContentStatusCell table="success_reviews" id={rev.id} map={reviewStatuses.map} onChanged={() => void reviewStatuses.reload()} />
-                                </td>
-                                <td className="p-3 font-bold text-slate-200 font-mono">
-                                  {hasDebtFigures ? `${rev.originalDebt.toLocaleString()}만 → ${rev.remainingDebt.toLocaleString()}만` : '—'}
-                                </td>
-                                <td className="p-3 text-slate-350">{rev.lawyerName}</td>
-                                <td className="p-3 text-slate-450">{rev.author}</td>
-                                <td className="p-3 max-w-[120px] truncate text-xs text-slate-455">
-                                  {rev.tags.join(' ')}
-                                </td>
-                                <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
-                                  <button 
-                                    onClick={() => {
-                                      setEditingReview(rev);
-                                      setIsReviewCreateMode(false);
-                                      setReviewTitle(rev.title);
-                                      setReviewCategory(rev.category);
-                                      setReviewAuthor(rev.author);
-                                      setReviewOriginalDebt(rev.originalDebt);
-                                      setReviewRemainingDebt(rev.remainingDebt);
-                                      setReviewLawyerId(rev.lawyerId);
-                                      setReviewContent(rev.content);
-                                      setReviewTagsText(rev.tags.join(', '));
-                                    }}
-                                    className="bg-indigo-600/10 hover:bg-indigo-650 hover:text-white border border-indigo-500/20 text-indigo-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
-                                  >
-                                    수정
-                                  </button>
-                                  <button 
-                                    onClick={async () => {
-                                      const confirmed = await dialog.confirm({
-                                        title: '성공후기 영구 삭제',
-                                        message: `성공후기 [${rev.title}] 건을 영구 삭제 처리하시겠습니까?`,
-                                        confirmText: '삭제',
-                                        variant: 'danger'
-                                      });
-                                      if (confirmed) {
-                                        setReviews(prev => prev.filter(r => r.id !== rev.id));
-                                        toast.success('해당 성공후기 포스트가 영구 삭제 처리되었습니다.');
-                                      }
-                                    }}
-                                    className="bg-red-500/10 hover:bg-red-650 hover:text-white border border-red-500/20 text-red-400 px-2.5 py-1 rounded-lg transition-all cursor-pointer"
-                                  >
-                                    삭제
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })}
+                          {reviews.map(rev => (
+                            <tr key={rev.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3 shrink-0 whitespace-nowrap">
+                                <span className="bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-xs font-extrabold px-2 py-0.5 rounded-lg">{rev.category}</span>
+                              </td>
+                              <td className="p-3 font-bold text-slate-100 max-w-[240px]">
+                                <span className="block truncate">{rev.title}</span>
+                                {rev.isExample && <span className="text-xs text-slate-400 font-bold">예시(가상)</span>}
+                              </td>
+                              <td className="p-3">
+                                <ContentStatusCell table="success_reviews" id={rev.id} map={reviewStatuses.map} onChanged={() => void reviewStatuses.reload()} />
+                              </td>
+                              <td className="p-3 text-xs whitespace-nowrap">
+                                {rev.isExample ? <span className="text-slate-400">해당 없음</span>
+                                  : rev.consent ? <span className="text-emerald-300">{REVIEW_CONSENT_METHOD_LABEL[rev.consent.method]} · {rev.consent.consentedOn}</span>
+                                  : <span className="text-amber-300 font-bold">기록 없음 — 게시 전 확인</span>}
+                              </td>
+                              <td className="p-3 text-slate-300">{rev.lawyerName || '—'}</td>
+                              <td className="p-3 text-slate-300">{rev.author}</td>
+                              <td className="p-3 text-right space-x-1 shrink-0 whitespace-nowrap">
+                                <button
+                                  onClick={() => {
+                                    setEditingReview(rev);
+                                    setIsReviewCreateMode(false);
+                                    setReviewTitle(rev.title);
+                                    setReviewCategory(rev.category);
+                                    setReviewAuthor(rev.author);
+                                    setReviewLawyerId(rev.lawyerId || '');
+                                    setReviewContent(rev.content);
+                                    setReviewTagsText((rev.tags || []).map(t => t.replace(/^#/, '')).join(', '));
+                                    setReviewIsExample(!!rev.isExample);
+                                    setReviewConsentMethod(rev.consent?.method || '');
+                                    setReviewConsentOn(rev.consent?.consentedOn || '');
+                                    setReviewNoPiiChecked(!!rev.consent?.noPiiChecked);
+                                  }}
+                                  className="bg-indigo-600/10 hover:bg-indigo-600 hover:text-white border border-indigo-500/20 text-indigo-300 px-2.5 min-h-[36px] rounded-lg cursor-pointer"
+                                >
+                                  수정
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    const confirmed = await dialog.confirm({ title: '후기 삭제', message: `[${rev.title}] 후기를 삭제할까요? 되돌릴 수 없어요. 잠시 내리려면 게시 상태를 '내림'으로 바꿔 주세요.`, confirmText: '삭제', variant: 'danger' });
+                                    if (confirmed) {
+                                      setReviews(prev => prev.filter(r => r.id !== rev.id));
+                                      toast.success('후기를 삭제했어요.');
+                                    }
+                                  }}
+                                  className="bg-red-500/10 hover:bg-red-600 hover:text-white border border-red-500/20 text-red-300 px-2.5 min-h-[36px] rounded-lg cursor-pointer"
+                                >
+                                  삭제
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
 
                           {reviews.length === 0 && (
                             <tr>
-                              <td colSpan={7} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">
-                                등록된 채무 해결 성공후기 콘텐츠가 없습니다. 새로운 리얼 후기를 등록해 보세요.
+                              <td colSpan={7} className="p-8 text-center text-slate-400 font-semibold bg-[#111622]">
+                                아직 이용 후기가 없어요. 이용자에게 게시 동의를 받은 후기만 '이용 후기 등록'으로 올려 주세요.
                               </td>
                             </tr>
                           )}
@@ -4383,11 +4379,13 @@ export default function AdminRole({
                   )}
 
                   {/* Banners Data Grid */}
+                  <ContentStatusSummary table="main_banners" map={bannerStatuses.map} onChanged={() => void bannerStatuses.reload()} />
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">게시</th>
                             <th className="p-3">배경 썸네일</th>
                             <th className="p-3">태그</th>
                             <th className="p-3">배너 헤드라인 대문구</th>
@@ -4399,6 +4397,9 @@ export default function AdminRole({
                         <tbody className="divide-y divide-[#1E293B]/30">
                           {banners.map(bann => (
                             <tr key={bann.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <ContentStatusCell table="main_banners" id={bann.id} map={bannerStatuses.map} onChanged={() => void bannerStatuses.reload()} />
+                              </td>
                               <td className="p-3">
                                 <img 
                                   src={bann.image} 
@@ -4452,7 +4453,7 @@ export default function AdminRole({
 
                           {banners.length === 0 && (
                             <tr>
-                              <td colSpan={6} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">
+                              <td colSpan={7} className="p-8 text-center text-slate-400 font-semibold bg-[#111622]">
                                 게재된 캐러셀 배너가 존재하지 않습니다. 새로운 배너를 작성하여 활성화해 보십시오.
                               </td>
                             </tr>
@@ -4571,11 +4572,13 @@ export default function AdminRole({
                   )}
 
                   {/* Notices Table Data Grid */}
+                  <ContentStatusSummary table="notices" map={noticeStatuses.map} onChanged={() => void noticeStatuses.reload()} />
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
+                            <th className="p-3">게시</th>
                             <th className="p-3">중요 여부</th>
                             <th className="p-3">공지사항 제목</th>
                             <th className="p-3">조회수</th>
@@ -4586,6 +4589,9 @@ export default function AdminRole({
                         <tbody className="divide-y divide-[#1E293B]/30">
                           {notices.map(notice => (
                             <tr key={notice.id} className="hover:bg-[#0B0F19]/25 transition-colors">
+                              <td className="p-3">
+                                <ContentStatusCell table="notices" id={notice.id} map={noticeStatuses.map} onChanged={() => void noticeStatuses.reload()} />
+                              </td>
                               <td className="p-3">
                                 <span className={`text-xs font-extrabold px-2 py-0.5 rounded border ${
                                   notice.isImportant 
@@ -4637,7 +4643,7 @@ export default function AdminRole({
 
                           {notices.length === 0 && (
                             <tr>
-                              <td colSpan={5} className="p-8 text-center text-slate-600 font-semibold bg-[#111622]">
+                              <td colSpan={6} className="p-8 text-center text-slate-400 font-semibold bg-[#111622]">
                                 등록된 공지사항이 없습니다. 신규 공지사항을 작성해 보십시오.
                               </td>
                             </tr>
@@ -5025,6 +5031,7 @@ export default function AdminRole({
                   <PopupEditor
                     popupConfig={popupConfig}
                     onChange={setPopupConfig}
+                    onSave={savePopupConfig}
                   />
                 </div>
               )}
