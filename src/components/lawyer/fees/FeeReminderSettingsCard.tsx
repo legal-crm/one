@@ -80,7 +80,7 @@ export default function FeeReminderSettingsCard({ officeId, canEdit, caseNames }
             </select>
           </label>
           {canEdit && (
-            <button type="button" onClick={save} disabled={!dirty || saving} className="min-h-[44px] px-4 rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap disabled:opacity-40 active:scale-[0.98]">
+            <button type="button" onClick={save} disabled={!dirty || saving} className="min-h-[44px] px-4 rounded-xl -brand text-white text-sm font-bold whitespace-nowrap disabled:opacity-40 active:scale-[0.98]">
               {saving ? '저장 중…' : '설정 저장'}
             </button>
           )}

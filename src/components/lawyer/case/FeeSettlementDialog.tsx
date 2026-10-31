@@ -98,7 +98,7 @@ export default function FeeSettlementDialog({ caseId, paidTotal, onClose, onDone
           </div>
           <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="min-h-[44px] px-4 rounded-xl border border-slate-200 font-bold text-sm whitespace-nowrap">닫기</button>
-            <button type="button" disabled={busy} onClick={() => void submit()} className="min-h-[44px] px-4 rounded-xl bg-[#1E3A5F] text-white font-bold text-sm whitespace-nowrap disabled:opacity-50 active:scale-[0.98]">정산하기</button>
+            <button type="button" disabled={busy} onClick={() => void submit()} className="min-h-[44px] px-4 rounded-xl -brand text-white font-bold text-sm whitespace-nowrap disabled:opacity-50 active:scale-[0.98]">정산하기</button>
           </div>
         </div>
       </div>

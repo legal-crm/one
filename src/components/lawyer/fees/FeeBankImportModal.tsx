@@ -109,7 +109,7 @@ export default function FeeBankImportModal({ officeId, onClose, onSaved }: { off
           <div className="flex justify-end gap-2 px-5 py-4 border-t border-slate-100">
             <button type="button" onClick={onClose} className="min-h-[44px] px-4 rounded-xl border border-slate-200 text-sm font-bold text-slate-700 whitespace-nowrap active:scale-[0.98]">닫기</button>
             <button type="button" disabled={busy || !lines?.some(l => l.done === 'no' && l.pick)} onClick={() => void save()}
-              className="min-h-[44px] px-4 rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 active:scale-[0.98]">
+              className="min-h-[44px] px-4 rounded-xl -brand text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 active:scale-[0.98]">
               고른 줄 납부 기록
             </button>
           </div>

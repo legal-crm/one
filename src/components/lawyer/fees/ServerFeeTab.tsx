@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { AlertTriangle, ChevronLeft, ChevronRight, Download, RefreshCw, Search, Wallet } from 'lucide-react';
-import { loadFeeOverview, type FeeOverviewRow } from '../../../services/fees/feeService';
+import { CASH_RECEIPT_LABEL, PAYMENT_METHOD_LABEL, cashReceiptTarget, exportFeePayments, loadFeeOverview, logFeeExport, type FeeOverviewRow } from '../../../services/fees/feeService';
+import { downloadCsv, maskPersonName } from '../../../services/fees/feeCsv';
 import { listCases, listOfficeClients, loadStageDefinitions, stageDef } from '../../../services/cases/caseCoreService';
 import DepositAccountEditor from './DepositAccountEditor';
 import FeeReminderSettingsCard from './FeeReminderSettingsCard';
@@ -57,6 +58,13 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(1);
   const [showBankImport, setShowBankImport] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportKind, setExportKind] = useState<'summary' | 'payments'>('summary');
+  const [exportMask, setExportMask] = useState(true);
+  const [exportFrom, setExportFrom] = useState(() => `${seoulToday().slice(0, 4)}-01-01`);
+  const [exportTo, setExportTo] = useState(seoulToday());
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const load = useCallback(async () => {
     setError(null);
@@ -136,24 +144,42 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
   const pages = Math.max(1, Math.ceil(visible.length / PAGE));
   const pageRows = visible.slice((page - 1) * PAGE, page * PAGE);
 
-  const exportCsv = () => {
-    const head = ['의뢰인', '약정(원)', '납부(원)', '남은 금액(원)', '다음 납부일', '다음 납부 금액(원)', '기한 지난 회차', '입금 알림 확인 필요', '상태'];
-    const status = (r: Row) => (!r.hasAgreement ? '일정 없음' : r.remainingWon === 0 ? '완납' : r.overdueCount > 0 ? '기한 지남' : '진행 중');
-    const esc = (v: string | number) => {
-      const s = String(v ?? '');
-      // 수식으로 읽히지 않게
-      const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
-      return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-    };
-    const lines = [head, ...visible.map(r => [r.name, r.totalFeeWon, r.paidWon, r.remainingWon, r.nextDueOn || '', r.nextDueWon ?? '', r.overdueCount, r.pendingReports, status(r)])]
-      .map(cols => cols.map(esc).join(','));
-    const blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = `수납현황_${today}.csv`;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast.success(`${visible.length}건을 내려받았습니다. 의뢰인 이름이 들어 있으니 보관에 주의해 주세요.`);
+  const statusLabel = (r: Row) => (!r.hasAgreement ? '일정 없음' : r.remainingWon === 0 ? '완납' : r.overdueCount > 0 ? '기한 지남' : '진행 중');
+  const shownName = (n: string) => (exportMask ? maskPersonName(n) : n);
+
+  // FE-11: 내려받기 전에 서버에 기록 (내보낸 사람·시각·건수), 기록이 안 되면 내려받지 않음
+  const runExport = async () => {
+    if (exporting) return;
+    setExportError('');
+    setExporting(true);
+    try {
+      if (exportKind === 'summary') {
+        const logged = await logFeeExport(officeId, visible.length, exportMask);
+        if (logged.ok === false) { setExportError(logged.message); return; }
+        const head = ['의뢰인', '약정(원)', '납부(원)', '남은 금액(원)', '다음 납부일', '다음 납부 금액(원)', '기한 지난 회차', '입금 알림 확인 필요', '상태'];
+        const lines = visible.map(r => [shownName(r.name), r.totalFeeWon, r.paidWon, r.remainingWon, r.nextDueOn || '', r.nextDueWon ?? '', r.overdueCount, r.pendingReports, statusLabel(r)]);
+        downloadCsv(`수납현황_${today}.csv`, [head, ...lines]);
+        toast.success(`${visible.length}건을 내려받았습니다.${exportMask ? '' : ' 의뢰인 이름이 들어 있으니 보관에 주의해 주세요.'}`);
+      } else {
+        if (!exportFrom || !exportTo || exportFrom > exportTo) { setExportError('기간을 확인해 주세요.'); return; }
+        const r = await exportFeePayments(officeId, exportFrom, exportTo, exportMask);
+        if (r.ok === false) { setExportError(r.message); return; }
+        const SOURCE: Record<string, string> = { office: '사무소 기록', client_report_confirmed: '의뢰인 알림 확인', bank_import: '거래내역 파일' };
+        const head = ['입금일', '의뢰인', '금액(원)', '방법', '입금자', '기록 경로', '상태', '현금영수증', '승인번호'];
+        const lines = r.data.map(p => [
+          p.paidOn, shownName(p.clientName), p.amountWon, PAYMENT_METHOD_LABEL[p.method] || p.method,
+          exportMask && p.payerName ? maskPersonName(p.payerName) : p.payerName || '', SOURCE[p.source] || p.source,
+          p.voided ? '취소됨' : '유효',
+          p.cashReceiptStatus ? CASH_RECEIPT_LABEL[p.cashReceiptStatus] : cashReceiptTarget({ method: p.method, amountWon: p.amountWon, voidedAt: p.voided ? 'x' : undefined }) ? '확인 필요' : '',
+          p.cashReceiptNo || '',
+        ]);
+        downloadCsv(`입금기록_${exportFrom}_${exportTo}.csv`, [head, ...lines]);
+        toast.success(`입금 기록 ${r.data.length}건을 내려받았습니다.${r.data.length >= 20000 ? ' 20,000줄까지만 담았어요. 기간을 나눠 다시 내려받아 주세요.' : ''}`);
+      }
+      setExportOpen(false);
+    } finally {
+      setExporting(false);
+    }
   };
 
   const FILTERS: Array<{ id: Filter; label: string }> = [
@@ -177,8 +203,8 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
             </button>
           )}
           {canExport && rows && rows.length > 0 && (
-            <button onClick={exportCsv} className="inline-flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 whitespace-nowrap cursor-pointer active:scale-[0.98]">
-              <Download className="w-4 h-4" />엑셀(CSV) 내려받기
+            <button onClick={() => { setExportOpen(o => !o); setExportError(''); }} aria-expanded={exportOpen} className="inline-flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 whitespace-nowrap cursor-pointer active:scale-[0.98]">
+              <Download className="w-4 h-4" />엑셀(CSV) 내보내기
             </button>
           )}
           <button onClick={() => { setRows(null); void load(); }} className="inline-flex items-center gap-1.5 px-3 min-h-[40px] rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-700 whitespace-nowrap cursor-pointer active:scale-[0.98]">
@@ -186,6 +212,38 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
           </button>
         </div>
       </div>
+
+      {exportOpen && canExport && (
+        <div className="p-4 rounded-2xl border border-slate-200 bg-white space-y-3" role="group" aria-label="수납 내보내기">
+          <div className="flex flex-wrap gap-2">
+            {([['summary', '사건 요약'], ['payments', '입금 기록 (세무 전달용)']] as const).map(([k, label]) => (
+              <button key={k} onClick={() => setExportKind(k)} aria-pressed={exportKind === k}
+                className={`px-3 min-h-[40px] rounded-xl border text-sm font-bold whitespace-nowrap cursor-pointer active:scale-[0.98] ${exportKind === k ? 'bg-slate-900 text-white border-slate-900' : 'bg-white text-slate-700 border-slate-200'}`}>{label}</button>
+            ))}
+          </div>
+          {exportKind === 'summary' ? (
+            <p className="text-xs text-slate-600">지금 목록에 보이는 {visible.length}건(보기·검색 조건 그대로)을 내려받습니다.</p>
+          ) : (
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="space-y-1"><span className="text-xs font-bold text-slate-700 block">시작일</span><input type="date" value={exportFrom} onChange={e => setExportFrom(e.target.value)} className="p-2.5 rounded-xl border border-slate-200 text-sm" /></label>
+              <label className="space-y-1"><span className="text-xs font-bold text-slate-700 block">종료일</span><input type="date" value={exportTo} onChange={e => setExportTo(e.target.value)} className="p-2.5 rounded-xl border border-slate-200 text-sm" /></label>
+              <p className="text-xs text-slate-600 pb-2">한 번에 400일까지. 취소된 기록도 '취소됨'으로 함께 담깁니다.</p>
+            </div>
+          )}
+          <label className="flex items-center gap-2 text-sm text-slate-700">
+            <input type="checkbox" checked={exportMask} onChange={e => setExportMask(e.target.checked)} className="w-4 h-4" />
+            의뢰인·입금자 이름 가리기 (예: 홍*동)
+          </label>
+          {exportError && <p className="text-sm text-rose-600" role="alert">{exportError}</p>}
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-xs text-slate-500">내려받으면 내보낸 사람·시각·건수가 사무소 활동 기록에 남습니다.</p>
+            <span className="flex gap-2">
+              <button onClick={() => setExportOpen(false)} className="px-4 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold whitespace-nowrap cursor-pointer">닫기</button>
+              <button onClick={() => void runExport()} disabled={exporting} className="px-4 min-h-[44px] rounded-xl bg-slate-900 text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{exporting ? '준비 중…' : '내려받기'}</button>
+            </span>
+          </div>
+        </div>
+      )}
 
       {accountAccess !== 'none' && <DepositAccountEditor officeId={officeId} caseId={null} canEdit={accountAccess === 'edit'} />}
       <FeeReminderSettingsCard
@@ -254,7 +312,31 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
           ) : visible.length === 0 ? (
             <p className="text-sm text-slate-600 bg-white border border-slate-200 rounded-xl p-4">조건에 맞는 사건이 없습니다.</p>
           ) : (
-            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+            <>
+            <ul className="md:hidden space-y-2" aria-label="수납 사건 목록">
+              {pageRows.map(r => (
+                <li key={r.caseId}>
+                  <button type="button" disabled={!r.consultRequestId} onClick={() => r.consultRequestId && onOpenCase(r.consultRequestId)}
+                    className="w-full text-left p-3 rounded-xl border border-slate-200 bg-white space-y-1.5 active:scale-[0.98] disabled:active:scale-100 cursor-pointer">
+                    <span className="flex items-center justify-between gap-2">
+                      <strong className="text-slate-900">{r.name}</strong>
+                      <span className="text-sm tabular-nums text-slate-700">{r.hasAgreement ? `남은 ${won(r.remainingWon)}` : '일정 없음'}</span>
+                    </span>
+                    {r.hasAgreement && (
+                      <span className="block text-xs text-slate-600 tabular-nums">
+                        약정 {won(r.totalFeeWon)} · 납부 {won(r.paidWon)}{r.remainingWon > 0 && r.nextDueOn ? ` · 다음 ${r.nextDueOn} ${won(r.nextDueWon)}` : r.remainingWon === 0 ? ' · 완납' : ''}
+                      </span>
+                    )}
+                    <span className="flex flex-wrap gap-1">
+                      {r.overdueCount > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">기한 지남 {r.overdueCount}</span>}
+                      {r.pendingReports > 0 && <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">입금 알림 {r.pendingReports}</span>}
+                      {!r.hasAgreement && <span className="text-xs font-bold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">일정 만들기 필요</span>}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <div className="hidden md:block overflow-x-auto rounded-2xl border border-slate-200 bg-white">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-xs text-slate-600">
@@ -281,6 +363,7 @@ export default function ServerFeeTab({ officeId, onOpenCase, accountAccess = 'no
                 </tbody>
               </table>
             </div>
+            </>
           )}
 
           {pages > 1 && (

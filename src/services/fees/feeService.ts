@@ -39,7 +39,21 @@ export interface FeePayment {
   recordedAt: string;
   voidedAt?: string;
   voidReason?: string;
+  /** 현금영수증 기록 (FE-Q6): 발급 기능은 없고 사무소가 발급한 결과만 적음 */
+  cashReceiptStatus?: CashReceiptStatus;
+  cashReceiptNo?: string;
 }
+
+export type CashReceiptStatus = 'issued' | 'self_issued' | 'tax_invoice' | 'not_applicable';
+export const CASH_RECEIPT_LABEL: Record<CashReceiptStatus, string> = {
+  issued: '현금영수증 발급',
+  self_issued: '자진 발급(국세청 지정 번호)',
+  tax_invoice: '세금계산서 발행',
+  not_applicable: '해당 없음',
+};
+/** 현금영수증 안내 대상: 10만 원 이상 현금·계좌이체 (세부 요건은 사무소 세무 확인) */
+export const cashReceiptTarget = (p: Pick<FeePayment, 'method' | 'amountWon' | 'voidedAt'>) =>
+  !p.voidedAt && (p.method === 'cash' || p.method === 'transfer') && p.amountWon >= 100000;
 
 export interface FeeClientReport {
   id: string;
@@ -99,6 +113,10 @@ const RULES: Array<[RegExp, string]> = [
   [/invalid paid date/i, '입금일을 확인해 주세요.'],
   [/payment already voided/i, '이미 취소한 납부 기록이에요.'],
   [/client report not pending/i, '이미 처리한 입금 알림이에요.'],
+  [/permission denied: fee\.export/i, '수납 내역을 내보낼 권한이 없어요.'],
+  [/receipt number required/i, '승인번호를 입력해 주세요.'],
+  [/invalid receipt number/i, '승인번호는 숫자·영문·하이픈 4~40자로 입력해 주세요.'],
+  [/invalid period/i, '기간을 확인해 주세요. 한 번에 400일까지 내보낼 수 있어요.'],
   [/too many pending reports/i, '확인 대기 중인 입금 알림이 많아요. 사무소 확인 후 다시 보내 주세요.'],
   [/case not found/i, '사건을 찾지 못했어요.'],
   [/Failed to fetch|NetworkError/i, '서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.'],
@@ -139,6 +157,7 @@ export async function loadFeePayments(caseId: string): Promise<RpcResult<FeePaym
     data: (data || []).map((r: any) => ({
       id: r.id, paidOn: r.paid_on, amountWon: r.amount_won, method: r.method, payerName: r.payer_name || undefined, memo: r.memo || undefined,
       source: r.source, recordedAt: r.recorded_at, voidedAt: r.voided_at || undefined, voidReason: r.void_reason || undefined,
+      cashReceiptStatus: r.cash_receipt_status || undefined, cashReceiptNo: r.cash_receipt_no || undefined,
     })),
   };
 }
@@ -424,4 +443,48 @@ export async function settleFeeCase(caseId: string, p: { reason: SettlementReaso
     return { ok: false, code: 'save_failed', message: m };
   }
   return { ok: true, data: { receivedWon: Number((data as any)?.received_won) || 0 } };
+}
+
+// ── FE-Q6 현금영수증 기록 · FE-11 내보내기 ─────────────────────────────────────
+export async function setPaymentCashReceipt(paymentId: string, status: CashReceiptStatus | null, receiptNo?: string): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { error } = await supabase.rpc('set_fee_payment_cash_receipt', { p_payment_id: paymentId, p_status: status, p_receipt_no: receiptNo || null });
+  if (error) return { ok: false, code: 'save_failed', message: msg(error) };
+  return { ok: true, data: null };
+}
+
+/** 사건 요약 CSV를 내려받기 전에 서버에 기록 (기록이 안 되면 내려받지 않음) */
+export async function logFeeExport(officeId: string, count: number, masked: boolean): Promise<RpcResult<null>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { error } = await supabase.rpc('log_fee_export', { p_office_id: officeId, p_kind: 'summary', p_count: count, p_masked: masked });
+  if (error) return { ok: false, code: 'save_failed', message: msg(error) };
+  return { ok: true, data: null };
+}
+
+export interface FeePaymentExportRow {
+  paymentId: string;
+  caseId: string;
+  clientName: string;
+  paidOn: string;
+  amountWon: number;
+  method: FeePayment['method'];
+  source: string;
+  payerName?: string;
+  voided: boolean;
+  cashReceiptStatus?: CashReceiptStatus;
+  cashReceiptNo?: string;
+}
+
+export async function exportFeePayments(officeId: string, from: string, to: string, masked: boolean): Promise<RpcResult<FeePaymentExportRow[]>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('fee_office_payments_export', { p_office_id: officeId, p_from: from, p_to: to, p_masked: masked });
+  if (error) return { ok: false, code: 'load_failed', message: msg(error) };
+  return {
+    ok: true,
+    data: (data || []).map((r: any) => ({
+      paymentId: r.payment_id, caseId: r.case_id, clientName: r.client_display_name || '', paidOn: r.paid_on, amountWon: r.amount_won,
+      method: r.method, source: r.source, payerName: r.payer_name || undefined, voided: !!r.voided,
+      cashReceiptStatus: r.cash_receipt_status || undefined, cashReceiptNo: r.cash_receipt_no || undefined,
+    })),
+  };
 }

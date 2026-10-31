@@ -11,6 +11,10 @@ import { findCaseByWorkspaceKey } from '../../../services/cases/caseCoreService'
 import DepositAccountEditor from '../fees/DepositAccountEditor';
 import { notifyFeeChanged } from '../../../hooks/useServerCaseFee';
 import {
+  CASH_RECEIPT_LABEL,
+  cashReceiptTarget,
+  setPaymentCashReceipt,
+  type CashReceiptStatus,
   INSTALLMENT_STATUS_LABEL,
   PAYMENT_METHOD_LABEL,
   buildInstallments,
@@ -63,6 +67,8 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
   const [rows, setRows] = useState<FeeInstallmentStatus[]>([]);
   const [payments, setPayments] = useState<FeePayment[]>([]);
   const [reports, setReports] = useState<FeeClientReport[]>([]);
+  /** FE-Q7: 신청일·개시결정일 (그 뒤 회차에 정보 배지만, 판단·차단 없음) */
+  const [caseDates, setCaseDates] = useState<{ filedOn: string | null; commencedOn: string | null }>({ filedOn: null, commencedOn: null });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,6 +78,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     if (!found.data) { setCaseId(null); setLoading(false); return; }
     const id = found.data.id;
     setCaseId(id);
+    setCaseDates({ filedOn: found.data.filedOn, commencedOn: found.data.commencedOn });
     const [a, s, p, r] = await Promise.all([loadCurrentAgreement(id), loadFeeStatus(id), loadFeePayments(id), loadClientReports(id)]);
     const firstErr = [a, s, p, r].find(x => x.ok === false) as { message: string } | undefined;
     if (firstErr) { setError(firstErr.message); setLoading(false); return; }
@@ -205,6 +212,38 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     void load(); notifyFeeChanged();
   };
 
+  // ── 현금영수증 기록 (FE-Q6) ──
+  const [receiptFor, setReceiptFor] = useState<FeePayment | null>(null);
+  const [receiptStatus, setReceiptStatus] = useState<CashReceiptStatus>('issued');
+  const [receiptNo, setReceiptNo] = useState('');
+  const [receiptError, setReceiptError] = useState('');
+  const openReceipt = (p: FeePayment) => {
+    setReceiptFor(p);
+    setReceiptStatus(p.cashReceiptStatus || 'issued');
+    setReceiptNo(p.cashReceiptNo || '');
+    setReceiptError('');
+  };
+  const saveReceipt = async (clear = false) => {
+    if (!receiptFor || saving) return;
+    setReceiptError('');
+    const needsNo = !clear && (receiptStatus === 'issued' || receiptStatus === 'self_issued');
+    if (needsNo && !receiptNo.trim()) { setReceiptError('승인번호를 입력해 주세요.'); return; }
+    setSaving(true);
+    const r = await setPaymentCashReceipt(receiptFor.id, clear ? null : receiptStatus, receiptNo.trim());
+    setSaving(false);
+    if (r.ok === false) { setReceiptError(r.message); return; }
+    toast.success(clear ? '현금영수증 기록을 지웠습니다.' : '현금영수증 기록을 저장했습니다.');
+    setReceiptFor(null);
+    void load();
+  };
+
+  const afterLegalStart = (dueOn: string) => {
+    if (caseDates.commencedOn && dueOn > caseDates.commencedOn) return '개시결정 이후';
+    if (caseDates.filedOn && dueOn > caseDates.filedOn) return '신청 이후';
+    return null;
+  };
+  const hasAfterLegal = rows.some(r => r.status !== 'paid' && afterLegalStart(r.dueOn));
+
   const paidTotal = payments.filter(p => !p.voidedAt).reduce((s, p) => s + p.amountWon, 0);
   const overdue = rows.filter(r => r.status === 'overdue');
   const pendingReports = reports.filter(r => r.status === 'pending');
@@ -259,8 +298,8 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                   <p className="text-sm text-slate-600">수납 일정이 없습니다.{contractTotalFeeWon ? ` 계약서 수임료 ${won(contractTotalFeeWon)}로 시작할 수 있습니다.` : ''}</p>
                   {canRecord && (
                     <div className="flex flex-wrap justify-center gap-2">
-                      <button onClick={importFromContract} disabled={saving} className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl border border-[#1E3A5F] text-[#1E3A5F] bg-white text-sm font-bold whitespace-nowrap active:scale-[0.98] disabled:opacity-50 cursor-pointer">계약서 일정 가져오기</button>
-                      <button onClick={startEdit} className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer"><Plus className="w-4 h-4" />수납 일정 만들기</button>
+                      <button onClick={importFromContract} disabled={saving} className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl border -brand -brand bg-white text-sm font-bold whitespace-nowrap active:scale-[0.98] disabled:opacity-50 cursor-pointer">계약서 일정 가져오기</button>
+                      <button onClick={startEdit} className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl -brand text-white text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer"><Plus className="w-4 h-4" />수납 일정 만들기</button>
                     </div>
                   )}
                   <p className="text-xs text-slate-500">계약서가 체결되면 계약서 회차로 수납 일정이 자동으로 만들어져요(회차 합계가 총 수임료와 같을 때).</p>
@@ -285,7 +324,7 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                   {formError && <p className="text-sm text-rose-600" role="alert">{formError}</p>}
                   <div className="flex gap-2 justify-end">
                     <button onClick={() => setEditing(false)} className="px-4 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold whitespace-nowrap cursor-pointer">취소</button>
-                    <button onClick={saveAgreement} disabled={saving} className="px-4 min-h-[44px] rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{saving ? '저장 중…' : agreement ? '새 일정으로 바꾸기' : '일정 만들기'}</button>
+                    <button onClick={saveAgreement} disabled={saving} className="px-4 min-h-[44px] rounded-xl -brand text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{saving ? '저장 중…' : agreement ? '새 일정으로 바꾸기' : '일정 만들기'}</button>
                   </div>
                 </div>
               )}
@@ -312,12 +351,22 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                             <td className="p-2 tabular-nums">{r.dueOn}</td>
                             <td className="p-2 text-right tabular-nums">{won(r.amountWon)}</td>
                             <td className="p-2 text-right tabular-nums">{won(r.remainingWon)}</td>
-                            <td className="p-2"><span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${STATUS_STYLE[r.status]}`}>{INSTALLMENT_STATUS_LABEL[r.status]}</span></td>
+                            <td className="p-2 space-x-1 whitespace-nowrap">
+                              <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${STATUS_STYLE[r.status]}`}>{INSTALLMENT_STATUS_LABEL[r.status]}</span>
+                              {r.status !== 'paid' && afterLegalStart(r.dueOn) && (
+                                <span className="text-xs font-bold px-2 py-0.5 rounded-lg border bg-violet-50 text-violet-700 border-violet-200">{afterLegalStart(r.dueOn)}</span>
+                              )}
+                            </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                  {hasAfterLegal && (
+                    <p className="text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-xl p-2.5">
+                      신청일·개시결정일 이후에 받을 회차가 있습니다. 이 회차를 받아도 되는지, 수입지출목록·변제계획에 어떻게 반영할지는 법원·실무에 따라 달라 사건마다 확인해 주세요. 화면은 판단하거나 막지 않습니다.
+                    </p>
+                  )}
                 </>
               )}
 
@@ -348,11 +397,47 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
                   <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl">
                     {payments.map(p => (
                       <li key={p.id} className={`flex flex-wrap items-center justify-between gap-2 p-2.5 text-sm ${p.voidedAt ? 'opacity-60' : ''}`}>
-                        <span className="tabular-nums">{p.paidOn} · <strong>{won(p.amountWon)}</strong> · {PAYMENT_METHOD_LABEL[p.method]}{p.payerName ? ` · ${p.payerName}` : ''}{p.source === 'client_report_confirmed' ? ' · 의뢰인 알림 확인' : ''}{p.voidedAt ? ` · 취소됨(${p.voidReason || ''})` : ''}</span>
-                        {canRecord && !p.voidedAt && <button onClick={() => voidPayment(p)} className="text-xs font-bold text-rose-600 hover:underline whitespace-nowrap cursor-pointer">기록 취소</button>}
+                        <span className="tabular-nums">{p.paidOn} · <strong>{won(p.amountWon)}</strong> · {PAYMENT_METHOD_LABEL[p.method]}{p.payerName ? ` · ${p.payerName}` : ''}{p.source === 'client_report_confirmed' ? ' · 의뢰인 알림 확인' : p.source === 'bank_import' ? ' · 거래내역 파일' : ''}{p.voidedAt ? ` · 취소됨(${p.voidReason || ''})` : ''}</span>
+                        <span className="flex flex-wrap items-center gap-2">
+                          {!p.voidedAt && p.cashReceiptStatus && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-lg border bg-emerald-50 text-emerald-700 border-emerald-200">{CASH_RECEIPT_LABEL[p.cashReceiptStatus]}{p.cashReceiptNo ? ` · ${p.cashReceiptNo}` : ''}</span>
+                          )}
+                          {!p.voidedAt && !p.cashReceiptStatus && cashReceiptTarget(p) && (
+                            <span className="text-xs font-bold px-2 py-0.5 rounded-lg border bg-amber-50 text-amber-800 border-amber-200">현금영수증 확인</span>
+                          )}
+                          {canRecord && !p.voidedAt && (cashReceiptTarget(p) || p.cashReceiptStatus) && (
+                            <button onClick={() => openReceipt(p)} className="text-xs font-bold text-slate-700 hover:underline whitespace-nowrap cursor-pointer">영수증 기록</button>
+                          )}
+                          {canRecord && !p.voidedAt && <button onClick={() => voidPayment(p)} className="text-xs font-bold text-rose-600 hover:underline whitespace-nowrap cursor-pointer">기록 취소</button>}
+                        </span>
                       </li>
                     ))}
                   </ul>
+                </div>
+              )}
+
+              {receiptFor && (
+                <div className="space-y-3 p-4 rounded-xl border border-slate-200 bg-slate-50" role="group" aria-label="현금영수증 기록">
+                  <p className="text-sm font-bold text-slate-800">{receiptFor.paidOn} {won(receiptFor.amountWon)} · 현금영수증 기록</p>
+                  <p className="text-xs text-slate-600">마이김변은 현금영수증을 발급하지 않습니다. 사무소가 홈택스·단말기로 발급한 결과만 적어 두세요. 10만 원 이상 현금·계좌이체 입금은 발급 대상일 수 있으니 세부 요건은 사무소 세무 담당과 확인해 주세요.</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="space-y-1"><span className="text-xs font-bold text-slate-700">처리</span>
+                      <select value={receiptStatus} onChange={e => setReceiptStatus(e.target.value as CashReceiptStatus)} className={field}>
+                        {(Object.keys(CASH_RECEIPT_LABEL) as CashReceiptStatus[]).map(k => <option key={k} value={k}>{CASH_RECEIPT_LABEL[k]}</option>)}
+                      </select>
+                    </label>
+                    {receiptStatus !== 'not_applicable' && (
+                      <label className="space-y-1"><span className="text-xs font-bold text-slate-700">{receiptStatus === 'tax_invoice' ? '승인번호(선택)' : '승인번호 *'}</span>
+                        <input value={receiptNo} onChange={e => setReceiptNo(e.target.value)} maxLength={40} inputMode="numeric" className={field} />
+                      </label>
+                    )}
+                  </div>
+                  {receiptError && <p className="text-sm text-rose-600" role="alert">{receiptError}</p>}
+                  <div className="flex flex-wrap gap-2 justify-end">
+                    {receiptFor.cashReceiptStatus && <button onClick={() => void saveReceipt(true)} disabled={saving} className="px-4 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold whitespace-nowrap cursor-pointer disabled:opacity-50">기록 지우기</button>}
+                    <button onClick={() => setReceiptFor(null)} className="px-4 min-h-[44px] rounded-xl border border-slate-300 bg-white text-sm font-bold whitespace-nowrap cursor-pointer">닫기</button>
+                    <button onClick={() => void saveReceipt()} disabled={saving} className="px-4 min-h-[44px] rounded-xl bg-slate-900 text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{saving ? '저장 중…' : '저장'}</button>
+                  </div>
                 </div>
               )}
 

@@ -85,7 +85,7 @@ export default function DepositAccountEditor({ officeId, caseId, canEdit }: { of
           {formError && <p role="alert" className="text-xs text-rose-600">{formError}</p>}
           <div className="flex flex-wrap gap-2">
             <button onClick={() => setEditing(false)} className="px-4 min-h-[40px] rounded-xl border border-slate-300 bg-white text-sm font-bold whitespace-nowrap cursor-pointer">취소</button>
-            <button onClick={() => save(false)} disabled={saving} className="px-4 min-h-[40px] rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{saving ? '저장 중…' : '저장'}</button>
+            <button onClick={() => save(false)} disabled={saving} className="px-4 min-h-[40px] rounded-xl -brand text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{saving ? '저장 중…' : '저장'}</button>
             {((caseId && current?.scope === 'case') || (!caseId && current)) && (
               <button onClick={() => save(true)} disabled={saving} className="px-4 min-h-[40px] rounded-xl border border-rose-200 bg-white text-sm font-bold text-rose-600 whitespace-nowrap disabled:opacity-50 cursor-pointer">{caseId ? '사건 계좌 지우기' : '지우기'}</button>
             )}
