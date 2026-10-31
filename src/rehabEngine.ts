@@ -218,7 +218,7 @@ export const calculateRehabPlan = (data: IntakeData, settings: AppSettings): Com
     trusteeType: 'INTERNAL',
     medianIncomeYear: applyYear,
   } as IncomeAndExpenseInput);
-  const livingRulesBd = additionalLivingCostRules(householdSize, regionType, living.baseLivingExpense, hasSpecialEducation);
+  const livingRulesBd = additionalLivingCostRules(householdSize, regionType, living.baseLivingExpense, hasSpecialEducation, applyYear);
   const basicLivingCost = living.baseLivingExpense;
   const additionalHousing = living.additionalHousingDeduction;
   const additionalEducation = living.additionalEducationDeduction;

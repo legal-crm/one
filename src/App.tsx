@@ -51,6 +51,8 @@ import { ADMIN_PORTAL_PATH, isAdminPortalRole, readAdminMarker } from './utils/a
 import { recordMemberActivity, sanitizeActivityDetails } from './services/platformActivityService';
 import { useLawyerProfileSync } from './hooks/useLawyerProfileSync';
 import { useAccountStatusGuard } from './hooks/useAccountStatusGuard';
+import { loadCalcStandard } from './services/settingsService';
+import { applyPublishedCalcStandard } from './services/repayment/calcStandardBridge';
 import { useServerCollection, useServerConfig } from './hooks/useServerContent';
 import { clearLegacyContentCache } from './services/cms/contentService';
 
@@ -705,6 +707,16 @@ export default function App() {
 
   // 정지된 계정이면 로그인을 끝내고 사유를 알린다 (관리자 화면 제외, OP-10)
   useAccountStatusGuard(currentRole === 'client' || currentRole === 'lawyer');
+
+  // 통합어드민이 게시한 계산 기준표를 계산 엔진에 연결 (LS-5). 게시본이 없거나 읽지 못하면 코드의 법령 확인값
+  useEffect(() => {
+    let cancelled = false;
+    void loadCalcStandard().then(r => {
+      if (cancelled) return;
+      applyPublishedCalcStandard(r.meta.source === 'server' ? r.settings : null, r.meta.version);
+    }).catch(() => { /* 기본값으로 계산 */ });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (members.length > 0) {

@@ -312,7 +312,7 @@ export function calculateRepayment(
         trusteeType: 'INTERNAL',
         medianIncomeYear: calcYear,
     } as IncomeAndExpenseInput);
-    const livingRules = additionalLivingCostRules(Math.max(1, input.familySize || 1), regionType, living.baseLivingExpense, !!input.hasSpecialEducation);
+    const livingRules = additionalLivingCostRules(Math.max(1, input.familySize || 1), regionType, living.baseLivingExpense, !!input.hasSpecialEducation, calcYear);
     const baseLivingCostRaw = living.baseLivingExpense;
     let recognizedLivingCost = baseLivingCostRaw;
 

@@ -135,6 +135,10 @@ export type ConsultRoomStage =
   | 'closed';           // 상담 종료
 
 const AFTER_CONTRACT: ReadonlyArray<ConsultStatus> = ['contracted', 'document', 'filed', 'commenced', 'repaying', 'discharged'];
+/** 수임 계약 이후 상태인지 */
+export function isAfterContractStatus(status?: ConsultStatus | string): boolean {
+  return !!status && (AFTER_CONTRACT as ReadonlyArray<string>).includes(status);
+}
 
 export interface ConsultRoomInput {
   hasCheck: boolean;

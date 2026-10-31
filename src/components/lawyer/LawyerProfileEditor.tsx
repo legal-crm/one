@@ -10,6 +10,7 @@ import type { User, LawFirm, LawyerSealInfo } from '../../types';
 import { mockLawFirms } from '../../data';
 import LawyerSealManagerModal from './LawyerSealManagerModal';
 import { toast } from 'sonner';
+import { uploadLawyerPhoto } from '../../services/lawyers/lawyerPhotoService';
 
 /**
  * 공개 프로필 저장 전 검사 — 문제가 있으면 안내 문구, 없으면 null
@@ -48,6 +49,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   const [saveToast, setSaveToast] = useState(false);
   const [isSealModalOpen, setIsSealModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
 
   // ── 폼 업데이트 헬퍼 ──
   const updateForm = (patch: Partial<User>) => {
@@ -90,13 +92,16 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
       e.target.value = '';
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      updateForm({ avatarData: dataUrl, avatar: dataUrl });
-      onImageChange?.(dataUrl);
-    };
-    reader.readAsDataURL(file);
+    // 사진은 저장소에 올리고 주소만 프로필에 둔다 (LD-4, 이전: base64 글자를 두 칸에 저장)
+    e.target.value = '';
+    setPhotoUploading(true);
+    void uploadLawyerPhoto(lawyer.id, file).then(res => {
+      setPhotoUploading(false);
+      if (res.ok === false) { toast.error(res.message); return; }
+      updateForm({ avatar: res.url, avatarData: '' });
+      onImageChange?.(res.url);
+      toast.success('사진을 올렸어요. 저장을 눌러 프로필에 반영해 주세요. 승인된 변호사는 바꾼 사진을 운영팀이 다시 확인해요.');
+    });
   };
 
   const handleSave = () => {
@@ -108,8 +113,9 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
     const finalForm = {
       ...form,
       name: form.name.trim(),
-      avatar: form.avatarData || form.avatar,
-      avatarData: form.avatarData || form.avatar,
+      // 예전 base64 사진은 저장하지 않는다 (서버가 거절) — 저장소 주소만
+      avatar: /^data:/.test(form.avatar || '') ? '' : (form.avatar || ''),
+      avatarData: '',
     };
     onSave(finalForm);
     setSaveToast(true);
@@ -300,13 +306,15 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     className="hidden"
                   />
                   <button
+                    type="button"
+                    disabled={photoUploading}
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 bg-[#1E293B] hover:bg-[#273548] text-slate-300 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-[0.98]"
+                    className="flex items-center gap-1.5 bg-[#1E293B] hover:bg-[#273548] text-slate-300 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition-all cursor-pointer active:scale-[0.98] disabled:opacity-60 whitespace-nowrap"
                   >
                     <Upload className="w-4 h-4" />
-                    <span>이미지 업로드</span>
+                    <span>{photoUploading ? '올리는 중…' : '이미지 업로드'}</span>
                   </button>
-                  <p className="text-xs text-slate-600">JPG, PNG, WebP (최대 5MB 권장)</p>
+                  <p className="text-xs text-slate-400">JPG, PNG, WebP (최대 5MB, 긴 변 800px로 줄여 저장). 본인 실사진만 올려 주세요.</p>
                 </div>
               </div>
             </div>

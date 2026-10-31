@@ -3,6 +3,7 @@ import { ExternalLink, Scale, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '../../supabaseClient';
 import { stashLoginConsent } from '../../services/clientConsentService';
+import { saveReturnPath } from '../../services/auth/returnPath';
 import { Modal } from './ui';
 
 interface AuthModalProps {
@@ -45,6 +46,8 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
       setIsLoadingProvider(provider);
       // 동의 기록은 로그인 후 계정에 저장한다 (OAuth 이동 전에는 계정이 없음)
       stashLoginConsent();
+      // 로그인 뒤 지금 보던 화면으로 돌아오도록 주소를 잠깐 보관 (MY-2)
+      saveReturnPath();
       // OAuth 리다이렉트 전 플래그 저장 (돌아왔을 때 OAuth 로그인 감지용)
       const nowStr = Date.now().toString();
       localStorage.setItem('pending_oauth_login', nowStr);

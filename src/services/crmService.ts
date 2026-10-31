@@ -152,6 +152,137 @@ function loadLocalCrmData(): CrmDataStore {
   return store;
 }
 
+// ── 서버 기준 사본 (CM-10 부분 저장) ─────────────────────────────────────
+// 마지막으로 서버에서 받은 값. 저장할 때 이것과 비교해 바뀐 키만 보낸다
+// (이전: 행 전체 upsert → 두 사람이 고치면 나중 저장이 앞 사람 변경을 지웠고, 지운 메모가 되살아났다)
+const serverBase = new Map<string, Record<string, unknown>>();
+const serverVersion = new Map<string, number>();
+
+function stableStringify(v: unknown): string {
+  if (v === undefined) return 'undefined';
+  if (v === null || typeof v !== 'object') return JSON.stringify(v);
+  if (Array.isArray(v)) return '[' + v.map(stableStringify).join(',') + ']';
+  const o = v as Record<string, unknown>;
+  return '{' + Object.keys(o).filter(k => o[k] !== undefined).sort().map(k => JSON.stringify(k) + ':' + stableStringify(o[k])).join(',') + '}';
+}
+
+/** 서버에 저장되는 모양 (파일은 저장소에 올라간 사무소 파일 정보만, 인증서 금고 제외) */
+function serverShape(ext: CrmClientExtension): Record<string, unknown> {
+  const { uploadedFiles, certificateVault: _vault, ...rest } = ext as CrmClientExtension & { certificateVault?: unknown };
+  const shaped: Record<string, unknown> = {
+    ...rest,
+    uploadedFiles: (uploadedFiles || [])
+      .filter(f => f.storagePath && f.uploadSource !== 'client')
+      .map(({ dataUrl: _d, ...meta }) => meta),
+  };
+  return JSON.parse(JSON.stringify(shaped));
+}
+
+/** crm_clients 행 → 화면 데이터 */
+function rowToExt(row: any, deletedFileIds?: Set<string>): CrmClientExtension {
+  return {
+    // 확장 필드(진술서·D5102·D5103·소명표 등) 먼저 복원 후 고정 컬럼으로 덮어씀 (migration 016)
+    ...(row.extension_data || {}),
+    crmStatus: row.crm_status || 'requested',
+    assigneeId: row.assignee_id || row.assigned_lawyer_id || row.assigned_consultant_id || row.assigned_staff_id,
+    assignedLawyerId: row.assigned_lawyer_id,
+    assignedConsultantId: row.assigned_consultant_id,
+    assignedStaffId: row.assigned_staff_id,
+    documents: row.documents || [],
+    notes: row.notes || [],
+    activities: row.activities || [],
+    contractDate: row.contract_date,
+    contractAmount: row.contract_amount,
+    lastActivityAt: row.last_activity_at || new Date().toISOString(),
+    intakeChannel: row.intake_channel || 'mykim',
+    intakeChannelDetail: row.intake_channel_detail,
+    isExternalClient: row.is_external_client || false,
+    totalFee: row.total_fee,
+    totalPaid: row.total_paid,
+    feeSchedule: row.fee_schedule || [],
+    // 아래 항목은 별도 칸이 없어 extension_data에 함께 저장된다
+    // 휴지통으로 옮긴 파일은 자료함 사본에서 뺀다
+    uploadedFiles: ((row.extension_data?.uploadedFiles || []) as DocumentFile[]).filter(f => !deletedFileIds || !deletedFileIds.has(f.id)),
+    documentRequests: row.extension_data?.documentRequests || [],
+    correctionOrders: row.extension_data?.correctionOrders || [],
+    courtCase: row.extension_data?.courtCase,
+    alimtokLogs: row.extension_data?.alimtokLogs || [],
+    deletedAt: row.deleted_at || undefined,
+  } as CrmClientExtension;
+}
+
+function rememberServerRow(row: any) {
+  if (!row?.client_id) return;
+  serverBase.set(row.client_id, serverShape(rowToExt(row)));
+  serverVersion.set(row.client_id, Number(row.version) || 0);
+}
+
+const isIdList = (v: unknown): v is Array<{ id: string }> =>
+  Array.isArray(v) && v.every(x => x && typeof x === 'object' && typeof (x as any).id === 'string');
+
+/** 바뀐 키만 (통째로 바꿀 키 / id 목록의 바뀐 항목·지운 id / 지울 키) */
+export function diffCrmShape(base: Record<string, unknown> | undefined, next: Record<string, unknown>) {
+  const set: Record<string, unknown> = {};
+  const lists: Record<string, { upsert: unknown[]; remove: string[] }> = {};
+  const unset: string[] = [];
+  const keys = new Set([...Object.keys(next), ...Object.keys(base || {})]);
+  for (const k of keys) {
+    const nv = next[k];
+    const bv = base?.[k];
+    if (stableStringify(nv) === stableStringify(bv)) continue;
+    if (nv === undefined) { if (base && k in base) unset.push(k); continue; }
+    if (isIdList(nv) && (bv === undefined || isIdList(bv))) {
+      const before = new Map((bv as Array<{ id: string }> | undefined || []).map(x => [x.id, stableStringify(x)]));
+      const upsert = nv.filter(x => before.get(x.id) !== stableStringify(x));
+      const nextIds = new Set(nv.map(x => x.id));
+      const remove = [...before.keys()].filter(id => !nextIds.has(id));
+      if (upsert.length || remove.length) lists[k] = { upsert, remove };
+      continue;
+    }
+    set[k] = nv;
+  }
+  return { set, lists, unset, empty: !Object.keys(set).length && !Object.keys(lists).length && !unset.length };
+}
+
+/** 서버가 준 최신 행을 화면 데이터에 합친다 (의뢰인 제출 파일·아직 안 올라간 파일은 화면 쪽 유지) */
+export function mergeServerCrmExt(local: CrmClientExtension | undefined, server: CrmClientExtension): CrmClientExtension {
+  if (!local) return server;
+  const serverFileIds = new Set((server.uploadedFiles || []).map(f => f.id));
+  const keepLocal = (local.uploadedFiles || []).filter(f => !serverFileIds.has(f.id) && (f.uploadSource === 'client' || !f.storagePath));
+  return { ...server, uploadedFiles: [...(server.uploadedFiles || []), ...keepLocal] };
+}
+
+function publishServerRow(row: any) {
+  const ext = rowToExt(row);
+  const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
+  store[row.client_id] = mergeServerCrmExt(store[row.client_id], ext);
+  setLocalData(CRM_STORAGE_KEY, store);
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('mykim:crm-row-changed', { detail: { clientId: row.client_id, ext } }));
+  }
+}
+
+/**
+ * 같은 사무소 다른 사람이 고친 사건 데이터를 실시간으로 받는다 (Realtime + RLS, CM-10)
+ * 받은 행은 'mykim:crm-row-changed' 이벤트로 화면에 알린다. 내가 방금 저장한 같은 버전은 건너뛴다.
+ * @returns 구독 해제 함수
+ */
+export function subscribeCrmClientChanges(): () => void {
+  if (!isSupabaseConfigured) return () => {};
+  const channel = supabase
+    .channel('crm_clients_changes')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'crm_clients' }, (payload: any) => {
+      const row = payload?.new;
+      if (!row?.client_id) return;
+      const known = serverVersion.get(row.client_id) || 0;
+      if ((Number(row.version) || 0) <= known) return;
+      rememberServerRow(row);
+      publishServerRow(row);
+    })
+    .subscribe();
+  return () => { void supabase.removeChannel(channel); };
+}
+
 /** 서버(crm_clients) 조회. 오류·예외면 null */
 async function fetchServerCrmData(): Promise<CrmDataStore | null> {
     try {
@@ -163,35 +294,8 @@ async function fetchServerCrmData(): Promise<CrmDataStore | null> {
       if (!error && data) {
         const store: CrmDataStore = {};
         data.forEach((row: any) => {
-          store[row.client_id] = {
-            // 확장 필드(진술서·D5102·D5103·소명표 등) 먼저 복원 후 고정 컬럼으로 덮어씀 (migration 016)
-            ...(row.extension_data || {}),
-            crmStatus: row.crm_status || 'requested',
-            assigneeId: row.assignee_id || row.assigned_lawyer_id || row.assigned_consultant_id || row.assigned_staff_id,
-            assignedLawyerId: row.assigned_lawyer_id,
-            assignedConsultantId: row.assigned_consultant_id,
-            assignedStaffId: row.assigned_staff_id,
-            documents: row.documents || [],
-            notes: row.notes || [],
-            activities: row.activities || [],
-            contractDate: row.contract_date,
-            contractAmount: row.contract_amount,
-            lastActivityAt: row.last_activity_at || new Date().toISOString(),
-            intakeChannel: row.intake_channel || 'mykim',
-            intakeChannelDetail: row.intake_channel_detail,
-            isExternalClient: row.is_external_client || false,
-            totalFee: row.total_fee,
-            totalPaid: row.total_paid,
-            feeSchedule: row.fee_schedule || [],
-            // 아래 항목은 별도 칸이 없어 extension_data에 함께 저장된다 (이전: 없는 칸을 읽어 빈 값으로 덮어씀)
-            // 휴지통으로 옮긴 파일은 자료함 사본에서 뺀다
-            uploadedFiles: ((row.extension_data?.uploadedFiles || []) as DocumentFile[]).filter(f => !deletedFileIds.has(f.id)),
-            documentRequests: row.extension_data?.documentRequests || [],
-            correctionOrders: row.extension_data?.correctionOrders || [],
-            courtCase: row.extension_data?.courtCase,
-            alimtokLogs: row.extension_data?.alimtokLogs || [],
-            deletedAt: row.deleted_at || undefined,
-          };
+          rememberServerRow(row);
+          store[row.client_id] = rowToExt(row, deletedFileIds);
         });
         // 의뢰인이 제출한 파일(case_files)을 사건 자료함에 합친다. 체크리스트 연결 항목은 '제출됨'으로
         for (const [clientKey, files] of Object.entries(clientFiles)) {
@@ -224,99 +328,55 @@ export async function saveCrmClient(clientId: string, ext: CrmClientExtension): 
     return false;
   }
 
-  // Always save to localStorage with conflict-safe array merging
+  // 화면 캐시에 먼저 반영 (이전의 '없는 메모 되살리기' 병합은 지운 메모를 되살려서 뺐다 — 동시 추가는 서버가 합친다)
   const store = getLocalData<CrmDataStore>(CRM_STORAGE_KEY, {});
-  const existing = store[clientId];
-
-  // 안전 병합: 기존 로컬에 이미 존재하는 노트/활동로그 중 누락된 항목이 있다면 안전하게 보존
-  let mergedExt = { ...ext };
-  if (existing) {
-    if (existing.notes && existing.notes.length > 0 && ext.notes) {
-      const existingNoteIds = new Set(ext.notes.map(n => n.id));
-      const missingNotes = existing.notes.filter(n => !existingNoteIds.has(n.id));
-      if (missingNotes.length > 0) {
-        mergedExt.notes = [...ext.notes, ...missingNotes];
-      }
-    }
-    if (existing.activities && existing.activities.length > 0 && ext.activities) {
-      const existingActIds = new Set(ext.activities.map(a => a.id));
-      const missingActs = existing.activities.filter(a => !existingActIds.has(a.id));
-      if (missingActs.length > 0) {
-        mergedExt.activities = [...ext.activities, ...missingActs];
-      }
-    }
-  }
-
+  const mergedExt = { ...ext };
   store[clientId] = mergedExt;
   setLocalData(CRM_STORAGE_KEY, store);
 
-  // Also persist to Supabase if configured
-  if (isSupabaseConfigured) {
-    try {
-      // 고정 컬럼에 없는 확장 필드(진술서·D5102·D5103·소명표·13단계 등)는 extension_data(jsonb)에 통째로 보관
-      // (migration 016). 파일 본문(uploadedFiles)은 기존 uploaded_files 컬럼을 사용하므로 중복 저장하지 않는다.
-      // 인증서 금고(certificateVault)는 개인키 원본이 포함되므로 서버 jsonb로 절대 전송하지 않는다.
-      const { uploadedFiles: _files, certificateVault: _vault, ...extensionRest } = mergedExt as CrmClientExtension & { certificateVault?: unknown };
-      // 새 파일(본문만 있고 저장소 경로 없음)은 비공개 저장소에 올린다 (이전: 파일이 서버에 전혀 저장되지 않았다)
-      if (crmOfficeScope && Array.isArray(mergedExt.uploadedFiles)) {
-        const pending = mergedExt.uploadedFiles.filter(f => f.dataUrl && !f.storagePath && f.uploadSource !== 'client');
-        if (pending.length > 0) {
-          const results = await Promise.all(pending.map(f => uploadCaseFile({ source: 'office', clientKey: clientId, officeId: crmOfficeScope, file: f })));
-          const byId = new Map(results.filter(r => r.ok && r.file).map(r => [r.file!.id, r.file!]));
-          const failed = results.filter(r => !r.ok);
-          mergedExt.uploadedFiles = mergedExt.uploadedFiles.map(f => {
-            const up = byId.get(f.id);
-            return up ? { ...f, storagePath: up.storagePath, fileSize: up.fileSize } : f;
-          });
-          store[clientId] = mergedExt;
-          setLocalData(CRM_STORAGE_KEY, store);
-          if (failed.length > 0) notifySaveFailure(`서류 ${failed.length}개를 저장소에 올리지 못했습니다: ${failed[0].message || ''}`);
-        }
+  if (!isSupabaseConfigured) return true;
+  try {
+    // 새 파일(본문만 있고 저장소 경로 없음)은 비공개 저장소에 먼저 올린다
+    if (crmOfficeScope && Array.isArray(mergedExt.uploadedFiles)) {
+      const pending = mergedExt.uploadedFiles.filter(f => f.dataUrl && !f.storagePath && f.uploadSource !== 'client');
+      if (pending.length > 0) {
+        const results = await Promise.all(pending.map(f => uploadCaseFile({ source: 'office', clientKey: clientId, officeId: crmOfficeScope, file: f })));
+        const byId = new Map(results.filter(r => r.ok && r.file).map(r => [r.file!.id, r.file!]));
+        const failed = results.filter(r => !r.ok);
+        mergedExt.uploadedFiles = mergedExt.uploadedFiles.map(f => {
+          const up = byId.get(f.id);
+          return up ? { ...f, storagePath: up.storagePath, fileSize: up.fileSize } : f;
+        });
+        store[clientId] = mergedExt;
+        setLocalData(CRM_STORAGE_KEY, store);
+        if (failed.length > 0) notifySaveFailure(`서류 ${failed.length}개를 저장소에 올리지 못했습니다: ${failed[0].message || ''}`);
       }
-      const extensionData = {
-        ...extensionRest,
-        // 파일은 정보만 (본문 dataUrl 제외). 저장소에 올라간 파일만 다른 기기에서 다시 열 수 있다
-        uploadedFiles: (mergedExt.uploadedFiles || [])
-          .filter(f => f.storagePath && f.uploadSource !== 'client')
-          .map(({ dataUrl: _d, ...meta }) => meta),
-      };
-      const baseRow = {
-        client_id: clientId,
-        crm_status: mergedExt.crmStatus,
-        assignee_id: mergedExt.assigneeId,
-        assigned_lawyer_id: mergedExt.assignedLawyerId || mergedExt.assigneeId,
-        assigned_consultant_id: mergedExt.assignedConsultantId,
-        assigned_staff_id: mergedExt.assignedStaffId,
-        documents: mergedExt.documents,
-        notes: mergedExt.notes,
-        activities: mergedExt.activities,
-        contract_date: mergedExt.contractDate,
-        contract_amount: mergedExt.contractAmount,
-        last_activity_at: mergedExt.lastActivityAt,
-        intake_channel: mergedExt.intakeChannel,
-        intake_channel_detail: mergedExt.intakeChannelDetail,
-        is_external_client: mergedExt.isExternalClient,
-        total_fee: mergedExt.totalFee,
-        total_paid: mergedExt.totalPaid,
-        fee_schedule: mergedExt.feeSchedule,
-        deleted_at: mergedExt.deletedAt || null,
-        updated_at: new Date().toISOString(),
-        ...(crmOfficeScope ? { office_id: crmOfficeScope } : {}),
-      };
-      // 파일 본문(uploadedFiles)은 서버 jsonb에 넣지 않는다 (서류는 비공개 저장소로 옮길 예정, DP 트랙)
-      const { error } = await supabase
-        .from('crm_clients')
-        .upsert({ ...baseRow, extension_data: extensionData }, { onConflict: 'client_id' });
-      if (error) {
-        console.warn('[CRM] Supabase save failed', error.message);
-        notifySaveFailure(/row-level security|permission|office required/i.test(error.message || '') ? '이 사건을 고칠 권한이 없거나 사무소 정보를 확인하지 못했습니다.' : (error.message || ''));
-        return false;
-      }
-    } catch (e) {
-      console.warn('[CRM] Supabase save failed', e);
-      notifySaveFailure('서버에 연결하지 못했습니다.');
+    }
+    // 바뀐 키만 서버로 (CM-10). 기준 사본이 없으면(처음 저장) 전부 보내되 목록은 서버 쪽과 합친다
+    const next = serverShape({ ...mergedExt, deletedAt: mergedExt.deletedAt || undefined } as CrmClientExtension);
+    const diff = diffCrmShape(serverBase.get(clientId), next);
+    if (diff.empty) return true;
+    const { data, error } = await supabase.rpc('crm_client_patch', {
+      p_client_id: clientId,
+      p_office_id: crmOfficeScope || '',
+      p_set: diff.set,
+      p_lists: diff.lists,
+      p_unset: diff.unset,
+    });
+    if (error) {
+      console.warn('[CRM] Supabase save failed', error.message);
+      notifySaveFailure(/row-level security|permission|office required|duplicate key/i.test(error.message || '') ? '이 사건을 고칠 권한이 없거나 사무소 정보를 확인하지 못했습니다.' : (error.message || ''));
       return false;
     }
+    if (data) {
+      rememberServerRow(data);
+      // 다른 사람이 그 사이 고친 내용까지 합쳐진 최신 값을 화면에 알린다
+      publishServerRow(data);
+    }
+  } catch (e) {
+    console.warn('[CRM] Supabase save failed', e);
+    notifySaveFailure('서버에 연결하지 못했습니다.');
+    return false;
   }
   return true;
 }

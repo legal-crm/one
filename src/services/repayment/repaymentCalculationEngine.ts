@@ -24,7 +24,11 @@ import {
   LEIBNIZ_FACTOR_36,
   LEIBNIZ_FACTOR_60,
   LEIBNIZ_FACTORS,
+  depositExemptionLimit,
+  insuranceExemptionLimit,
+  housingExemptDepositLimit,
 } from './repaymentConstants2026';
+import { pickStandard } from './calcStandardRegistry';
 import { determineRepaymentPlan, getMinimumRepaymentThreshold, type CorePlanResult, type CorePlanStatus } from './rehabLegalCore';
 import { localYmd } from '../../utils/localDate';
 
@@ -90,18 +94,26 @@ export function additionalLivingCostRules(
   region: 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS',
   baseLivingExpense: number,
   isSpecialEducation = false,
+  /** 적용 연도 — 통합어드민 게시 기준표에 그 해(또는 앞 해) 의결 값이 있으면 그것을 쓴다 (LS-5) */
+  year = 2026,
 ): { housingIncluded: number; housingLimit: number; medicalIncluded: number; educationIncluded: number; educationLimit: number } {
   const intHousehold = Math.max(1, Math.floor(householdSize || 1));
   const key4 = Math.min(4, intHousehold);
-  const housingTable = HOUSING_ADDITIONAL_LIMIT_2026[region] || HOUSING_ADDITIONAL_LIMIT_2026.SEOUL;
+  const pubIncluded = pickStandard(year, 'housingIncluded');
+  const pubLimit = pickStandard(year, 'housingLimit')?.[region];
+  const pubMedical = pickStandard(year, 'medicalIncluded');
+  const housingTable = pubLimit || HOUSING_ADDITIONAL_LIMIT_2026[region] || HOUSING_ADDITIONAL_LIMIT_2026.SEOUL;
+  const includedTable = pubIncluded || BASE_HOUSING_INCLUDED_2026;
+  const regular = pickStandard(year, 'educationLimit') || MAX_ADDITIONAL_REGULAR_EDUCATION;
+  const special = pickStandard(year, 'specialEducationLimit') || MAX_ADDITIONAL_SPECIAL_EDUCATION;
   return {
-    housingIncluded: intHousehold in BASE_HOUSING_INCLUDED_2026
-      ? BASE_HOUSING_INCLUDED_2026[intHousehold]
+    housingIncluded: intHousehold in includedTable
+      ? includedTable[intHousehold]
       : Math.round(baseLivingExpense * 0.178),
-    housingLimit: housingTable[key4],
-    medicalIncluded: BASE_MEDICAL_EXPENSE_2026[key4] || 64619,
-    educationIncluded: BASE_EDUCATION_EXPENSE_DEDUCTION,
-    educationLimit: isSpecialEducation ? MAX_ADDITIONAL_SPECIAL_EDUCATION : MAX_ADDITIONAL_REGULAR_EDUCATION,
+    housingLimit: housingTable[key4] ?? HOUSING_ADDITIONAL_LIMIT_2026[region][key4],
+    medicalIncluded: (pubMedical || BASE_MEDICAL_EXPENSE_2026)[key4] || 64619,
+    educationIncluded: pickStandard(year, 'educationIncluded') || BASE_EDUCATION_EXPENSE_DEDUCTION,
+    educationLimit: isSpecialEducation ? special : regular,
   };
 }
 
@@ -126,7 +138,7 @@ export function calculateLivingExpenseAndDisposableIncome(
   // 1. 기준연도(2025 or 2026) 기초생계비 (중위소득 60%)
   const baseLivingExpense = getLivingExpense(householdSize, medianIncomeYear);
 
-  const rules = additionalLivingCostRules(householdSize, region, baseLivingExpense, isSpecialEducation);
+  const rules = additionalLivingCostRules(householdSize, region, baseLivingExpense, isSpecialEducation, medianIncomeYear);
 
   // 2. 추가 주거비 = min(실제 주거비 − 기초 포함분, 가구원수별 지역 한도)
   //    (이전: 모든 가구원수에 1인 총액 한도를 써서 2인 이상이 낮게 나왔음 — B-3)
@@ -189,11 +201,11 @@ type AssetRegion = 'SEOUL' | 'OVERCROWDED' | 'METROPOLITAN' | 'OTHERS';
 export function getDefaultStatutoryDeduction(asset: Pick<RepaymentAsset, 'category' | 'marketValue'>, region: AssetRegion = 'SEOUL'): number {
   switch (asset.category) {
     case 'DEPOSIT':
-      return EXEMPT_DEPOSIT_LIMIT;
+      return depositExemptionLimit();
     case 'INSURANCE':
-      return EXEMPT_INSURANCE_REFUND_LIMIT;
+      return insuranceExemptionLimit();
     case 'HOUSING_DEPOSIT': {
-      const limitInfo = HOUSING_EXEMPT_DEPOSIT_LIMITS[region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL;
+      const limitInfo = housingExemptDepositLimit(region);
       return asset.marketValue <= limitInfo.maxDeposit ? limitInfo.exemptAmount : 0;
     }
     case 'RETIREMENT':
@@ -252,7 +264,7 @@ export function computeAssetBreakdown(
 ): RepaymentAsset[] {
   // 예금·보장성보험 모두 '채무자 1인 합계 1회' 공제 (민사집행법 시행령, LS-Q8)
   // (이전: 보험은 행마다 150만 원씩 공제돼 보험이 여러 개면 청산가치가 낮게 나왔음)
-  const pools: Record<'DEPOSIT' | 'INSURANCE', number> = { DEPOSIT: EXEMPT_DEPOSIT_LIMIT, INSURANCE: EXEMPT_INSURANCE_REFUND_LIMIT };
+  const pools: Record<'DEPOSIT' | 'INSURANCE', number> = { DEPOSIT: depositExemptionLimit(), INSURANCE: insuranceExemptionLimit() };
   return assets.map((a) => {
     const pooled = (a.category === 'DEPOSIT' || a.category === 'INSURANCE')
       && !a.deductionOverridden && (a.ownerType || 'DEBTOR') === 'DEBTOR';

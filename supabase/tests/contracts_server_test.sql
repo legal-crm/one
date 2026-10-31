@@ -76,10 +76,13 @@ RESET ROLE;
 
 -- 의뢰인 계약 체결(일정 없음) → 사건 없음, 사건 생성 → 일정 없음 알림
 UPDATE electronic_contracts SET status = 'completed' WHERE consult_request_id = 'test-req-cb';
-SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000000b1","role":"authenticated"}', true);
-SET LOCAL ROLE authenticated;
-SELECT (create_case('test-lawyer-cb1', '{"source":"consult_request","consult_request_id":"test-req-cb","case_type":"rehab"}'::jsonb)).id IS NOT NULL AS case_created;
-RESET ROLE;
+-- (20261101000000부터 체결 순간 서버가 사건을 만든다 → 사무소가 따로 만들 필요 없음)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM cases WHERE consult_request_id = 'test-req-cb' AND stage = 'documents') THEN
+    RAISE EXCEPTION 'FAIL case auto-created on completion';
+  END IF;
+  RAISE NOTICE 'PASS completed contract creates case';
+END $$;
 DO $$ BEGIN
   IF EXISTS (SELECT 1 FROM fee_agreements fa JOIN cases c ON c.id = fa.case_id WHERE c.consult_request_id = 'test-req-cb') THEN
     RAISE EXCEPTION 'FAIL agreement from empty schedule';

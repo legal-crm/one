@@ -110,6 +110,11 @@ export interface LawyerApplication {
   profileMissing: string[];
   listed: boolean;
   accountActive: boolean;
+  avatar?: string;
+  /** 승인 뒤 실명·사무소명·사진·등록번호가 바뀌어 다시 확인해야 함 (LD-5) */
+  recheckNeeded: boolean;
+  recheckFields: string[];
+  recheckAt?: string;
 }
 
 export async function loadLawyerApplications(): Promise<Result<LawyerApplication[]>> {
@@ -125,9 +130,23 @@ export async function loadLawyerApplications(): Promise<Result<LawyerApplication
       licenseCheckNote: x.license_check_note || undefined, submittedAt: x.submitted_at || undefined, approvedAt: x.approved_at || undefined,
       waitingBusinessDays: x.waiting_business_days ?? null, profileMissing: Array.isArray(x.profile_missing) ? x.profile_missing : [],
       listed: !!x.listed, accountActive: x.account_active !== false,
+      avatar: x.avatar || undefined,
+      recheckNeeded: x.recheck_needed === true,
+      recheckFields: Array.isArray(x.recheck_fields) ? x.recheck_fields : [],
+      recheckAt: x.recheck_at || undefined,
     })),
   };
 }
+
+/** 승인 뒤 바뀐 공개 정보 확인 끝 (LD-5) */
+export async function markLawyerRechecked(lawyerId: string, note?: string): Promise<Result<true>> {
+  const r = await rpc<unknown>('admin_mark_lawyer_rechecked', { p_lawyer_id: lawyerId, p_note: note?.trim() || null }, '확인 결과를 저장하지 못했어요.');
+  return r.ok === false ? r : { ok: true, data: true };
+}
+
+export const RECHECK_FIELD_LABEL: Record<string, string> = {
+  name: '실명', firm_name: '사무소명', photo: '사진', license_number: '등록번호',
+};
 
 export async function reviewLawyer(lawyerId: string, action: LawyerReviewAction, reason?: string): Promise<Result<{ status: LawyerReviewStatus; closedRequests: number }>> {
   const r = await rpc<any>('admin_review_lawyer', { p_lawyer_id: lawyerId, p_action: action, p_reason: reason?.trim() || null }, '심사 결과를 저장하지 못했어요.');

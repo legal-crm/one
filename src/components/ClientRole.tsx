@@ -64,6 +64,7 @@ import LandingView from './client/landing/LandingView';
 import { remedyData, renderRemedyIcon, SOLUTION_LABELS } from './client/remedyData';
 import { CLIENT_TAB_LABELS, isClientTab, isMyCaseTab, myCaseHubSectionOf, readInitialClientTab, resolveClientNavTarget, type ClientTab, type MyCaseHubSection, type MyPageSection } from './client/clientTabs';
 import MyCaseHubHeader from './client/mycase/MyCaseHubHeader';
+import { consumeReturnPath } from '../services/auth/returnPath';
 import MyInfoView from './client/mypage/MyInfoView';
 import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
 import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
@@ -360,6 +361,20 @@ export default function ClientRole({
   // 같은 영역을 다시 골라도 반영되게 하는 요청 번호, 지금 보이는 영역('내 사건' 머리글 표시용)
   const [mypageSubTabReq, setMypageSubTabReq] = useState(0);
   const [mypageShownSection, setMypageShownSection] = useState<MyPageSection>('diagnosis');
+
+  // '내 사건' 카드의 '담당 변호사와 대화' → 그 사건의 상담방 (MY-Q3)
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const requestId = (e as CustomEvent<{ requestId?: string }>).detail?.requestId;
+      if (!requestId) return;
+      setActiveChatReqId(requestId);
+      setActiveTab('chat');
+      window.scrollTo({ top: 0 });
+    };
+    window.addEventListener('mykim:open-consult-chat', onOpen);
+    return () => window.removeEventListener('mykim:open-consult-chat', onOpen);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // [SEO] 탭 전환 시 document.title + meta description 동적 갱신
   const currentMeta = TAB_META[activeTab] || TAB_META.landing;
@@ -1041,6 +1056,8 @@ export default function ClientRole({
       // 2. 검증 통과(정상 새로고침 또는 OAuth 리턴) 시에만 Supabase 세션 연결
       const pendingOAuth = secureGetItem('pending_oauth_login') || localStorage.getItem('pending_oauth_login');
       const isPendingOAuth = !!pendingOAuth;
+      // 세션 확인이 여러 번(즉시·1초·3초·상태 변경) 불리므로 돌아갈 화면은 한 번만 정한다
+      let oauthReturnHandled = false;
 
       // 세션 감지 시 처리 함수
       const handleSession = (session: any, _source: string) => {
@@ -1069,11 +1086,19 @@ export default function ClientRole({
         }).catch(() => {});
         recordClientLogin(metaAlias, session.user.email || 'user@system', 'email');
         
-        // OAuth 리다이렉트 직후이면 chat 탭으로 이동
-        if (isPendingOAuth) {
+        // OAuth 리다이렉트 직후: 로그인 전에 보던 화면(알림톡 /my/… 등)으로, 없으면 '내 사건' (MY-2)
+        // (이전: 늘 상담 탭으로 가서 알림톡 링크로 들어온 사람이 보던 화면을 잃었다)
+        if (isPendingOAuth && !oauthReturnHandled) {
+          oauthReturnHandled = true;
           secureRemoveItem('pending_oauth_login');
           localStorage.removeItem('pending_oauth_login');
-          setActiveTab('chat');
+          const back = consumeReturnPath();
+          if (back) {
+            window.history.replaceState(window.history.state, '', back);
+            setActiveTab(readInitialClientTab());
+          } else {
+            setActiveTab('mypage');
+          }
         }
       };
 

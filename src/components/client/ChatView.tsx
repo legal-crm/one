@@ -10,6 +10,7 @@ import {
   getConsultRoomStage,
   getRequestRoomStage,
   isChatStage,
+  isAfterContractStatus,
   type ConsultRoomStage,
 } from './consultFlow';
 import { Button, Modal, SegmentedTabs } from './ui';
@@ -244,16 +245,20 @@ export default function ChatView({
     (id && (proposals.find(p => p.lawyerId === id)?.lawyerName || lawyers.find(l => l.id === id)?.name)) || ''
   );
   const currentChatLawyerName = lawyerNameOf(currentChatLawyerId);
-  // 다른 변호사를 전담으로 정한 뒤에는 나머지 변호사와의 대화를 닫는다
-  const isChatClosedWithCurrent = currentRequest?.status === 'counseling'
-    && !!currentRequest.selectedLawyerId && !!currentChatLawyerId
-    && currentRequest.selectedLawyerId !== currentChatLawyerId;
+  // 상담 변호사를 정했거나 계약한 뒤에는 나머지 변호사와의 대화는 '지난 상담'(읽기만) (MY-Q4)
+  // (이전: 상담 변호사를 정한 단계에서만 닫혀, 계약 뒤에는 계약 안 한 변호사에게도 메시지를 보낼 수 있었다)
+  const decidedLawyerId = currentRequest && (currentRequest.status === 'counseling' || isAfterContractStatus(currentRequest.status))
+    ? currentRequest.selectedLawyerId
+    : undefined;
+  const isRequestClosed = currentRequest?.status === 'closed';
+  const isChatClosedWithCurrent = isRequestClosed
+    || (!!decidedLawyerId && !!currentChatLawyerId && decidedLawyerId !== currentChatLawyerId);
   const canSendChat = !!currentChatLawyerId && !isChatClosedWithCurrent;
   const composerHint = !currentChatLawyerId
     ? (proposals.length > 0
       ? '대화할 변호사를 먼저 선택해 주세요. 제안서의 \'상담 시작\'을 누르면 그 변호사와 대화할 수 있습니다.'
       : '변호사가 상담을 수락하면 대화할 수 있습니다.')
-    : isChatClosedWithCurrent ? '이 변호사와의 상담은 종료되었습니다.' : '';
+    : isChatClosedWithCurrent ? '지난 상담이에요. 지난 대화는 읽을 수 있지만 새 메시지는 보낼 수 없어요.' : '';
 
   const handleSendChatMessage = () => {
     if (!canSendChat || !chatInput.trim()) return;
@@ -537,12 +542,21 @@ export default function ChatView({
         onChange={(e) => { onSetActiveChatReqId(e.target.value); setActiveChatLawyerId(null); }}
         className="min-h-11 flex-1 sm:flex-none rounded-xl border border-slate-300 bg-white px-3 text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-brand/25 focus:border-brand"
       >
-        {requests.map(r => {
-          const s = getConsultRoomBadge(getRequestRoomStage(r), r.status);
+        {/* 진행 중 / 지난 상담(종료된 요청, 읽기만) 묶음 (MY-Q4) */}
+        {([['진행 중', false], ['지난 상담', true]] as const).map(([groupLabel, past]) => {
+          const group = requests.filter(r => (getRequestRoomStage(r) === 'closed') === past);
+          if (group.length === 0) return null;
           return (
-            <option key={r.id} value={r.id}>
-              {[formatRequestDate(r.createdAt) && `${formatRequestDate(r.createdAt)} 요청`, s?.label].filter(Boolean).join(' · ') || '상담 요청'}
-            </option>
+            <optgroup key={groupLabel} label={groupLabel}>
+              {group.map(r => {
+                const s = getConsultRoomBadge(getRequestRoomStage(r), r.status);
+                return (
+                  <option key={r.id} value={r.id}>
+                    {[formatRequestDate(r.createdAt) && `${formatRequestDate(r.createdAt)} 요청`, s?.label].filter(Boolean).join(' · ') || '상담 요청'}
+                  </option>
+                );
+              })}
+            </optgroup>
           );
         })}
       </select>
@@ -600,8 +614,8 @@ export default function ChatView({
           <div className="shrink-0 px-3 py-2 border-b border-slate-200 bg-slate-50 flex gap-2 overflow-x-auto scrollbar-hide" role="group" aria-label="대화할 변호사">
             {acceptedIds.map(lawyerId => {
               const name = lawyerNameOf(lawyerId) || '변호사';
-              const isChosen = currentRequest?.status === 'counseling' && currentRequest.selectedLawyerId === lawyerId;
-              const isOther = currentRequest?.status === 'counseling' && currentRequest.selectedLawyerId !== lawyerId;
+              const isChosen = !!decidedLawyerId && decidedLawyerId === lawyerId;
+              const isOther = (!!decidedLawyerId && decidedLawyerId !== lawyerId) || isRequestClosed;
               const active = currentChatLawyerId === lawyerId;
               return (
                 <button
@@ -616,7 +630,7 @@ export default function ChatView({
                 >
                   {name} 변호사
                   <span className={cn('ml-1.5 text-xs font-bold', isOther ? 'text-slate-500' : isChosen ? 'text-emerald-700' : 'text-slate-500')}>
-                    {isOther ? '상담 종료' : isChosen ? '상담 변호사' : '상담 중'}
+                    {isOther ? '지난 상담' : isChosen ? (isAfterContractStatus(currentRequest?.status) ? '담당 변호사' : '상담 변호사') : '상담 중'}
                   </span>
                 </button>
               );

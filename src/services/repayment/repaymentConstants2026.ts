@@ -3,6 +3,8 @@
  * (서울회생법원 실무준칙 및 생계비 검토위원회 가이드라인 반영)
  */
 
+import { exactStandard, getActiveCalcStandard } from './calcStandardRegistry';
+
 // ==============================================================================
 // 0. 민사집행법 압류금지 기준 (단일 출처) — 개정 시 이 값만 수정
 //    민사집행법 시행령 개정(2026-02-01 시행) 원문 확인(10-29, 27 기획서 10장):
@@ -107,8 +109,13 @@ export type LivingExpenseYear = 2025 | 2026 | 2027;
 export function getLivingExpense(householdSize: number, year: number = 2026): number {
   if (householdSize <= 0) return 0;
   const y: LivingExpenseYear = year <= 2025 ? 2025 : year >= 2027 ? 2027 : 2026;
-  const expenseMap = y === 2025 ? MIN_LIVING_EXPENSE_60_2025 : y === 2027 ? MIN_LIVING_EXPENSE_60_2027 : MIN_LIVING_EXPENSE_60_2026;
-  const additionalPerPerson = y === 2025 ? ADDITIONAL_PER_PERSON_60_2025 : y === 2027 ? ADDITIONAL_PER_PERSON_60_2027 : ADDITIONAL_PER_PERSON_60_2026;
+  // 통합어드민 게시 기준표에 그 해 표가 있으면 그것을 쓴다 (LS-5)
+  const published = exactStandard(year, 'living60');
+  const expenseMap = published && published[1] > 0
+    ? published
+    : (y === 2025 ? MIN_LIVING_EXPENSE_60_2025 : y === 2027 ? MIN_LIVING_EXPENSE_60_2027 : MIN_LIVING_EXPENSE_60_2026);
+  const additionalPerPerson = (published && exactStandard(year, 'additionalPerPerson60'))
+    || (y === 2025 ? ADDITIONAL_PER_PERSON_60_2025 : y === 2027 ? ADDITIONAL_PER_PERSON_60_2027 : ADDITIONAL_PER_PERSON_60_2026);
 
   if (Number.isInteger(householdSize) && expenseMap[householdSize]) {
     return expenseMap[householdSize];
@@ -254,3 +261,22 @@ export const LEIBNIZ_FACTOR_60 = getLeibnizFactor(60); // 52.9907
 export const LEIBNIZ_FACTORS: Record<number, number> = Object.fromEntries(
   [12, 18, 24, 30, 36, 48, 60].map(m => [m, getLeibnizFactor(m)])
 ) as Record<number, number>;
+
+// ==============================================================================
+// 게시 기준표 우선 조회 (LS-5) — 게시본이 없으면 위 코드 값
+// ==============================================================================
+/** 예금 압류금지 공제 (합계 1회) */
+export function depositExemptionLimit(): number {
+  const v = getActiveCalcStandard()?.depositExemption;
+  return v && v > 0 ? v : EXEMPT_DEPOSIT_LIMIT;
+}
+/** 보장성보험 압류금지 공제 (합산 1회) */
+export function insuranceExemptionLimit(): number {
+  const v = getActiveCalcStandard()?.insuranceExemption;
+  return v && v > 0 ? v : EXEMPT_INSURANCE_REFUND_LIMIT;
+}
+/** 소액임차 최우선변제 기준 (지역) */
+export function housingExemptDepositLimit(region: RegionType): { maxDeposit: number; exemptAmount: number } {
+  const v = getActiveCalcStandard()?.depositLimits?.[region];
+  return v && v.maxDeposit > 0 ? v : (HOUSING_EXEMPT_DEPOSIT_LIMITS[region] || HOUSING_EXEMPT_DEPOSIT_LIMITS.SEOUL);
+}

@@ -5,7 +5,10 @@
 // - 판단·가능성 표현 없이 진행 사실만 보여 준다(제109조)
 // ============================================================
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Briefcase, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Briefcase, MessageSquare, RefreshCw } from 'lucide-react';
+
+/** '내 사건' 카드에서 그 사건의 상담방 열기 (ClientRole이 받아 상담 탭으로 옮긴다) */
+export const OPEN_CONSULT_CHAT_EVENT = 'mykim:open-consult-chat';
 import { loadMyCases, type MyCaseSummary } from '../../../services/cases/caseCoreService';
 import { MY_CASES_CHANGED_EVENT } from '../../../services/cases/pendingCaseLink';
 import MyCaseFeeSection from './MyCaseFeeSection';
@@ -104,6 +107,17 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
               {c.confirmedOn && <div><dt className="inline">인가결정 </dt><dd className="inline font-semibold text-slate-800">{c.confirmedOn}</dd></div>}
               {c.dischargeDecidedOn && <div><dt className="inline">면책 결정 </dt><dd className="inline font-semibold text-slate-800">{c.dischargeDecidedOn}</dd></div>}
             </dl>
+            {/* 계약 뒤 대화는 같은 상담방에서 이어진다 (MY-Q3) */}
+            {c.hasConsultRequest && (
+              <button
+                type="button"
+                onClick={() => window.dispatchEvent(new CustomEvent(OPEN_CONSULT_CHAT_EVENT, { detail: { requestId: c.workspaceKey } }))}
+                className="mt-3 min-h-[44px] px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-800 hover:bg-slate-50 inline-flex items-center gap-2 whitespace-nowrap active:scale-[0.98]"
+              >
+                <MessageSquare className="w-4 h-4" aria-hidden="true" />
+                담당 변호사와 대화
+              </button>
+            )}
             {c.stage === 'closed' && <p className="mt-2 text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
             {/* 법원 보정 할 일 (CR-5): 진행 중 회차가 있으면 맨 위에 */}
             {c.stage !== 'closed' && <MyCorrectionTodo caseKey={c.workspaceKey} />}

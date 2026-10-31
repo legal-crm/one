@@ -113,7 +113,7 @@ export function computeQuickExtraExpense(p: {
     medianIncomeYear: p.year ?? new Date().getFullYear(),
   });
   // 화면 참고 기준값도 계산과 같은 함수에서 (B-3)
-  const rules = additionalLivingCostRules(householdSize, p.region, r.baseLivingExpense, p.special);
+  const rules = additionalLivingCostRules(householdSize, p.region, r.baseLivingExpense, p.special, p.year ?? new Date().getFullYear());
   return {
     housing: r.additionalHousingDeduction,
     medical: r.additionalMedicalDeduction,

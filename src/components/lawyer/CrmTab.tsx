@@ -172,6 +172,7 @@ import {
   softDeleteCrmClient, restoreCrmClient, cleanupRecycleBin, RECYCLE_BIN_RETENTION_DAYS,
   formatPhone, checkDuplicatePhone,
   approveDocument, rejectDocument, requestDocument,
+  mergeServerCrmExt, subscribeCrmClientChanges,
   type CrmDataStore 
 } from '../../services/crmService';
 import { createEvent as createCalendarEvent } from '../../services/calendarEventService';
@@ -525,6 +526,18 @@ export default function CrmTab({
     }
     setPage(1);
   };
+
+  // ── 다른 사람이 고친 사건 데이터 실시간 반영 (CM-10) ──
+  useEffect(() => {
+    const onRow = (e: Event) => {
+      const { clientId, ext } = (e as CustomEvent<{ clientId: string; ext: CrmClientExtension }>).detail || ({} as any);
+      if (!clientId || !ext) return;
+      setCrmData(prev => ({ ...prev, [clientId]: mergeServerCrmExt(prev[clientId], ext) }));
+    };
+    window.addEventListener('mykim:crm-row-changed', onRow);
+    const unsubscribe = subscribeCrmClientChanges();
+    return () => { window.removeEventListener('mykim:crm-row-changed', onRow); unsubscribe(); };
+  }, []);
 
   // ── 초기 로드 ──
   useEffect(() => {
