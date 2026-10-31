@@ -213,6 +213,11 @@ interface AIRehabChatbotV2Props {
     onConsultation?: () => void;
     /** 단계·입력이 바뀔 때마다 알린다 (페이지 옆 '입력 요약' 표시용). 계산 결과에는 영향 없음 */
     onProgressChange?: (snapshot: RehabChatProgressSnapshot) => void;
+    /**
+     * 계산기에서 넣은 값으로 해당 질문의 입력칸만 미리 채운다 (I-6·CK-Q1). 만원 단위 숫자.
+     * 자동으로 답하지 않는다 — 의뢰인이 그대로 보내거나 고쳐서 보낸다. 계산 결과는 넘기지 않는다
+     */
+    inputPrefill?: { income?: number; rent?: number; deposit?: number };
 }
 
 /** 대화 진행 상황 요약 (부모 화면 표시용) */
@@ -278,6 +283,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     disablePortal = false, // NEW prop
     layout = 'overlay',
     onProgressChange,
+    inputPrefill,
     isLoggedIn = false,
     onShowAuthModal,
     onConsultation
@@ -338,6 +344,22 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         totalDebt: 0
     });
     const [inputValue, setInputValue] = useState('');
+    // 계산기 값 미리 채우기 (I-6): 해당 질문에 처음 도착했을 때 입력칸이 비어 있으면 한 번만 넣는다
+    const prefillUsedRef = useRef<Set<string>>(new Set());
+    useEffect(() => {
+        if (!inputPrefill) return;
+        const byStep: Record<string, number | undefined> = {
+            // '둘 다(직장+사업)'는 질문이 두 번이라 합계를 나눌 수 없어 넣지 않는다
+            income_salary: userInput.employmentType === 'both' ? undefined : inputPrefill.income,
+            rent_cost: inputPrefill.rent,
+            deposit_amount: inputPrefill.deposit,
+        };
+        const v = byStep[currentStep];
+        if (v === undefined || !(v > 0) || prefillUsedRef.current.has(currentStep)) return;
+        prefillUsedRef.current.add(currentStep);
+        setInputValue(prev => (prev ? prev : String(Math.round(v))));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentStep, inputPrefill]);
     const [isTyping, setIsTyping] = useState(false);
     const [result, setResult] = useState<RehabCalculationResult | null>(null);
     const [showResult, setShowResult] = useState(false);

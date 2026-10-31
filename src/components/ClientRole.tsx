@@ -1255,6 +1255,10 @@ export default function ClientRole({
   const [activeSolutionType, setActiveSolutionType] = useState<SolutionType | null>(null);
   // 홈 빠른 계산기 → 전체 계산기로 넘기는 입력값 (브라우저 메모리에만, B-7·1-G)
   const [calcSeed, setCalcSeedState] = useState<Partial<PublicCalcInput> | null>(null);
+  // 계산기 → 정리도우미 입력칸 미리 채우기 (I-6, 만원 단위, 메모리에만)
+  const [checkPrefill, setCheckPrefill] = useState<{ income?: number; rent?: number; deposit?: number } | null>(null);
+  // 정리도우미 화면을 떠나면 미리 채울 값을 버린다 (다른 입구로 다시 시작할 때 섞이지 않게)
+  useEffect(() => { if (activeTab !== 'request') setCheckPrefill(null); }, [activeTab]);
   const [calcSeedKey, setCalcSeedKey] = useState(0);
   const [calcSeedSource, setCalcSeedSource] = useState<'quick' | 'intake' | undefined>(undefined);
   const setCalcSeed = (seed: Partial<PublicCalcInput>, source: 'quick' | 'intake' = 'quick') => { setCalcSeedState(seed); setCalcSeedSource(source); setCalcSeedKey(k => k + 1); };
@@ -2305,7 +2309,14 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 />
               </div>
             )}
-            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView key={calcSeedKey} initial={calcSeed || undefined} seedSource={calcSeedSource} onStartCheck={handleStartDiagnosisClick} onFindLawyer={() => setActiveTab('lawyers')} />)}
+            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView key={calcSeedKey} initial={calcSeed || undefined} seedSource={calcSeedSource} onStartCheck={(input) => {
+              // 계산기 입력값만 정리도우미 질문 칸에 미리 채운다 (I-6). 결과·계산 과정은 넘기지 않고 저장도 안 함
+              const toMan = (won?: number) => (won && won > 0 ? Math.round(won / 10000) : undefined);
+              const pre = input ? { income: toMan(input.monthlyIncome), rent: input.housing === 'rent' ? toMan(input.monthlyRent) : undefined, deposit: toMan(input.housingDeposit) } : null;
+              setCheckPrefill(pre && (pre.income || pre.rent || pre.deposit) ? pre : null);
+              handleStartDiagnosisClick();
+              if (pre && (pre.income || pre.rent || pre.deposit)) setChatbotAnnouncement('계산기에 넣은 월 소득·월세·보증금을 해당 질문 입력칸에 미리 채워 둘게요. 그대로 보내거나 고쳐서 보내세요. 계산 결과는 넘기지 않아요.');
+            }} onFindLawyer={() => setActiveTab('lawyers')} />)}
 
 
             {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}
@@ -2474,12 +2485,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 <AIRehabChatbotV2
                   isOpen={true}
                   layout="embedded"
+                  inputPrefill={checkPrefill || undefined}
                   onClose={() => {
                     // 완료 때 이미 한 번 저장했다 (이전: 닫을 때 한 번 더 저장해 같은 상담 요청이 두 개 생김, I-4)
                     setPendingChatbotData(null);
+                    setCheckPrefill(null);
                     setActiveTab('landing');
                   }}
                   onComplete={(res, input) => {
+                    setCheckPrefill(null);
                     setPendingChatbotData({ res, input });
                     // 정리가 끝나면 한 번만 저장한다 (본인만 보는 상담 요청 — 변호사에게는 동의 뒤 공개)
                     const mappedData = mapChatbotDataToIntakeData(res, input);

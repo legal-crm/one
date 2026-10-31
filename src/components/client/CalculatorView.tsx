@@ -19,7 +19,8 @@ interface CalculatorViewProps {
   initial?: Partial<PublicCalcInput>;
   /** 'intake' = 정리 확인 화면에서 직접 불러온 값 (안내 문구 표시) */
   seedSource?: 'quick' | 'intake';
-  onStartCheck: () => void;
+  /** '내 상황 체크하기'로 이어 가기 — 입력값만 넘겨 해당 질문 칸을 미리 채운다 (I-6, 결과는 넘기지 않음) */
+  onStartCheck: (input?: PublicCalcInput) => void;
   onFindLawyer: () => void;
 }
 
@@ -219,7 +220,7 @@ export default function CalculatorView({ initial, seedSource, onStartCheck, onFi
         </section>
 
         <section aria-label="계산 결과" className="lg:col-span-5 lg:sticky lg:top-24">
-          <CalcResultPanel range={result} year={v.year} onStartCheck={() => { trackEvent('calculator_to_check'); onStartCheck(); }} onFindLawyer={onFindLawyer} />
+          <CalcResultPanel range={result} year={v.year} onStartCheck={() => { trackEvent('calculator_to_check'); onStartCheck(v); }} onFindLawyer={onFindLawyer} />
         </section>
       </div>
     </div>

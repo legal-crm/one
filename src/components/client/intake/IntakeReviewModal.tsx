@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { Modal, Button, Callout, inputClass } from '../ui';
 import { DEBT_PROGRAMS, visibleDebtPrograms, useDebtProgramsVersion } from '../debtPrograms';
 import { calcSeedFromProfile, type PublicCalcInput } from '../../../services/repayment/publicCalculator';
+import { bankruptcyReferenceLines, needsLowIncomeQuestions, type LowIncomeFacts } from './lowIncomeQuestions';
 
 /** 정리 확인 화면에서 더 받는 사실 (I-3 일부) — 판정·결과 표시 없음 */
 export interface IntakeExtraFacts {
@@ -30,6 +31,8 @@ export interface IntakeExtraFacts {
   consultTimes?: Array<'weekday_day' | 'weekday_evening' | 'weekend'>;
   /** 상담에서 해결하고 싶은 것 (여러 개, 1-2) — 변호사에게 전달만, 판정 없음 */
   goals?: Array<'stop_collection' | 'lower_payment' | 'keep_job' | 'keep_home' | 'protect_family' | 'fresh_start' | 'compare_options'>;
+  /** 소득이 없거나 생계비 이하일 때만 묻는 5개 (I-7·CK-Q3) → 변호사 자료 '파산 검토 참고'. 의뢰인 화면 판정 없음 */
+  bk?: LowIncomeFacts;
 }
 
 export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', childAges: [], otherDependents: '', shortFacts: [], consultMethod: '', consultTimes: [], goals: [] };
@@ -275,6 +278,47 @@ export default function IntakeReviewModal({
               ))}
             </div>
           </fieldset>
+          {needsLowIncomeQuestions(fp) && (
+            <div className="rounded-xl border border-slate-200 bg-white p-3 space-y-3">
+              <p className="text-sm font-bold text-slate-900">
+                지금 소득이 없거나 생활비보다 적다고 하셨어요. 변호사가 함께 살펴볼 수 있게 아래도 알려 주세요.
+                <span className="block text-xs font-medium text-slate-500">모르면 비워 두세요. 답에 따라 결과가 정해지지 않아요.</span>
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <label className="space-y-1">
+                  <span className="font-bold text-slate-700">빚을 갚기 어려워진 때</span>
+                  <select className={inputClass} value={x.bk?.unableSince || ''} onChange={e => setX(p => ({ ...p, bk: { ...(p.bk || {}), unableSince: e.target.value as any } }))}>
+                    <option value="">선택</option><option value="under1y">1년이 안 됐어요</option><option value="1to2y">1~2년 전</option><option value="over2y">2년 넘었어요</option><option value="unknown">모르겠어요</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="font-bold text-slate-700">빚이 생긴 주된 이유</span>
+                  <select className={inputClass} value={x.bk?.mainCause || ''} onChange={e => setX(p => ({ ...p, bk: { ...(p.bk || {}), mainCause: e.target.value as any } }))}>
+                    <option value="">선택</option><option value="living">생활비 부족</option><option value="business">사업 실패</option><option value="medical">병원비</option>
+                    <option value="guarantee">다른 사람 빚 보증</option><option value="fraud">사기 피해</option><option value="investment">주식·코인 투자</option><option value="other">기타</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="font-bold text-slate-700">최근 2년 안에 집·차·보증금 등 재산을 팔거나 넘긴 적</span>
+                  <select className={inputClass} value={x.bk?.disposal2y || ''} onChange={e => setX(p => ({ ...p, bk: { ...(p.bk || {}), disposal2y: e.target.value as any } }))}>
+                    <option value="">선택</option><option value="no">없어요</option><option value="yes">있어요</option><option value="unknown">모르겠어요</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="font-bold text-slate-700">최근 1년 안에 특정한 사람·곳에만 빚을 갚은 적</span>
+                  <select className={inputClass} value={x.bk?.preferential1y || ''} onChange={e => setX(p => ({ ...p, bk: { ...(p.bk || {}), preferential1y: e.target.value as any } }))}>
+                    <option value="">선택</option><option value="no">없어요</option><option value="yes">있어요</option><option value="unknown">모르겠어요</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="font-bold text-slate-700">함께 사는 가족의 소득</span>
+                  <select className={inputClass} value={x.bk?.householdIncome || ''} onChange={e => setX(p => ({ ...p, bk: { ...(p.bk || {}), householdIncome: e.target.value as any } }))}>
+                    <option value="">선택</option><option value="none">없어요 (또는 혼자 살아요)</option><option value="some">있어요</option><option value="unknown">모르겠어요</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+          )}
           <fieldset className="space-y-1">
             <legend className="text-sm font-bold text-slate-700">압류된 것 (여러 개)</legend>
             <div className="flex flex-wrap gap-2">
@@ -348,5 +392,6 @@ export function extraFactsText(x: IntakeExtraFacts): string {
     `• 해결하고 싶은 것: ${(x.goals || []).length ? (x.goals || []).map(g => GOAL_OPTIONS.find(o => o[0] === g)?.[1] || g).join(', ') : '답 없음'}`,
     `• 원하는 상담 방식: ${L[x.consultMethod || ''] || '답 없음'} · 편한 때: ${(x.consultTimes || []).length ? (x.consultTimes || []).map(a => L[a]).join(', ') : '답 없음'}`,
   ];
-  return `\n[5. 정리 확인 화면에서 더 답한 내용]\n${lines.join('\n')}`;
+  const bk = bankruptcyReferenceLines(x.bk);
+  return `\n[5. 정리 확인 화면에서 더 답한 내용]\n${lines.join('\n')}${bk.length ? `\n[파산 검토 참고 (의뢰인 답, 판정 아님)]\n${bk.join('\n')}` : ''}`;
 }
