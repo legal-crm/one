@@ -11,6 +11,7 @@ import { textModels } from './_lib/marketing-engine.js';
 import { fixCompliance, scanCompliance } from './_lib/marketing-compliance.js';
 import { buildStatementMasker } from './_lib/statement-masking.js';
 import { handleCallTranscript } from './_lib/routes/call-transcript.js';
+import { handleGeoCheck } from './_lib/routes/geo-check.js';
 
 // ─────────────────────────────────────────────────────────────
 // [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
@@ -287,6 +288,10 @@ async function handler(req, res) {
   // [SEO] 관리자 IndexNow 즉시 색인 요청 (함수 개수 한도로 이 함수에 둠)
   if (req.body?.mode === 'indexnow') {
     return handleIndexNow(req, res);
+  }
+  // [GEO] AI 검색 인용 점검 (M-5): 주간 정기 호출(cron 토큰) · 관리자 '지금 점검'
+  if (req.body?.mode === 'geo-cron' || req.body?.mode === 'geo-check') {
+    return handleGeoCheck(req, res);
   }
 
   // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)

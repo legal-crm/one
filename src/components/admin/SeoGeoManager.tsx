@@ -12,6 +12,7 @@ import { submitIndexNow, type IndexNowEngineResult } from '../../services/indexN
 import { Share2 } from 'lucide-react';
 import { listIndexNowLog, loadSeoState, saveSeoState } from '../../services/marketing/seoAdminService';
 import SocialChannelsPanel from './marketing/SocialChannelsPanel';
+import GeoCitationPanel from './marketing/GeoCitationPanel';
 
 // ============================================================
 // [SEO/GEO] 통합 관제센터
@@ -155,15 +156,6 @@ function StatusBadge({ status, label }: { status: CheckStatus; label?: string })
 const card = 'bg-[#111622] rounded-2xl border border-slate-800 p-5 md:p-6';
 const btnGhost = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs text-slate-200 transition-colors cursor-pointer min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed';
 const btnPrimary = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-xs text-white font-bold transition-colors cursor-pointer min-h-[36px] disabled:opacity-50 disabled:cursor-not-allowed';
-
-/** AI 검색 인용 점검 질의 — 인용 목표 페이지는 manifest로 존재 여부 확인 */
-const GEO_QUERIES = [
-  { q: '가족이나 회사 모르게 개인회생 할 수 있나요?', target: `${SITE_ORIGIN}/articles/secret-rehabilitation.html`, entities: '비공개 상담, 가명 상담, 송달 주소' },
-  { q: '코인·주식 투자 손실 빚도 개인회생 되나요?', target: `${SITE_ORIGIN}/articles/crypto-stock-debt.html`, entities: '투자 손실 소명, 청산가치' },
-  { q: '개인회생 변호사 비용과 분납은 어떻게 되나요?', target: `${SITE_ORIGIN}/guide/rehabilitation-cost.html`, entities: '수임료 구성, 분납, 변호사 직접 선택' },
-  { q: '급여 압류 통지를 받았는데 멈출 수 있나요?', target: `${SITE_ORIGIN}/articles/wage-garnishment-defense.html`, entities: '중지명령, 금지명령, 압류 적립금' },
-  { q: '개인회생 신청 자격 조건이 뭔가요?', target: `${SITE_ORIGIN}/guide/rehabilitation-eligibility.html`, entities: '소득 요건, 채무 한도, 청산가치' },
-];
 
 export default function SeoGeoManager() {
   const [tab, setTab] = useState<TabId>('health');
@@ -716,41 +708,8 @@ export default function SeoGeoManager() {
             </pre>
           </div>
 
-          {/* AI 인용 점검 질의 */}
-          <div className={card}>
-            <h4 className="text-base font-bold text-white flex items-center gap-2 mb-1">
-              <TrendingUp className="w-4 h-4 text-cyan-400" aria-hidden="true" /> AI 검색 인용 점검 질의
-            </h4>
-            <p className="text-xs text-slate-400 mb-3">
-              질의를 AI 검색에 직접 넣어 답변 출처에 목표 페이지(mykim.kr)가 인용되는지 확인하세요. 목표 페이지가 사이트에 실제로 있는지도 함께 표시합니다.
-            </p>
-            <div className="space-y-2">
-              {GEO_QUERIES.map(g => {
-                const exists = pageByKey.has(urlKey(g.target));
-                const enc = encodeURIComponent(g.q);
-                return (
-                  <div key={g.q} className="p-3 rounded-xl bg-slate-950/70 border border-slate-800 text-xs space-y-2">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
-                      <span className="font-bold text-indigo-300">Q. "{g.q}"</span>
-                      <div className="flex flex-wrap gap-1.5">
-                        <a className={btnGhost} href={`https://chatgpt.com/?q=${enc}&hints=search`} target="_blank" rel="noopener noreferrer">ChatGPT</a>
-                        <a className={btnGhost} href={`https://www.perplexity.ai/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Perplexity</a>
-                        <a className={btnGhost} href={`https://www.bing.com/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Bing</a>
-                        <a className={btnGhost} href={`https://search.naver.com/search.naver?query=${enc}`} target="_blank" rel="noopener noreferrer">네이버</a>
-                        <a className={btnGhost} href={`https://www.google.com/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Google</a>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-xs">
-                      <span className="text-slate-500">인용 목표</span>
-                      <a href={g.target} target="_blank" rel="noopener noreferrer" className="font-mono text-slate-300 hover:underline break-all">{g.target.replace(SITE_ORIGIN, '')}</a>
-                      {pages.length > 0 && (exists ? <StatusBadge status="pass" label="페이지 있음" /> : <StatusBadge status="fail" label="페이지 없음" />)}
-                      <span className="text-slate-500">· 핵심 엔티티: {g.entities}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          {/* AI 검색 인용 점검 (M-5): 질문은 서버에 두고 매주 자동 점검 */}
+          <GeoCitationPanel pageExists={(p) => (pages.length > 0 ? pageByKey.has(urlKey(`${SITE_ORIGIN}${p}`)) : undefined)} />
 
           {/* 구조화 데이터 */}
           <div className={card}>
