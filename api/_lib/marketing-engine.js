@@ -6,9 +6,26 @@ import { z } from 'zod';
 import { supabase } from './auth-middleware.js';
 import {
   fixCompliance, ensureDisclaimer, scanCampaignTexts, scanCompliance,
-  MARKETING_DISCLAIMER, MARKETING_DISCLAIMER_SHORT,
+  MARKETING_DISCLAIMER, MARKETING_DISCLAIMER_SHORT, setExtraComplianceTerms,
 } from './marketing-compliance.js';
 import { PLATFORM_FACTS_LINES } from './compliance-terms.js';
+
+// 통합어드민이 더한 금지어 (platform_config 'compliance_terms') — 5분 캐시. 읽지 못하면 기본 규칙만으로 검사
+let extraTermsLoadedAt = 0;
+export async function refreshExtraComplianceTerms(force = false) {
+  if (!force && Date.now() - extraTermsLoadedAt < 5 * 60 * 1000) return;
+  try {
+    const { data, error } = await supabase.from('platform_config').select('data').eq('id', 'compliance_terms').maybeSingle();
+    if (error) throw error;
+    const d = data?.data || {};
+    const marketing = Array.isArray(d.marketingTerms) ? d.marketingTerms : [];
+    const client = Array.isArray(d.clientTerms) ? d.clientTerms.map(t => ({ term: t, reason: null })) : [];
+    setExtraComplianceTerms([...marketing, ...client]);
+    extraTermsLoadedAt = Date.now();
+  } catch (e) {
+    console.warn('[marketing] extra compliance terms not loaded:', e?.message || e);
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // 1. 요일별 7대 장점 로테이션 (0=일 ~ 6=토, 한국 시간 기준)
@@ -553,6 +570,7 @@ export const GROUP_NAMES = Object.keys(GROUPS);
  * 채널 그룹 생성: 생성 → 자동 치환 → 검사 → (고위험 표현이 남으면) 수석 검수관이 1회 수정
  */
 export async function generateGroup(groupName, ctx, deadline) {
+  await refreshExtraComplianceTerms();
   const g = GROUPS[groupName];
   if (!g) throw new AiError('알 수 없는 채널 그룹입니다.', 400);
   const applied = new Set();
@@ -709,6 +727,7 @@ const POSTS = 'marketing_channel_posts';
 const STATUSES = ['ready', 'approved', 'rejected', 'published'];
 
 export async function saveCampaign({ ctx, channels, candidates, models, source = 'manual', userId = null, overwrite = true }) {
+  await refreshExtraComplianceTerms();
   const compliance = scanChannels(channels, ctx);
   const row = {
     campaign_date: ctx.date,
@@ -768,6 +787,7 @@ export async function getCampaign({ id, date }) {
 }
 
 export async function updateCampaign({ id, status, channels, userId }) {
+  await refreshExtraComplianceTerms();
   const { data: cur, error: e1 } = await supabase.from(CAMPAIGNS).select('*').eq('id', id).maybeSingle();
   if (e1 || !cur) throw new AiError('캠페인을 찾을 수 없습니다.', 404);
   const patch = { updated_at: new Date().toISOString() };

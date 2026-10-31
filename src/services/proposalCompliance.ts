@@ -7,6 +7,7 @@
 // ============================================================
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import { CLIENT_COPY_TERMS } from '../../api/_lib/compliance-terms.js';
+import { getPlatformClientTerms, loadPlatformComplianceTerms } from './compliance/platformTermsService';
 
 /** 변호사 광고규정상 문제 소지가 큰 공통 표현 (결과 보장·과장·알선 오해) — 공통 사전 api/_lib/compliance-terms.js (M-9) */
 export const DEFAULT_PROHIBITED_EXPRESSIONS: string[] = [...CLIENT_COPY_TERMS];
@@ -30,7 +31,9 @@ let rulesOfficeId = '';
 export async function loadOfficeCopyRules(officeId?: string | null): Promise<void> {
   rulesOfficeId = officeId || '';
   officeRules = { extraTerms: [], mode: 'advisory' };
-  if (!officeId || !isSupabaseConfigured) return;
+  if (!isSupabaseConfigured) return;
+  await loadPlatformComplianceTerms();
+  if (!officeId) return;
   const { data } = await supabase.from('office_settings').select('data').eq('office_id', officeId).eq('section', 'copy_rules').maybeSingle();
   if (data?.data) setOfficeCopyRules(data.data as Partial<OfficeCopyRules>);
 }
@@ -46,7 +49,8 @@ export function setOfficeCopyRules(r: Partial<OfficeCopyRules>) {
 export function getOfficeCopyRules(): OfficeCopyRules { return officeRules; }
 
 export function loadProhibitedExpressions(): string[] {
-  return Array.from(new Set([...DEFAULT_PROHIBITED_EXPRESSIONS, ...officeRules.extraTerms]));
+  // 공통 사전 + 통합어드민이 더한 표현(사무소가 못 뺌) + 사무소가 더한 표현
+  return Array.from(new Set([...DEFAULT_PROHIBITED_EXPRESSIONS, ...getPlatformClientTerms(), ...officeRules.extraTerms]));
 }
 
 /** 본문에 포함된 금지 표현 목록 (공백 차이 무시) */

@@ -24,6 +24,8 @@ import { REVIEW_CONSENT_METHOD_LABEL, type ReviewConsentMethod } from '../types'
 import LegalDocumentsPanel from './admin/LegalDocumentsPanel';
 import CreditorRegistryPanel from './admin/CreditorRegistryPanel';
 import PlatformFeaturesPanel from './admin/PlatformFeaturesPanel';
+import ComplianceTermsPanel from './admin/ComplianceTermsPanel';
+import { loadPlatformComplianceTerms } from '../services/compliance/platformTermsService';
 import DebtProgramsPanel from './admin/DebtProgramsPanel';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
@@ -441,6 +443,11 @@ export default function AdminRole({
   useEffect(() => {
     if (isLoggedIn) refreshHoneypotLogs();
   }, [isLoggedIn, refreshHoneypotLogs]);
+
+  // 금지어 사전(관리자가 더한 표현)을 읽어 두면 화면 안 마케팅 검사·문구 검사가 같은 사전을 쓴다
+  useEffect(() => {
+    if (isLoggedIn && isSupabaseConfigured) void loadPlatformComplianceTerms();
+  }, [isLoggedIn]);
 
   // [PART 3-2] 플랫폼 활동 로그 — 서버(audit_logs member_activity) 우선, 실패 시 이 브라우저 기록
   const [serverActivity, setServerActivity] = useState<PlatformActivityLog[] | null>(null);
@@ -4756,6 +4763,7 @@ export default function AdminRole({
               {isSupabaseConfigured && <PlatformFeaturesPanel />}
               {isSupabaseConfigured && <CompanyInfoPanel />}
               {isSupabaseConfigured && <LegalDocumentsPanel />}
+              {isSupabaseConfigured && <ComplianceTermsPanel />}
               {isSupabaseConfigured && <DebtProgramsPanel />}
               {isSupabaseConfigured && <CreditorRegistryPanel />}
               <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6">

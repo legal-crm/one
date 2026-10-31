@@ -12,10 +12,10 @@ import type { HwpxEdit } from './hwpxBuilder';
 import { buildHwpx, fetchTemplate } from './hwpxBuilder';
 import { guard, runGuard, RRN_RE, type GuardIssue } from './courtDocGuard';
 import { d5101, d5103, d5105 } from './courtFormHwpxAttachments';
-import { bankruptcyPetition, d5108, d5109, discharge, exemptAssetRows, svc } from './courtFormHwpxMore';
+import { bankruptcyPetition, d5108, d5109, d5116, d5122, discharge, exemptAssetRows, svc } from './courtFormHwpxMore';
 
 export type FilledFormCode = 'D5100' | 'D5106' | 'D5101' | 'D5103' | 'D5105' | 'D5110' | 'D5113' | 'D5114' | 'POA'
-  | 'SVC' | 'D5108' | 'D5109' | 'DISCH' | 'BKP';
+  | 'SVC' | 'D5108' | 'D5109' | 'D5116' | 'D5122' | 'DISCH' | 'BKP';
 
 /** 묶음: rehab = 회생 신청 핵심(기본 선택) · rehab_extra = 회생 부속·면책(필요할 때 고름) · bankruptcy = 파산·면책 */
 export type FilledFormGroup = 'rehab' | 'rehab_extra' | 'bankruptcy';
@@ -33,6 +33,8 @@ export const FILLED_FORMS: Record<FilledFormCode, { title: string; path: string;
   SVC: { title: '송달장소 및 송달영수인 신고서', path: '/court-forms/hwpx/송달장소_및_송달영수인_신고서.hwpx', order: 11, group: 'rehab_extra' },
   D5108: { title: '개인회생재단에 속하지 않는 재산목록 제출서', path: '/court-forms/hwpx/개인회생재단에 속하지 않는 재산목록 제출서(D5108).hwpx', order: 12, group: 'rehab_extra' },
   D5109: { title: '면제재산 결정신청서', path: '/court-forms/hwpx/면제재산 결정신청서(D5109).hwpx', order: 13, group: 'rehab_extra' },
+  D5116: { title: '소득진술서(영업소득자용)', path: '/court-forms/hwpx/소득진술서(영업소득자용)(D5116).hwpx', order: 14, group: 'rehab_extra' },
+  D5122: { title: '변제계획 변경안 제출서', path: '/court-forms/hwpx/변제계획 변경안 제출서(D5122).hwpx', order: 21, group: 'rehab_extra' },
   DISCH: { title: '개인회생 면책신청서', path: '/court-forms/hwpx/개인회생 면책신청서.hwpx', order: 20, group: 'rehab_extra' },
   BKP: { title: '파산 및 면책 신청서', path: '/court-forms/hwpx/1.파산및면책신청서.hwpx', order: 1, group: 'bankruptcy' },
 };
@@ -268,6 +270,8 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
     case 'SVC': return svc(d);
     case 'D5108': return d5108(d);
     case 'D5109': return d5109(d);
+    case 'D5116': return d5116(d, rrn);
+    case 'D5122': return d5122(d);
     case 'DISCH': return discharge(d, rrn);
     case 'BKP': return bankruptcyPetition(d, rrn);
   }
@@ -275,7 +279,7 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
 
 /** 출력 전 검사 (H-3): 필수 항목·합계·주민번호 형식 */
 export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, rrn: string): { blocks: GuardIssue[]; warns: GuardIssue[]; ok: boolean } {
-  const needsRrn = ['D5100', 'D5113', 'D5114', 'POA', 'DISCH', 'BKP'].includes(code);
+  const needsRrn = ['D5100', 'D5113', 'D5114', 'POA', 'D5116', 'DISCH', 'BKP'].includes(code);
   const leaseExempt = Number((d.assets as any)?.leaseDeposit?.exemptDeposit) || 0;
   const list = d.creditors || [];
   const r = d.repaymentSummary;
@@ -298,10 +302,14 @@ export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, r
     code === 'D5108' && exemptAssetRows(d).length === 0 ? { level: 'warn', message: '계산에 쓴 압류금지 재산(예금·보험·퇴직금 공제)이 없어 표가 비어 있어요. 한글에서 채우세요.' } : null,
     code === 'D5108' && exemptAssetRows(d).length > 0 ? { level: 'warn', message: '압류금지 근거 조문·소명자료가 사건에 맞는지 한글에서 확인하세요.' } : null,
     code === 'D5109' && !(leaseExempt > 0) ? { level: 'warn', message: '면제할 임차보증금이 없어요. 6개월 생계비 면제재산이면 한글에서 2번 항목을 채우세요.' } : null,
+    code === 'D5116' && d.debtor.employmentType !== '영업소득자' ? { level: 'warn', message: '사건 자료의 소득 형태가 영업소득자가 아니에요. 급여소득자는 소득증명서(D5115)를 써요.' } : null,
+    code === 'D5116' ? { level: 'warn', message: '영업 개시일·주요 판매 품목은 비워 뒀어요. 한글에서 적고, 보증인 2명의 확인서(D5117)를 함께 내세요.' } : null,
+    code === 'D5122' ? { level: 'warn', message: '본문의 변경 사유 두 문단은 양식의 예시 문장이에요. 실제 사유·인가 당시와 지금의 수입·가용소득으로 고쳐 주세요.' } : null,
+    code === 'D5122' && !caseNo(d) ? { level: 'block', message: '사건번호가 없어요. 변제계획 변경안은 인가된 사건에서만 낼 수 있어요.' } : null,
     code === 'DISCH' ? { level: 'warn', message: '면책신청서 날짜는 비워 뒀어요. 변제를 마친 뒤 접수하는 날로 적어 주세요.' } : null,
     code === 'DISCH' && !caseNo(d) ? { level: 'block', message: '사건번호가 없어요. 면책신청서는 사건번호를 등록한 뒤 만들 수 있어요.' } : null,
     code === 'BKP' ? { level: 'warn', message: '등록기준지·우편번호·지원기관 칸은 한글에서 채워 주세요.' } : null,
-    !caseNo(d) && code !== 'D5100' && code !== 'BKP' && code !== 'DISCH' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
+    !caseNo(d) && code !== 'D5100' && code !== 'BKP' && code !== 'DISCH' && code !== 'D5122' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
   ]);
 }
 

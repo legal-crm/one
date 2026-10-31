@@ -137,4 +137,24 @@ describe('회생 부속·면책·파산 서식 채움 (H-1 2·3묶음)', () => {
     expect(courtFormGuard('BKP', master(1), '').ok).toBe(false);
     expect(courtFormGuard('SVC', master(1), '').ok).toBe(true);
   });
+  it('D5116 소득진술서: 표 칸·월평균 소득·법원, 영업 개시일은 비움', async () => {
+    const m = master(1); m.debtor.employmentType = '영업소득자'; m.debtor.jobTitle = 'TEST 음식점업'; m.debtor.workplaceAddress = '경기 시험시 2';
+    const xml = await xmlOf('D5116', m);
+    expect(xml).toContain('시험회사');
+    expect(xml).toContain('TEST 음식점업');
+    expect(xml).toContain('900101-1234567');
+    expect(xml).toContain('월평균 ( 3,000,000 )원의');
+    expect(xml).toContain('본인은      년    월   일부터');
+    expect(courtFormGuard('D5116', m, '').ok).toBe(false);
+    expect(courtFormGuard('D5116', master(1), '9001011234567').warns.some(w => /D5115/.test(w.message))).toBe(true);
+  });
+  it('D5122 변제계획 변경안 제출서: 사건·채무자·대리인, 사건번호 없으면 막음', async () => {
+    const xml = await xmlOf('D5122', master(1), '');
+    expect(xml).toContain('2026개회1234  개인회생');
+    expect(xml).toContain('변호사   김변호');
+    expect(xml).toContain('수원회생법원 귀중');
+    const m = master(1); m.court.caseNumber = '';
+    expect(courtFormGuard('D5122', m, '').ok).toBe(false);
+    expect(courtFormGuard('D5122', master(1), '').warns.some(w => /예시 문장/.test(w.message))).toBe(true);
+  });
 });

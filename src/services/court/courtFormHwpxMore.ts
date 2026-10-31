@@ -127,3 +127,41 @@ export function bankruptcyPetition(d: CourtFilingMasterData, rrn: string): HwpxE
     { kind: 'text', label: '관할 법원', find: '◯◯회생(지방)법원 귀중', replace: court(d) ? `${court(d)} 귀중` : '◯◯회생(지방)법원 귀중' },
   ];
 }
+
+// ── D5116 소득진술서(영업소득자용) ──
+// 상호·업종·영업장 소재지·월평균 소득은 사건 자료(직장 칸·수입) 값, 주요 판매 품목·영업 개시일은 비워 둔다(모르는 값)
+export function d5116(d: CourtFilingMasterData, rrn: string): HwpxEdit[] {
+  const debtor = d.debtor;
+  const monthly = d.repaymentSummary?.monthlyNetIncome || 0;
+  const e: HwpxEdit[] = [
+    { kind: 'cell', table: 0, row: 0, col: 1, text: debtor.name, label: '성명' },
+    { kind: 'cell', table: 0, row: 0, col: 3, text: rrnFmt(rrn), label: '주민등록번호' },
+    { kind: 'cell', table: 0, row: 1, col: 1, text: debtor.residentAddress || debtor.currentAddress || '', label: '주소' },
+    { kind: 'cell', table: 0, row: 1, col: 3, text: debtor.phone || '', label: '전화번호' },
+    { kind: 'cell', table: 0, row: 2, col: 1, text: debtor.workplaceName || '', label: '상호명' },
+    { kind: 'cell', table: 0, row: 2, col: 3, text: debtor.jobTitle || '', label: '업종' },
+    { kind: 'cell', table: 0, row: 4, col: 1, text: debtor.workplaceAddress || '', label: '영업장 소재지' },
+    { kind: 'text', label: '작성일', find: '20  .   .   .', replace: ymdDots(d.court.applicationDate) || '20  .   .   .' },
+    { kind: 'text', label: '신청인 서명', find: ' 신청인           ', replace: ` 신청인   ${debtor.name}   ` },
+    { kind: 'text', label: '관할 법원', find: '법원 귀중', replace: court(d) ? `${court(d)} 귀중` : '법원 귀중' },
+  ];
+  if (monthly > 0) {
+    e.push({ kind: 'text', label: '월평균 사업소득', find: '본인은      년    월   일부터 월평균 (          )원의 ', replace: `본인은      년    월   일부터 월평균 ( ${won(monthly)} )원의 ` });
+  }
+  return e;
+}
+
+// ── D5122 변제계획 변경안 제출서 (인가 뒤) ──
+// 본문 두 문단은 양식의 예시 사유(급여 삭감)라 그대로 두고, 변호사가 실제 사유로 고친다(출력 전 경고)
+export function d5122(d: CourtFilingMasterData): HwpxEdit[] {
+  const n = caseNo(d);
+  const lawyer = (d.lawyer?.lawyerName || '').replace(/\s*변호사$/, '');
+  return [
+    { kind: 'text', label: '사건', find: '사    건      20  개회      개인회생', replace: n ? `사    건      ${n}  개인회생` : '사    건      20  개회      개인회생' },
+    { kind: 'text', label: '채무자', find: '채 무 자     ', replace: `채 무 자     ${d.debtor.name}` },
+    { kind: 'text', label: '대리인', find: '변호사               ', replace: lawyer ? `변호사   ${lawyer}   ` : '변호사               ' },
+    { kind: 'text', label: '채무자 서명', find: '                 채무자         ', replace: `                 채무자   ${d.debtor.name}   ` },
+    { kind: 'text', label: '대리인 서명', find: '                 대리인 변호사                (서명 또는 날인)', replace: lawyer ? `                 대리인 변호사   ${lawyer}   (서명 또는 날인)` : '                 대리인 변호사                (서명 또는 날인)' },
+    { kind: 'text', label: '관할 법원', find: '법원 귀중', replace: court(d) ? `${court(d)} 귀중` : '법원 귀중' },
+  ];
+}

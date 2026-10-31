@@ -111,6 +111,29 @@ export const COMPLIANCE_RULES = [
   })),
 ];
 
+/**
+ * 통합어드민이 더한 표현 (platform_config 'compliance_terms'.marketingTerms + clientTerms).
+ * 기본 규칙은 뺄 수 없고 더하기만 한다. 서버는 marketing-engine이, 브라우저는 platformTermsService가 채운다.
+ * @type {Array<{term:string, reason?:string|null}>}
+ */
+let extraTerms = [];
+
+/** @param {Array<{term:string, reason?:string|null}|string>} list */
+export function setExtraComplianceTerms(list) {
+  const out = [];
+  const seen = new Set();
+  for (const it of Array.isArray(list) ? list : []) {
+    const term = String(typeof it === 'string' ? it : it?.term || '').trim();
+    if (term.length < 2 || term.length > 40 || seen.has(term)) continue;
+    seen.add(term);
+    out.push({ term, reason: typeof it === 'object' && it?.reason ? String(it.reason).slice(0, 100) : null });
+    if (out.length >= 200) break;
+  }
+  extraTerms = out;
+}
+
+export function getExtraComplianceTerms() { return extraTerms.slice(); }
+
 /** 숫자 주장(%, 배, 통, 명, 건, 만원, 억) — 출처 텍스트에 없으면 근거 확인 필요 */
 const NUMERIC_CLAIM = /(\d[\d,.]*)\s*(%|퍼센트|배|통|명|건|만\s*원|억\s*원?|조\s*원?)/g;
 
@@ -144,6 +167,16 @@ export function scanCompliance(text, opts = {}) {
       seen.add(key);
       issues.push({ ruleId: rule.id, severity: rule.severity, label: rule.label, match: m[0], hint: rule.hint });
     }
+  }
+
+  // 관리자가 더한 표현 (공백 차이 무시)
+  const flat = src.replace(/\s+/g, '');
+  for (const t of extraTerms) {
+    if (!flat.includes(t.term.replace(/\s+/g, ''))) continue;
+    const key = `admin-term:${t.term}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    issues.push({ ruleId: 'admin-term', severity: 'medium', label: '관리자가 더한 확인 표현', match: t.term, hint: t.reason || '통합어드민 금지어 사전에 더한 표현이에요. 다른 표현으로 바꾸세요.' });
   }
 
   for (const m of src.matchAll(NUMERIC_CLAIM)) {
