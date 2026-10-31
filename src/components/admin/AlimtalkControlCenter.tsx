@@ -4,6 +4,7 @@
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { pageWindow } from '../../utils/pageWindow';
 import { toast } from 'sonner';
 import { 
   MessageSquare, 
@@ -157,7 +158,7 @@ export default function AlimtalkControlCenter() {
             <h2 className="text-lg md:text-xl font-extrabold tracking-tight">
               팝빌(Popbill) 카카오 알림톡 & 문자 발송 관제 센터
             </h2>
-            <span className={`text-[11px] font-extrabold px-2.5 py-0.5 rounded-full border ${
+            <span className={`text-xs font-extrabold px-2.5 py-0.5 rounded-full border ${
               status?.configured 
                 ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30'
                 : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
@@ -199,7 +200,7 @@ export default function AlimtalkControlCenter() {
           <p className="text-slate-300 leading-relaxed">
             아래 값을 Vercel 환경변수에 등록하면 실발송으로 전환됩니다. 카카오 채널 연결, 발신번호 사전등록, 템플릿 심사 승인은 팝빌 콘솔에서 별도로 끝내야 합니다.
           </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#0B0F17] p-4 rounded-xl border border-amber-500/20 font-mono text-[11px] text-slate-300">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-[#0B0F17] p-4 rounded-xl border border-amber-500/20 font-mono text-xs text-slate-300">
             <div>
               <span className="text-amber-400 font-bold block mb-1">필수 환경변수 1: POPBILL_LINK_ID</span>
               <code>팝빌 연동 신청 시 발급된 링크아이디</code>
@@ -477,11 +478,11 @@ export default function AlimtalkControlCenter() {
                     <tr key={log.id} className="hover:bg-white/[0.02] transition-colors">
                       <td className="p-3 font-medium">
                         <span className="font-bold text-white block">{log.clientName || '고객'}</span>
-                        <span className="text-[11px] text-slate-400">{log.phone}</span>
+                        <span className="text-xs text-slate-400">{log.phone}</span>
                       </td>
                       <td className="p-3">
                         <span className="inline-flex items-center gap-1 font-bold text-slate-200">
-                          <span>{milestoneConfig?.emoji || '💬'}</span>
+                          <span>{milestoneConfig?.emoji || ''}</span>
                           <span>{milestoneConfig?.label || log.milestone}</span>
                         </span>
                       </td>
@@ -507,7 +508,7 @@ export default function AlimtalkControlCenter() {
                           minute: '2-digit',
                         })}
                       </td>
-                      <td className="p-3 font-mono text-[11px] text-slate-500">
+                      <td className="p-3 font-mono text-xs text-slate-500">
                         {log.id}
                       </td>
                     </tr>
@@ -543,7 +544,7 @@ export default function AlimtalkControlCenter() {
                 </button>
 
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+                  {pageWindow(validPage, totalPages).map(pageNum => (
                     <button
                       key={pageNum}
                       type="button"

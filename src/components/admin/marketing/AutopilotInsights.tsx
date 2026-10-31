@@ -99,8 +99,8 @@ export function AutopilotCalendar({ onOpenDate }: { onOpenDate: (date: string) =
                         return <span key={c.id} className={`w-2 h-2 rounded-full ${posted ? c.dot : 'bg-slate-700'}`} title={`${c.name}${posted ? ' 게시됨' : ' 미게시'}`} />;
                       })}
                     </div>
-                    <p className="text-[10px] text-slate-400 line-clamp-2 leading-tight">{r.news_title}</p>
-                    <p className={`text-[10px] ${r.status === 'rejected' ? 'text-red-300' : r.status === 'ready' ? 'text-amber-300' : 'text-emerald-300'}`}>
+                    <p className="text-xs text-slate-400 line-clamp-2 leading-tight">{r.news_title}</p>
+                    <p className={`text-xs ${r.status === 'rejected' ? 'text-red-300' : r.status === 'ready' ? 'text-amber-300' : 'text-emerald-300'}`}>
                       {{ ready: '검토 대기', approved: '승인', rejected: '반려', published: '게시' }[r.status]} · {r.compliance_score}점
                     </p>
                   </div>

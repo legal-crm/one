@@ -1,6 +1,6 @@
 // ============================================================
-// [SECURITY] 통합 어드민 전사 실시간 세션 관제 센터 (GlobalSessionMonitor)
-// 모든 변호사/직원/관리자의 세션 감시, 이상 징후 탐지 및 긴급 강제 퇴출(Kill-Switch)
+// [SECURITY] 통합어드민 보안 · 세션 관리 (GlobalSessionMonitor)
+// 변호사·직원·관리자 세션 보기, 서버가 표시한 이상 징후, 세션 종료·계정 전면 차단
 // ============================================================
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -117,7 +117,7 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
   // 특정 사용자 전체 세션 즉각 차단 (Lockdown)
   const handleLockdownUser = async (session: UserSession) => {
     const confirmed = await dialog.confirm({
-      title: '계정 세션 전면 차단 (Lockdown)',
+      title: '계정 세션 전면 차단',
       message: `[${session.userName}] 사용자의 모든 기기 세션을 종료하고 로그인 토큰(refresh token)을 폐기하시겠습니까?\n이미 발급된 액세스 토큰은 만료(기본 1시간) 전까지 유효할 수 있습니다. 계정을 계속 막으려면 변호사 승인 정지 등 권한도 함께 해제하세요.`,
       confirmLabel: '전면 차단 & 강제 로그아웃',
       cancelLabel: '취소',
@@ -182,13 +182,13 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
             <div className="w-8 h-8 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center border border-indigo-500/30">
               <ShieldAlert className="w-5 h-5" />
             </div>
-            <h2 className="text-xl font-bold tracking-tight">전사 실시간 세션 관제 & 기기 통제 센터</h2>
-            <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-              슈퍼 어드민 권한
+            <h2 className="text-xl font-bold tracking-tight">보안 · 세션 관리</h2>
+            <span className="text-xs font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+              관리자 전용
             </span>
           </div>
           <p className="text-xs md:text-sm text-slate-300">
-            모든 법률사무소 변호사, 직원, 관리자의 실시간 로그인 세션을 감시하고 의심 접근을 즉각 강제 퇴출(Kill-Switch)합니다.
+            변호사·직원·관리자의 로그인 세션(30초마다 새로 읽음)을 보고, 의심 접근은 바로 종료할 수 있습니다.
           </p>
         </div>
 
@@ -222,14 +222,14 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
           userName="대표 관리자"
           userRole="ADMIN"
           userEmail={currentAdminEmail}
-          firmName="my김변 본사 관제센터"
+          firmName="마이김변 운영"
         />
       ) : (
         <div className="space-y-6">
           {/* ── 4대 핵심 보안 KPI 카드 ── */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-1">
-              <span className="text-xs font-bold text-slate-500">실시간 활성 세션</span>
+              <span className="text-xs font-bold text-slate-500">사용 중인 세션</span>
               <div className="flex items-baseline justify-between">
                 <span className="text-2xl font-black text-slate-900">{totalActiveCount}</span>
                 {/* 서버가 표시한 이상 징후(해외 접속·짧은 시간 여러 IP) 기준 (이전: '정상 운영' 고정 표시) */}
@@ -386,19 +386,19 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
                         <div className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
                           <span>{s.userName}</span>
                           {s.isCurrentSession && (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.2 rounded">
+                            <span className="text-xs bg-emerald-100 text-emerald-800 font-extrabold px-1.5 py-0.5 rounded">
                               본인
                             </span>
                           )}
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-xs text-slate-500 mt-0.5">
                           {s.firmName || '소속 정보 없음'} {s.userEmail ? `(${s.userEmail})` : ''}
                         </div>
                       </td>
 
                       {/* 역할 */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <span className={`px-2 py-0.5 rounded-md text-[11px] font-extrabold ${
+                        <span className={`px-2 py-0.5 rounded-md text-xs font-extrabold ${
                           s.userRole === 'ADMIN'
                             ? 'bg-purple-100 text-purple-800 border border-purple-200'
                             : s.userRole === 'LAWYER'
@@ -417,18 +417,18 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
                           </span>
                           <span>{s.device.os} · {s.device.browser}</span>
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-0.5">
+                        <div className="text-xs text-slate-400 mt-0.5">
                           로그인: {formatRelativeTime(s.createdAt)}
                         </div>
                       </td>
 
                       {/* 접속 IP 및 위치 */}
                       <td className="py-3.5 px-4">
-                        <div className="font-mono text-[11px] text-slate-700 font-semibold flex items-center gap-1">
+                        <div className="font-mono text-xs text-slate-700 font-semibold flex items-center gap-1">
                           <Globe className="w-3 h-3 text-slate-400" />
                           <span>{s.device.ipAddress}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 mt-0.5">
+                        <div className="text-xs text-slate-500 mt-0.5">
                           {s.device.location}
                         </div>
                       </td>
@@ -441,17 +441,17 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
                       {/* 보안 상태 */}
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         {s.status === 'revoked' ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
                             <XOctagon className="w-3 h-3" />
                             강제 종료됨
                           </span>
                         ) : s.isSuspicious ? (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200 animate-pulse" title={s.suspiciousReason}>
+                          <span className="inline-flex items-center gap-1 text-xs font-extrabold text-rose-700 bg-rose-100 px-2 py-0.5 rounded border border-rose-200 animate-pulse" title={s.suspiciousReason}>
                             <AlertTriangle className="w-3 h-3" />
                             이상 징후 감지
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                          <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                             <CheckCircle2 className="w-3 h-3" />
                             정상 세션
                           </span>
@@ -480,9 +480,9 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
                             </button>
                           </div>
                         ) : s.isCurrentSession ? (
-                          <span className="text-[11px] text-slate-400 font-medium italic">현재 제어 콘솔</span>
+                          <span className="text-xs text-slate-400 font-medium italic">현재 제어 콘솔</span>
                         ) : (
-                          <span className="text-[11px] text-slate-400">종료됨</span>
+                          <span className="text-xs text-slate-400">종료됨</span>
                         )}
                       </td>
                     </tr>

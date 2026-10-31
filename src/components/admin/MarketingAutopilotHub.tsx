@@ -357,7 +357,7 @@ function ComplianceFlags({ text, skipDisclaimerCheck = false, serverCompliance }
         <ul className="space-y-1">
           {issues.slice(0, 10).map((issue, idx) => (
             <li key={`${issue.ruleId}-${idx}`} className="flex flex-wrap gap-x-2 gap-y-0.5 text-slate-300">
-              <span className={`px-1.5 py-0.5 rounded-lg text-[10px] font-bold ${issue.severity === 'high' ? 'bg-rose-500/20 text-rose-200' : issue.severity === 'medium' ? 'bg-amber-500/20 text-amber-200' : 'bg-slate-700 text-slate-300'}`}>
+              <span className={`px-1.5 py-0.5 rounded-lg text-xs font-bold ${issue.severity === 'high' ? 'bg-rose-500/20 text-rose-200' : issue.severity === 'medium' ? 'bg-amber-500/20 text-amber-200' : 'bg-slate-700 text-slate-300'}`}>
                 {issue.severity === 'high' ? '수정 필요' : issue.severity === 'medium' ? '수정 권고' : '참고'}
               </span>
               <span className="font-semibold text-white">{issue.label}</span>
@@ -546,7 +546,7 @@ function TabContentStudio({
           <div className="bg-[#111622] rounded-2xl border border-[#1E293B]/60 p-5 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-lg font-bold text-white">수동 생성 설정</h3>
-              <span className="text-[11px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 font-medium whitespace-nowrap">
+              <span className="text-xs text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 font-medium whitespace-nowrap">
                 예시 원고 {DDOK_BLOG_PRESETS_DATA.length}종
               </span>
             </div>
@@ -636,7 +636,7 @@ function TabContentStudio({
               {isGenerating ? <Loader2 size={18} className="animate-spin text-white" /> : <UploadCloud size={18} />}
               {isGenerating ? '블로그 칼럼 생성 중…' : '블로그 칼럼 AI 초안 만들기'}
             </button>
-            <p className="text-[11px] text-slate-400 mt-2">실패하면 오류를 알려 드리고, 지금 보이는 원고는 그대로 둡니다.</p>
+            <p className="text-xs text-slate-400 mt-2">실패하면 오류를 알려 드리고, 지금 보이는 원고는 그대로 둡니다.</p>
           </div>
         </div>
 
@@ -685,7 +685,7 @@ function TabContentStudio({
               <div className="flex items-center gap-2">
                 <Sparkles size={16} className="text-indigo-400" />
                 <span className="text-sm font-bold text-white">{currentGuide.name}</span>
-                <span className="text-[11px] text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 font-medium">
+                <span className="text-xs text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 font-medium">
                   {currentGuide.badge}
                 </span>
               </div>
@@ -702,12 +702,12 @@ function TabContentStudio({
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap gap-1.5">
                 {currentGuide.tags.map((tag, idx) => (
-                  <span key={idx} className="text-[10px] text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-lg border border-slate-700/60">
+                  <span key={idx} className="text-xs text-slate-400 bg-slate-800/80 px-2 py-0.5 rounded-lg border border-slate-700/60">
                     ✓ {tag}
                   </span>
                 ))}
               </div>
-              <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
+              <span className="text-xs text-emerald-400 font-medium flex items-center gap-1">
                 <Target size={12} /> {currentGuide.ctaDevice}
               </span>
             </div>
@@ -722,7 +722,7 @@ function TabContentStudio({
                 <div>
                   <div className="flex items-center justify-between mb-1 gap-2">
                     <label htmlFor="studio-blog-title" className="text-xs font-semibold text-slate-400">제목 (검색 키워드 포함)</label>
-                    <span className={`text-[11px] px-2 py-0.5 rounded-lg border font-medium whitespace-nowrap ${isPreset ? 'text-slate-300 bg-slate-800 border-slate-700' : 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20'}`}>
+                    <span className={`text-xs px-2 py-0.5 rounded-lg border font-medium whitespace-nowrap ${isPreset ? 'text-slate-300 bg-slate-800 border-slate-700' : 'text-indigo-300 bg-indigo-500/10 border-indigo-500/20'}`}>
                       {isPreset ? `예시 원고(직접 작성한 견본) · #${activeBlogContent.label}` : `AI 초안${activeBlogContent.model ? ` · ${activeBlogContent.model}` : ''}`}
                     </span>
                   </div>
@@ -755,7 +755,7 @@ function TabContentStudio({
                         <ImageIcon size={15} className="text-indigo-400" />
                         네이버 블로그 본문 삽입용 4컷 이미지 (그라데이션 배경)
                       </span>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-xs text-slate-400 mt-0.5">
                         그라데이션 배경 위에 한글 문구를 얹은 이미지입니다. 외부 이미지 서비스는 쓰지 않습니다. 개별 PNG 또는 4컷 ZIP으로 내려받을 수 있습니다.
                       </p>
                     </div>
@@ -792,10 +792,10 @@ function TabContentStudio({
                         >
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent"></div>
                           <div className="flex justify-between items-start z-10 gap-2">
-                            <span className="px-2 py-0.5 rounded-lg bg-black/60 text-indigo-300 text-[10px] font-bold border border-white/10">
+                            <span className="px-2 py-0.5 rounded-lg bg-black/60 text-indigo-300 text-xs font-bold border border-white/10">
                               {bImg.tag}
                             </span>
-                            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-[9px] font-medium border border-emerald-500/30">
+                            <span className="px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 text-xs font-medium border border-emerald-500/30">
                               {bImg.insertPosition}
                             </span>
                           </div>
@@ -803,11 +803,11 @@ function TabContentStudio({
                             <h6 className="text-sm sm:text-base font-extrabold text-white leading-tight drop-shadow-lg whitespace-pre-line">
                               {bImg.previewTitle}
                             </h6>
-                            <p className="text-[11px] text-slate-100 line-clamp-2 drop-shadow-md font-medium">
+                            <p className="text-xs text-slate-100 line-clamp-2 drop-shadow-md font-medium">
                               {bImg.previewSub}
                             </p>
                           </div>
-                          <div className="z-10 pt-1.5 border-t border-white/10 flex justify-between items-center text-[9px] text-slate-200">
+                          <div className="z-10 pt-1.5 border-t border-white/10 flex justify-between items-center text-xs text-slate-200">
                             <span className="text-emerald-400 font-bold drop-shadow-sm">마이김변</span>
                             <span className="drop-shadow-sm">스텔스 가명 · 010 번호 비공개</span>
                           </div>
@@ -815,11 +815,11 @@ function TabContentStudio({
 
                         {/* Role & Prompt info */}
                         <div className="space-y-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center justify-between text-xs">
                             <span className="font-bold text-slate-300">#{bImg.order}. {bImg.title}</span>
                           </div>
                           <div className="bg-[#0B0F19] rounded-lg p-2 border border-slate-800 flex items-center justify-between gap-2">
-                            <span className="text-[10px] font-mono text-slate-400 truncate flex-1" title="직접 이미지를 만들 때 참고할 프롬프트">{bImg.prompt}</span>
+                            <span className="text-xs font-mono text-slate-400 truncate flex-1" title="직접 이미지를 만들 때 참고할 프롬프트">{bImg.prompt}</span>
                             <button
                               type="button"
                               onClick={() => {
@@ -828,7 +828,7 @@ function TabContentStudio({
                                 toast.success('참고 프롬프트를 복사했습니다.');
                                 setTimeout(() => setCopiedPromptId(null), 2000);
                               }}
-                              className="text-[10px] text-indigo-400 hover:text-indigo-300 shrink-0 flex items-center gap-1 cursor-pointer whitespace-nowrap min-h-[32px]"
+                              className="text-xs text-indigo-400 hover:text-indigo-300 shrink-0 flex items-center gap-1 cursor-pointer whitespace-nowrap min-h-[32px]"
                             >
                               {copiedPromptId === bImg.id ? <CheckCheck size={11} className="text-emerald-400" /> : <Copy size={11} />}
                               {copiedPromptId === bImg.id ? '복사됨' : '복사'}
@@ -860,7 +860,7 @@ function TabContentStudio({
                 <div className="flex-1 flex flex-col">
                   <div className="flex items-center justify-between mb-1">
                     <label htmlFor="studio-blog-body" className="text-xs font-semibold text-slate-400">본문 칼럼</label>
-                    <span className="text-[11px] text-slate-400">
+                    <span className="text-xs text-slate-400">
                       공백 포함 {activeBlogContent.fullBody.length}자
                     </span>
                   </div>
@@ -870,7 +870,7 @@ function TabContentStudio({
                     value={activeBlogContent.fullBody}
                     onChange={(e) => setActiveBlogContent({ ...activeBlogContent, fullBody: e.target.value })}
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">해시태그: {activeBlogContent.hashtags.join(' ')}</p>
+                  <p className="text-xs text-slate-400 mt-1">해시태그: {activeBlogContent.hashtags.join(' ')}</p>
                 </div>
               </div>
             )}
@@ -909,7 +909,7 @@ function TabContentStudio({
                       {isExportingStudioZip ? '렌더링 중…' : '4장면 ZIP 다운로드'}
                     </button>
                   </div>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-xs text-slate-400">
                     각 장면을 9:16 세로 PNG(그라데이션 배경)로 내보낸 뒤 CapCut에서 불러와 자막과 전환 효과를 더하세요.
                   </p>
                 </div>
@@ -928,7 +928,7 @@ function TabContentStudio({
                           <div className={`absolute inset-0 bg-gradient-to-t ${sceneColors[idx % sceneColors.length]} via-black/40 to-transparent`}></div>
 
                           <div className="flex justify-between items-start z-10">
-                            <span className="px-2 py-0.5 rounded-lg bg-red-600/80 text-white text-[9px] font-bold border border-red-400/30">
+                            <span className="px-2 py-0.5 rounded-lg bg-red-600/80 text-white text-xs font-bold border border-red-400/30">
                               {sceneLabels[idx % sceneLabels.length]}
                             </span>
                             <span className="px-1.5 py-0.5 rounded-lg bg-black/60 text-slate-300 text-[8px] font-mono">
@@ -941,7 +941,7 @@ function TabContentStudio({
                           </div>
 
                           <div className="z-10 flex-1 flex items-center justify-center px-1">
-                            <p className="text-white text-[11px] sm:text-xs font-extrabold text-center leading-snug drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                            <p className="text-white text-xs sm:text-xs font-extrabold text-center leading-snug drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
                               "{cue.script.length > 60 ? cue.script.slice(0, 60) + '…' : cue.script}"
                             </p>
                           </div>
@@ -959,7 +959,7 @@ function TabContentStudio({
                               navigator.clipboard?.writeText(cue.script);
                               toast.success(`장면 ${idx + 1} 나레이션을 복사했습니다.`);
                             }}
-                            className="flex-1 py-1 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800 whitespace-nowrap"
+                            className="flex-1 py-1 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800 whitespace-nowrap"
                           >
                             <Copy size={10} />
                             자막 복사
@@ -968,7 +968,7 @@ function TabContentStudio({
                             type="button"
                             aria-label={`장면 ${idx + 1} PNG 다운로드`}
                             onClick={() => downloadStudioElementAsPng(`shorts-scene-${idx}`, `[마이김변]_쇼츠_장면${idx + 1}.png`)}
-                            className="py-1 px-2 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
+                            className="py-1 px-2 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
                           >
                             {exportingStudioId === `shorts-scene-${idx}` ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
                           </button>
@@ -993,8 +993,8 @@ function TabContentStudio({
                     ].map((item) => (
                       <div key={item.step} className="bg-black/30 rounded-lg p-2 border border-slate-800">
                         <span className="text-amber-400 font-bold text-xs">{item.step}</span>
-                        <span className="text-white text-[11px] font-bold ml-1">{item.title}</span>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{item.desc}</p>
+                        <span className="text-white text-xs font-bold ml-1">{item.title}</span>
+                        <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
                       </div>
                     ))}
                   </div>
@@ -1002,7 +1002,7 @@ function TabContentStudio({
 
                 <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3 text-xs">
                   <span className="font-bold text-rose-300 block mb-0.5">반복 구조</span>
-                  <span className="text-slate-300 text-[11px]">마지막 문장("번호 칸에서 멈췄다면,")이 첫 질문("빚 상담 알아보다가 번호 칸에서 멈춘 적 있나요?")으로 이어지도록 썼습니다.</span>
+                  <span className="text-slate-300 text-xs">마지막 문장("번호 칸에서 멈췄다면,")이 첫 질문("빚 상담 알아보다가 번호 칸에서 멈춘 적 있나요?")으로 이어지도록 썼습니다.</span>
                 </div>
               </div>
             )}
@@ -1012,7 +1012,7 @@ function TabContentStudio({
               <div className="flex-1 flex flex-col space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-400">10장 캐러셀 슬라이드 선택</span>
-                  <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 whitespace-nowrap">
+                  <span className="text-xs text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20 whitespace-nowrap">
                     1장 1메시지
                   </span>
                 </div>
@@ -1043,26 +1043,26 @@ function TabContentStudio({
                       <div className="flex justify-between items-center z-10">
                         <div className="flex items-center gap-1.5">
                           <div className="w-2 h-2 rounded-full bg-amber-400"></div>
-                          <span className="text-[10px] font-bold text-amber-300 tracking-wider">마이김변 카드뉴스</span>
+                          <span className="text-xs font-bold text-amber-300 tracking-wider">마이김변 카드뉴스</span>
                         </div>
-                        <span className="px-2 py-0.5 rounded-full bg-white/10 text-white text-[10px] font-bold border border-white/10">
+                        <span className="px-2 py-0.5 rounded-full bg-white/10 text-white text-xs font-bold border border-white/10">
                           {selectedSlide + 1} / {slides.length}
                         </span>
                       </div>
 
                       <div className="z-10 my-auto space-y-2 text-center sm:text-left">
-                        <span className="inline-block px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 text-[9px] font-bold border border-amber-500/30">
+                        <span className="inline-block px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 text-xs font-bold border border-amber-500/30">
                           {selectedSlide === 0 ? '표지' : selectedSlide <= 2 ? '공감' : selectedSlide === slides.length - 1 ? '시작하기' : '확인할 점'}
                         </span>
                         <h4 className="text-base sm:text-lg font-extrabold text-white leading-snug drop-shadow-md whitespace-pre-line">
                           {slides[selectedSlide]?.headline}
                         </h4>
-                        <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed font-medium drop-shadow-sm">
+                        <p className="text-xs sm:text-xs text-slate-300 leading-relaxed font-medium drop-shadow-sm">
                           {slides[selectedSlide]?.subtext}
                         </p>
                       </div>
 
-                      <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-[10px]">
+                      <div className="z-10 pt-2 border-t border-white/10 flex justify-between items-center text-xs">
                         <span className="text-emerald-400 font-semibold flex items-center gap-1">
                           <ShieldCheck size={12} /> 스텔스 가명
                         </span>
@@ -1089,7 +1089,7 @@ function TabContentStudio({
                   <div className="bg-[#0B0F19] rounded-xl border border-slate-700 p-4 space-y-3 flex flex-col justify-between">
                     <div className="space-y-3">
                       <div>
-                        <span className="block text-[11px] text-slate-400 mb-1 font-semibold">
+                        <span className="block text-xs text-slate-400 mb-1 font-semibold">
                           헤드라인 (슬라이드 {selectedSlide + 1} / {slides.length})
                         </span>
                         <p className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-white font-medium text-xs">
@@ -1097,15 +1097,15 @@ function TabContentStudio({
                         </p>
                       </div>
                       <div>
-                        <span className="block text-[11px] text-slate-400 mb-1 font-semibold">본문 문구</span>
+                        <span className="block text-xs text-slate-400 mb-1 font-semibold">본문 문구</span>
                         <p className="w-full bg-[#111622] border border-slate-700 rounded-lg px-3 py-2 text-slate-300 text-xs min-h-[5rem]">
                           {slides[selectedSlide]?.subtext}
                         </p>
                       </div>
                     </div>
                     <div>
-                      <span className="block text-[11px] text-slate-400 mb-1 font-semibold">디자인 메모</span>
-                      <p className="text-[11px] text-slate-400 bg-[#111622] p-2.5 rounded-lg border border-slate-800">
+                      <span className="block text-xs text-slate-400 mb-1 font-semibold">디자인 메모</span>
+                      <p className="text-xs text-slate-400 bg-[#111622] p-2.5 rounded-lg border border-slate-800">
                         {slides[selectedSlide]?.visualDesc}
                       </p>
                     </div>
@@ -1113,7 +1113,7 @@ function TabContentStudio({
                 </div>
 
                 <div>
-                  <span className="block text-[11px] text-slate-400 mb-1 font-semibold">게시글 캡션</span>
+                  <span className="block text-xs text-slate-400 mb-1 font-semibold">게시글 캡션</span>
                   <p className="text-xs text-slate-300 bg-[#0B0F19] p-3 rounded-xl border border-slate-800 whitespace-pre-line leading-relaxed">
                     {CHANNEL_FULL_CONTENTS.cardnews.caption}
                   </p>
@@ -1128,7 +1128,7 @@ function TabContentStudio({
                   <label htmlFor="studio-threads" className="text-xs font-semibold text-slate-400">
                     스레드 4단 타래 본문 (해요체)
                   </label>
-                  <span className="text-[11px] text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 whitespace-nowrap">
+                  <span className="text-xs text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20 whitespace-nowrap">
                     1~2줄 줄바꿈
                   </span>
                 </div>
@@ -1158,7 +1158,7 @@ function TabContentStudio({
                   <label htmlFor="studio-fb" className="text-xs font-semibold text-slate-400">
                     페이스북 장문 피드
                   </label>
-                  <span className="text-[11px] text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 whitespace-nowrap">
+                  <span className="text-xs text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-lg border border-blue-500/20 whitespace-nowrap">
                     본문 링크 없음 → 첫 댓글 링크
                   </span>
                 </div>
@@ -1242,14 +1242,14 @@ function TabContentStudio({
                       >
                         <div className={`absolute inset-0 bg-gradient-to-t ${scene.color} via-black/40 to-transparent`}></div>
                         <div className="flex justify-between items-start z-10">
-                          <span className="px-2 py-0.5 rounded-lg bg-cyan-600/80 text-white text-[9px] font-bold border border-cyan-400/30">{scene.label}</span>
+                          <span className="px-2 py-0.5 rounded-lg bg-cyan-600/80 text-white text-xs font-bold border border-cyan-400/30">{scene.label}</span>
                           <span className="px-1.5 py-0.5 rounded-lg bg-black/60 text-slate-300 text-[8px] font-mono">{scene.time}</span>
                         </div>
                         <div className="z-10 text-[8px] text-slate-300/80 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
                           🎬 {scene.action.length > 35 ? scene.action.slice(0, 35) + '…' : scene.action}
                         </div>
                         <div className="z-10 flex-1 flex items-center justify-center px-1">
-                          <p className="text-white text-[11px] sm:text-xs font-extrabold text-center leading-snug drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
+                          <p className="text-white text-xs sm:text-xs font-extrabold text-center leading-snug drop-shadow-lg" style={{ textShadow: '0 2px 8px rgba(0,0,0,0.9)' }}>
                             "{idx === 0 ? tiktokOverlay : scene.script.length > 50 ? scene.script.slice(0, 50) + '…' : scene.script}"
                           </p>
                         </div>
@@ -1262,7 +1262,7 @@ function TabContentStudio({
                         <button
                           type="button"
                           onClick={() => { navigator.clipboard?.writeText(idx === 0 ? tiktokOverlay : scene.script); toast.success(`장면 ${idx + 1} 자막을 복사했습니다.`); }}
-                          className="flex-1 py-1 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800 whitespace-nowrap"
+                          className="flex-1 py-1 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-slate-700 text-slate-400 hover:text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800 whitespace-nowrap"
                         >
                           <Copy size={10} /> 자막 복사
                         </button>
@@ -1270,7 +1270,7 @@ function TabContentStudio({
                           type="button"
                           aria-label={`장면 ${idx + 1} PNG 다운로드`}
                           onClick={() => downloadStudioElementAsPng(`tiktok-scene-${idx}`, `[마이김변]_틱톡_장면${idx + 1}.png`)}
-                          className="py-1 px-2 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
+                          className="py-1 px-2 min-h-[44px] md:min-h-[30px] bg-[#0B0F19] hover:bg-indigo-600 text-slate-400 hover:text-white rounded-lg text-xs font-medium flex items-center justify-center gap-1 transition-all cursor-pointer border border-slate-800"
                         >
                           {exportingStudioId === `tiktok-scene-${idx}` ? <Loader2 size={10} className="animate-spin" /> : <Download size={10} />}
                         </button>
@@ -1293,8 +1293,8 @@ function TabContentStudio({
                     ].map((item) => (
                       <div key={item.step} className="bg-black/30 rounded-lg p-2 border border-slate-800">
                         <span className="text-cyan-400 font-bold text-xs">{item.step}</span>
-                        <span className="text-white text-[11px] font-bold ml-1">{item.title}</span>
-                        <p className="text-[10px] text-slate-400 mt-0.5">{item.desc}</p>
+                        <span className="text-white text-xs font-bold ml-1">{item.title}</span>
+                        <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
                       </div>
                     ))}
                   </div>

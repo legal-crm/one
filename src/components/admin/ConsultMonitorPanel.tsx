@@ -172,8 +172,8 @@ export default function ConsultMonitorPanel() {
                   <tr key={r.id} className={r.adminHidden ? 'opacity-60' : ''}>
                     <td className="p-3 text-white font-bold">
                       {r.alias}
-                      <span className="block text-[11px] font-normal text-slate-500">{r.id}</span>
-                      {r.openReports > 0 && <span className="mt-0.5 inline-block rounded-lg bg-rose-500/15 text-rose-200 px-1.5 text-[11px] font-bold">신고 {r.openReports}</span>}
+                      <span className="block text-xs font-normal text-slate-500">{r.id}</span>
+                      {r.openReports > 0 && <span className="mt-0.5 inline-block rounded-lg bg-rose-500/15 text-rose-200 px-1.5 text-xs font-bold">신고 {r.openReports}</span>}
                     </td>
                     <td className="p-3 text-slate-200">{r.adminHidden ? `숨김${r.adminHiddenReason ? ` · ${r.adminHiddenReason}` : ''}` : (STATUS_LABEL[r.status] || r.status)}</td>
                     <td className="p-3 text-xs text-slate-300">

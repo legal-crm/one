@@ -61,7 +61,7 @@ export default function PrivacyRequestsPanel() {
                 <span className="font-bold">{PRIVACY_KIND_LABEL[r.kind]}</span>
                 <span className="text-slate-400"> · {PRIVACY_STATUS_LABEL[r.status]} · {new Date(r.createdAt).toLocaleDateString('ko-KR')} 접수 · </span>
                 <span className={r.dueOn < today && (r.status === 'received' || r.status === 'in_progress') ? 'text-rose-300 font-bold' : 'text-slate-400'}>{r.dueOn}까지</span>
-                <span className="block text-[11px] text-slate-500">계정 {r.userId.slice(0, 8)}…</span>
+                <span className="block text-xs text-slate-500">계정 {r.userId.slice(0, 8)}…</span>
                 {r.detail && <p className="text-xs text-slate-400 break-words">{r.detail}</p>}
                 {r.response && <p className="text-xs text-emerald-300">답변: {r.response}</p>}
               </div>

@@ -145,7 +145,7 @@ const STATUS_STYLE: Record<CheckStatus, { cls: string; label: string; Icon: type
 function StatusBadge({ status, label }: { status: CheckStatus; label?: string }) {
   const s = STATUS_STYLE[status];
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-[11px] font-bold whitespace-nowrap ${s.cls}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md border text-xs font-bold whitespace-nowrap ${s.cls}`}>
       <s.Icon className="w-3 h-3" aria-hidden="true" />
       {label || s.label}
     </span>
@@ -377,7 +377,7 @@ export default function SeoGeoManager() {
                 </button>
               </div>
               <div className={`text-3xl font-black ${scoreColor}`}>{diagLoading && !diag ? '…' : score === null ? '-' : `${score}점`}</div>
-              <div className="flex gap-2 text-[11px] mt-1">
+              <div className="flex gap-2 text-xs mt-1">
                 <span className="text-emerald-400">정상 {counts.pass}</span>
                 <span className="text-amber-400">확인 {counts.warn}</span>
                 <span className="text-rose-400">문제 {counts.fail}</span>
@@ -391,7 +391,7 @@ export default function SeoGeoManager() {
               <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden" role="progressbar" aria-valuenow={checklistPct} aria-valuemin={0} aria-valuemax={100} aria-label="콘솔 등록 체크리스트 진행률">
                 <div className="bg-gradient-to-r from-indigo-500 to-emerald-400 h-full transition-all duration-500" style={{ width: `${checklistPct}%` }} />
               </div>
-              <p className="text-[11px] text-slate-500 mt-2">관리자가 직접 기록 (이 브라우저에 저장)</p>
+              <p className="text-xs text-slate-500 mt-2">관리자가 직접 기록 (이 브라우저에 저장)</p>
             </div>
           </div>
         </div>
@@ -449,7 +449,7 @@ export default function SeoGeoManager() {
                               <span className="font-bold text-slate-200">{c.label}</span>
                               <StatusBadge status={c.status} />
                             </div>
-                            <p className="text-[11px] text-slate-400 mt-1 break-all">{c.detail}</p>
+                            <p className="text-xs text-slate-400 mt-1 break-all">{c.detail}</p>
                           </li>
                         ))}
                       </ul>
@@ -478,9 +478,9 @@ export default function SeoGeoManager() {
                       <tbody className="divide-y divide-slate-800/60">
                         {[...crawl].sort((a, b) => Number(a.ok) - Number(b.ok)).map(r => (
                           <tr key={r.url}>
-                            <td className="py-2 font-mono text-[11px] text-slate-300 break-all">{r.url}</td>
+                            <td className="py-2 font-mono text-xs text-slate-300 break-all">{r.url}</td>
                             <td className="py-2 text-slate-400">{r.status || '-'}</td>
-                            <td className="py-2 text-right">{r.ok ? <StatusBadge status="pass" /> : <span className="text-rose-400 text-[11px]">{r.issue}</span>}</td>
+                            <td className="py-2 text-right">{r.ok ? <StatusBadge status="pass" /> : <span className="text-rose-400 text-xs">{r.issue}</span>}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -488,7 +488,7 @@ export default function SeoGeoManager() {
                   </div>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 flex items-center gap-1">
+              <p className="text-xs text-slate-500 flex items-center gap-1">
                 <Clock className="w-3 h-3" aria-hidden="true" /> 마지막 진단 {new Date(diag.checkedAt).toLocaleString('ko-KR')}
                 {diag.manifest && <> · 빌드 매니페스트 {new Date(diag.manifest.generatedAt).toLocaleString('ko-KR')}</>}
               </p>
@@ -543,13 +543,13 @@ export default function SeoGeoManager() {
                     </div>
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-slate-400">배포된 인증 태그</span>
-                      <span className="font-mono text-[11px] text-slate-300 truncate">{deployed ? `${deployed.slice(0, 14)}…` : '없음'}</span>
+                      <span className="font-mono text-xs text-slate-300 truncate">{deployed ? `${deployed.slice(0, 14)}…` : '없음'}</span>
                     </div>
                   </div>
 
                   {portal.verifyEnv && (
                     <div className="space-y-1.5">
-                      <label className="text-[11px] text-slate-400 font-medium" htmlFor={`verify-${portal.id}`}>
+                      <label className="text-xs text-slate-400 font-medium" htmlFor={`verify-${portal.id}`}>
                         소유확인 코드 입력기 (콘솔에서 받은 태그 또는 content 값)
                       </label>
                       <input
@@ -557,21 +557,21 @@ export default function SeoGeoManager() {
                         value={st.verifyCode}
                         onChange={e => updatePortal(portal.id, { verifyCode: e.target.value })}
                         placeholder={`<meta name="${portal.verifyMeta}" content="..." />`}
-                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-[11px] font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
+                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs font-mono text-slate-300 focus:outline-none focus:border-indigo-500"
                       />
                       {rawCode && (codeValid ? (
                         <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
-                          <p className="text-[11px] text-slate-400">
+                          <p className="text-xs text-slate-400">
                             Vercel 프로젝트 환경변수에 아래 값을 넣고 재배포하면 index.html에 태그가 들어갑니다.
                           </p>
                           <div className="flex items-center justify-between gap-2">
-                            <code className="text-[11px] text-emerald-300 break-all">{portal.verifyEnv}={code}</code>
+                            <code className="text-xs text-emerald-300 break-all">{portal.verifyEnv}={code}</code>
                             <CopyBtn text={`${portal.verifyEnv}=${code}`} k={`env-${portal.id}`} />
                           </div>
                           {deployed === code && <StatusBadge status="pass" label="배포 확인됨" />}
                         </div>
                       ) : (
-                        <p className="text-[11px] text-rose-400">코드 형식이 올바르지 않습니다 (영문·숫자·-·_ 8자 이상).</p>
+                        <p className="text-xs text-rose-400">코드 형식이 올바르지 않습니다 (영문·숫자·-·_ 8자 이상).</p>
                       ))}
                     </div>
                   )}
@@ -597,7 +597,7 @@ export default function SeoGeoManager() {
                           <input type="checkbox" checked={done} onChange={() => toggleStep(portal.id, step.id)} className="mt-0.5 rounded text-indigo-600 cursor-pointer" />
                           <span className="flex-1">
                             <span className={`font-bold block ${done ? 'text-white' : 'text-slate-200'}`}>{step.title}</span>
-                            <span className="text-[11px] text-slate-500">{step.desc}</span>
+                            <span className="text-xs text-slate-500">{step.desc}</span>
                           </span>
                           {chk && <StatusBadge status={chk.status} label={chk.status === 'pass' ? '사이트 준비됨' : chk.status === 'warn' ? '확인 필요' : '사이트 미흡'} />}
                         </label>
@@ -606,7 +606,7 @@ export default function SeoGeoManager() {
                   </div>
 
                   <label className="space-y-1 block">
-                    <span className="text-[11px] text-slate-400 font-medium">관리자 운영 메모</span>
+                    <span className="text-xs text-slate-400 font-medium">관리자 운영 메모</span>
                     <input
                       type="text"
                       value={st.memo}
@@ -673,7 +673,7 @@ export default function SeoGeoManager() {
             {diag?.robotsText && (
               <details className="mt-3">
                 <summary className="text-xs text-indigo-400 cursor-pointer">robots.txt 원문 보기</summary>
-                <pre className="mt-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-[11px] font-mono text-slate-300 max-h-60 overflow-auto">{diag.robotsText}</pre>
+                <pre className="mt-2 p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 max-h-60 overflow-auto">{diag.robotsText}</pre>
               </details>
             )}
           </div>
@@ -702,11 +702,11 @@ export default function SeoGeoManager() {
             <div className="flex flex-wrap gap-2 mb-3">
               {['llms', 'llms-links', 'llms-coverage'].map(id => {
                 const c = checkById.get(id);
-                return c ? <span key={id} className="text-[11px] text-slate-400 flex items-center gap-1.5"><StatusBadge status={c.status} /> {c.label}</span> : null;
+                return c ? <span key={id} className="text-xs text-slate-400 flex items-center gap-1.5"><StatusBadge status={c.status} /> {c.label}</span> : null;
               })}
             </div>
             {(checkById.get('llms-coverage')?.status === 'warn' || (diag?.llmsBrokenLinks.length ?? 0) > 0) && (
-              <p className="text-[11px] text-amber-300 mb-3 break-all">
+              <p className="text-xs text-amber-300 mb-3 break-all">
                 {checkById.get('llms-links')?.status === 'warn' && <>{checkById.get('llms-links')?.detail}<br /></>}
                 {checkById.get('llms-coverage')?.status === 'warn' && checkById.get('llms-coverage')?.detail}
               </p>
@@ -740,7 +740,7 @@ export default function SeoGeoManager() {
                         <a className={btnGhost} href={`https://www.google.com/search?q=${enc}`} target="_blank" rel="noopener noreferrer">Google</a>
                       </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
                       <span className="text-slate-500">인용 목표</span>
                       <a href={g.target} target="_blank" rel="noopener noreferrer" className="font-mono text-slate-300 hover:underline break-all">{g.target.replace(SITE_ORIGIN, '')}</a>
                       {pages.length > 0 && (exists ? <StatusBadge status="pass" label="페이지 있음" /> : <StatusBadge status="fail" label="페이지 없음" />)}
@@ -772,9 +772,9 @@ export default function SeoGeoManager() {
                 const n = pages.filter(p => p.jsonLdTypes.includes(t)).length;
                 return (
                   <div key={t} className="p-3 rounded-xl bg-slate-950 border border-slate-800">
-                    <span className="text-slate-400 block text-[11px]">{t}</span>
+                    <span className="text-slate-400 block text-xs">{t}</span>
                     <span className={`font-black text-lg ${n ? 'text-white' : 'text-rose-400'}`}>{n}</span>
-                    <span className="text-slate-500 text-[11px]"> / {pages.length} 페이지</span>
+                    <span className="text-slate-500 text-xs"> / {pages.length} 페이지</span>
                   </div>
                 );
               })}
@@ -808,34 +808,34 @@ export default function SeoGeoManager() {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-5">
                   <label className="space-y-1">
-                    <span className="text-[11px] text-slate-400">제목 시뮬레이션 · {simTitle.length}자 · 표시폭 {displayWidth(simTitle)}/60 {displayWidth(simTitle) > 60 && <span className="text-amber-400">(잘릴 수 있음)</span>}</span>
+                    <span className="text-xs text-slate-400">제목 시뮬레이션 · {simTitle.length}자 · 표시폭 {displayWidth(simTitle)}/60 {displayWidth(simTitle) > 60 && <span className="text-amber-400">(잘릴 수 있음)</span>}</span>
                     <input value={simTitle} onChange={e => setSimTitle(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
                   </label>
                   <label className="space-y-1">
-                    <span className="text-[11px] text-slate-400">설명 시뮬레이션 · {simDesc.length}자 (권장 50~160) {simDesc.length > 160 && <span className="text-amber-400">(잘릴 수 있음)</span>}</span>
+                    <span className="text-xs text-slate-400">설명 시뮬레이션 · {simDesc.length}자 (권장 50~160) {simDesc.length > 160 && <span className="text-amber-400">(잘릴 수 있음)</span>}</span>
                     <input value={simDesc} onChange={e => setSimDesc(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-indigo-500" />
                   </label>
                 </div>
-                <p className="text-[11px] text-slate-500 mb-3">시뮬레이션은 미리보기만 바꿉니다. 실제 수정은 해당 HTML 파일에서 하세요 ({selectedPage?.file}).</p>
+                <p className="text-xs text-slate-500 mb-3">시뮬레이션은 미리보기만 바꿉니다. 실제 수정은 해당 HTML 파일에서 하세요 ({selectedPage?.file}).</p>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className="p-5 rounded-2xl bg-[#202124] border border-slate-700/60 font-sans space-y-1.5">
-                    <span className="text-[10px] font-black text-blue-400">GOOGLE</span>
+                    <span className="text-xs font-black text-blue-400">GOOGLE</span>
                     <div className="flex items-center gap-2 text-xs">
                       <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center p-0.5"><img src="/mykim_logo.png" alt="" className="w-5 h-5 object-contain" /></div>
                       <div>
                         <span className="text-slate-300 font-bold block leading-tight">my김변</span>
-                        <span className="text-[11px] text-slate-400">{(selectedPage?.url || SITE_ORIGIN).replace('https://', '').replace(/\//g, ' › ')}</span>
+                        <span className="text-xs text-slate-400">{(selectedPage?.url || SITE_ORIGIN).replace('https://', '').replace(/\//g, ' › ')}</span>
                       </div>
                     </div>
                     <h5 className="text-base text-[#8ab4f8] font-medium leading-snug line-clamp-1">{simTitle || '(제목 없음)'}</h5>
                     <p className="text-xs text-[#bdc1c6] leading-relaxed line-clamp-2">{simDesc || '(설명 없음 — 검색엔진이 본문 일부를 임의로 표시)'}</p>
                   </div>
                   <div className="p-5 rounded-2xl bg-white border border-slate-200 font-sans space-y-1.5">
-                    <span className="text-[10px] font-black text-emerald-600">NAVER</span>
+                    <span className="text-xs font-black text-emerald-600">NAVER</span>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-slate-700 font-bold">my김변</span>
-                      <span className="text-slate-400 text-[11px]">{(selectedPage?.url || SITE_ORIGIN).replace('https://', '')}</span>
+                      <span className="text-slate-400 text-xs">{(selectedPage?.url || SITE_ORIGIN).replace('https://', '')}</span>
                     </div>
                     <h5 className="text-base text-[#0033cc] font-bold line-clamp-1">{simTitle || '(제목 없음)'}</h5>
                     <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{simDesc || '(설명 없음)'}</p>
@@ -861,14 +861,14 @@ export default function SeoGeoManager() {
                       {pages.filter(p => !issuesOnly || p.issues.length).map(p => (
                         <tr key={p.url} className="align-top">
                           <td className="py-2 pr-2">
-                            <button type="button" onClick={() => setSelectedPageUrl(p.url)} className="font-mono text-[11px] text-indigo-300 hover:underline text-left cursor-pointer">{p.url.replace(SITE_ORIGIN, '') || '/'}</button>
+                            <button type="button" onClick={() => setSelectedPageUrl(p.url)} className="font-mono text-xs text-indigo-300 hover:underline text-left cursor-pointer">{p.url.replace(SITE_ORIGIN, '') || '/'}</button>
                           </td>
                           <td className={`py-2 ${p.titleLength > 60 || p.titleLength < 15 ? 'text-amber-400' : 'text-slate-300'}`}>{p.titleLength}자</td>
                           <td className={`py-2 ${p.descriptionLength > 160 || p.descriptionLength < 50 ? 'text-amber-400' : 'text-slate-300'}`}>{p.descriptionLength}자</td>
-                          <td className="py-2 text-slate-400 text-[11px]">{p.jsonLdTypes.filter(t => ['Article', 'FAQPage', 'LegalService', 'Organization', 'BreadcrumbList', 'Service'].includes(t)).join(', ') || '-'}</td>
+                          <td className="py-2 text-slate-400 text-xs">{p.jsonLdTypes.filter(t => ['Article', 'FAQPage', 'LegalService', 'Organization', 'BreadcrumbList', 'Service'].includes(t)).join(', ') || '-'}</td>
                           <td className="py-2 text-slate-400">{p.lastmod}</td>
                           <td className="py-2 text-right">
-                            {p.issues.length ? <span className="text-amber-300 text-[11px]">{p.issues.join(' · ')}</span> : <StatusBadge status="pass" />}
+                            {p.issues.length ? <span className="text-amber-300 text-xs">{p.issues.join(' · ')}</span> : <StatusBadge status="pass" />}
                           </td>
                         </tr>
                       ))}
@@ -959,7 +959,7 @@ export default function SeoGeoManager() {
                   <CopyBtn text={x.url} k={`${x.k}-url`} label="URL 복사" />
                 </div>
                 <a href={x.url.replace(SITE_ORIGIN, '')} target="_blank" rel="noopener noreferrer" className="block p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-300 hover:text-white">{x.url}</a>
-                <p className="text-[11px] text-slate-500">{x.note}</p>
+                <p className="text-xs text-slate-500">{x.note}</p>
               </div>
             ))}
           </div>
@@ -986,14 +986,14 @@ export default function SeoGeoManager() {
                     {h.results.length > 0 && (
                       <div className="flex flex-wrap gap-2">
                         {h.results.map(r => (
-                          <span key={r.engine} className={`text-[11px] ${r.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{r.engine}: {r.message}{r.status ? ` (${r.status})` : ''}</span>
+                          <span key={r.engine} className={`text-xs ${r.ok ? 'text-emerald-400' : 'text-rose-400'}`}>{r.engine}: {r.message}{r.status ? ` (${r.status})` : ''}</span>
                         ))}
                       </div>
                     )}
-                    {h.error && <p className="text-[11px] text-rose-400">{h.error}</p>}
+                    {h.error && <p className="text-xs text-rose-400">{h.error}</p>}
                     <details>
-                      <summary className="text-[11px] text-slate-500 cursor-pointer">URL 목록</summary>
-                      <p className="font-mono text-[11px] text-slate-400 break-all mt-1">{h.urls.join('\n')}</p>
+                      <summary className="text-xs text-slate-500 cursor-pointer">URL 목록</summary>
+                      <p className="font-mono text-xs text-slate-400 break-all mt-1">{h.urls.join('\n')}</p>
                     </details>
                   </li>
                 ))}

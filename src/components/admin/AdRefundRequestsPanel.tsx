@@ -6,8 +6,9 @@ import { AlertTriangle, RefreshCw } from 'lucide-react';
 import type { AdOrder } from '../../types';
 import { adminResolveAdRequest, fetchAdOrderRequests, type AdOrderRequest } from '../../services/adOrderService';
 import { useDialog } from '../common/DialogProvider';
+import { splitVatInclusive } from '../../utils/vat';
 
-const btn = 'min-h-[36px] px-3 rounded-lg text-xs font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer disabled:opacity-50';
+const btn = 'min-h-[44px] px-3 rounded-lg text-xs font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer disabled:opacity-50';
 const won = (n?: number | null) => (typeof n === 'number' ? `${n.toLocaleString('ko-KR')}원` : '-');
 
 export default function AdRefundRequestsPanel({ orders, onResolved }: { orders: AdOrder[]; onResolved: () => void }) {
@@ -86,10 +87,15 @@ export default function AdRefundRequestsPanel({ orders, onResolved }: { orders: 
                   inputMode="numeric"
                   value={amounts[q.id] ?? String(q.suggestedRefund)}
                   onChange={e => setAmounts(a => ({ ...a, [q.id]: e.target.value }))}
-                  className="ml-2 w-32 min-h-[36px] rounded-lg bg-[#0B0F19] border border-white/10 px-2 text-right text-white tabular-nums"
+                  className="ml-2 w-32 min-h-[44px] rounded-lg bg-[#0B0F19] border border-white/10 px-2 text-right text-white tabular-nums"
                 />
               </label>
-              <span className="text-[11px] text-slate-400">규정 계산 {won(q.suggestedRefund)}</span>
+              <span className="text-xs text-slate-400">규정 계산 {won(q.suggestedRefund)}</span>
+              {(() => {
+                const amt = Number((amounts[q.id] ?? String(q.suggestedRefund)).replace(/[^0-9]/g, '')) || 0;
+                const s = splitVatInclusive(amt);
+                return <span className="text-xs text-slate-300 tabular-nums">공급가 {won(s.supply)} · 부가세 {won(s.vat)}{o?.taxInvoice ? ' (수정세금계산서 금액)' : ''}</span>;
+              })()}
               <button disabled={busy === q.id} onClick={() => void approve(q, o)} className={`${btn} bg-emerald-600 text-white`}>환불 승인</button>
               <button disabled={busy === q.id} onClick={() => void reject(q)} className={`${btn} bg-white/10 text-slate-200`}>반려</button>
             </li>

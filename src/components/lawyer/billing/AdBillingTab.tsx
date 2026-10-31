@@ -141,6 +141,10 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState('');
   const [createdOrder, setCreatedOrder] = useState<AdOrder | null>(null);
+  // 3단계 신청 마법사 (AD-7): 1 조건 → 2 준비 확인 → 3 금액·규정 확인
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [wizardProfile, setWizardProfile] = useState<OfficeBillingProfile | null | undefined | 'error'>(undefined);
+  const [agreeRules, setAgreeRules] = useState(false);
 
   const openOrder = (p: AdProduct) => {
     setModalProduct(p);
@@ -151,6 +155,18 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
     setQuote(null);
     setSubmitError('');
     setCreatedOrder(null);
+    setStep(1);
+    setAgreeRules(false);
+    setWizardProfile(undefined);
+    if (officeId) void fetchBillingProfile(officeId).then(r => setWizardProfile(r.ok ? r.data : 'error'));
+    else setWizardProfile(null);
+  };
+  const stepOneError = !modalProduct ? '' : modalProduct.perRegion && !region.trim() ? '노출 지역을 입력해 주세요.' : quoteError ? quoteError : !quote ? '금액을 계산하는 중이에요.' : '';
+  const goStep = (next: 1 | 2 | 3) => {
+    setSubmitError('');
+    if (next >= 2 && stepOneError) { setSubmitError(stepOneError); return; }
+    if (next === 3 && !depositor.trim()) { setSubmitError('입금자명을 입력해 주세요.'); return; }
+    setStep(next);
   };
 
   useEffect(() => {
@@ -170,6 +186,7 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
     setSubmitError('');
     if (!depositor.trim()) { setSubmitError('입금자명을 입력해 주세요.'); return; }
     if (modalProduct.perRegion && !region.trim()) { setSubmitError('노출 지역을 입력해 주세요.'); return; }
+    if (!agreeRules) { setSubmitError('입금 기한·환불 규정을 확인해 주세요.'); return; }
     setSubmitting(true);
     const r = await createAdOrder({ lawyerId, productId: modalProduct.id, months, startsOn, region: region.trim() || undefined, depositorName: depositor.trim() });
     setSubmitting(false);
@@ -397,7 +414,104 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
               <div className="font-extrabold text-xl">{modalProduct.name}</div>
               <p className="text-slate-300 text-xs mt-1">{lawyerName} 변호사 프로필로 노출됩니다.</p>
             </div>
-            {!createdOrder ? (
+            {!createdOrder && (
+              <ol className="flex items-center gap-2 px-6 pt-5" aria-label="신청 단계">
+                {(['조건', '준비 확인', '금액 확인'] as const).map((label, i) => {
+                  const n = (i + 1) as 1 | 2 | 3;
+                  const state = step === n ? 'now' : step > n ? 'done' : 'next';
+                  return (
+                    <li key={label} className="flex-1 flex items-center gap-2" aria-current={state === 'now' ? 'step' : undefined}>
+                      <span className={`w-7 h-7 shrink-0 rounded-full text-xs font-black flex items-center justify-center ${state === 'now' ? 'bg-brand text-white' : state === 'done' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                        {state === 'done' ? <Check className="w-3.5 h-3.5" aria-hidden="true" /> : n}
+                      </span>
+                      <span className={`text-xs font-bold whitespace-nowrap ${state === 'now' ? 'text-slate-900' : 'text-slate-500'}`}>{label}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            )}
+            {!createdOrder && step === 2 && (
+              <div className="p-6 space-y-4">
+                <label className="block space-y-1.5">
+                  <span className="text-sm font-bold text-slate-800">입금자명</span>
+                  <input value={depositor} onChange={e => setDepositor(e.target.value)} maxLength={40} placeholder="통장에 찍힐 이름" className="w-full p-3 rounded-xl border border-slate-200 text-sm" />
+                  <span className="block text-xs text-slate-500">입금자명이 달라도 확인할 수 있지만, 같으면 확인이 빨라요.</span>
+                </label>
+                <div className="rounded-2xl border border-slate-200 p-4 space-y-1.5">
+                  <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5"><Receipt className="w-4 h-4" aria-hidden="true" />세금계산서 받을 사업자 정보</p>
+                  {wizardProfile === undefined ? (
+                    <div className="h-10 rounded-xl bg-slate-100 animate-pulse" />
+                  ) : wizardProfile === 'error' ? (
+                    <p className="text-sm text-slate-600">사업자 정보를 확인하지 못했어요(보기 권한이 없을 수 있어요). 신청은 할 수 있고, 세금계산서는 사무소에 등록된 사업자 정보로 발행돼요.</p>
+                  ) : wizardProfile && wizardProfile.corpNum && wizardProfile.email ? (
+                    <p className="text-sm text-slate-700">{wizardProfile.corpName || '사업자'} · {formatCorpNum(wizardProfile.corpNum)} · {wizardProfile.email}</p>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-sm text-amber-800">사업자 정보가 없어요. 신청은 되지만, 입금 확인 뒤 세금계산서를 발행하려면 사업자등록번호와 받을 이메일이 필요해요.</p>
+                      <button type="button" onClick={() => { setModalProduct(null); setSub('business'); }}
+                        className="min-h-11 px-4 rounded-xl border border-slate-300 text-sm font-bold text-slate-700 whitespace-nowrap active:scale-[0.98]">사업자 정보 먼저 입력하기</button>
+                    </div>
+                  )}
+                </div>
+                {(() => {
+                  const kind = modalProduct.placement === 'main_banner' ? 'banner' : 'card';
+                  const mine = (creatives.list || []).filter(c => c.lawyerId === lawyerId && c.kind === kind);
+                  const approved = mine.some(c => c.status === 'approved');
+                  const pending = mine.some(c => c.status === 'pending');
+                  return (
+                    <div className="rounded-2xl border border-slate-200 p-4 space-y-1.5">
+                      <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5"><Megaphone className="w-4 h-4" aria-hidden="true" />{kind === 'banner' ? '메인 배너 소재' : '프로필 카드 소재'}</p>
+                      {creatives.list === null ? (
+                        <div className="h-10 rounded-xl bg-slate-100 animate-pulse" />
+                      ) : approved ? (
+                        <p className="text-sm text-emerald-700">승인된 소재가 있어요. 신청 뒤 주문 내역에서 연결하면 돼요.</p>
+                      ) : (
+                        <p className={`text-sm ${kind === 'banner' ? 'text-amber-800' : 'text-slate-700'}`}>
+                          {pending ? '심사 중인 소재가 있어요. ' : '아직 소재가 없어요. 신청 뒤 \'광고 소재\'에서 올릴 수 있어요. '}
+                          {kind === 'banner' ? '메인 배너는 승인된 배너 소재가 있어야 노출이 시작돼요.' : '소재가 없으면 변호사 프로필(사진·분야·소개)로 노출돼요.'}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
+                {submitError && <p className="text-sm text-rose-600" role="alert">{submitError}</p>}
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => goStep(1)} className="flex-1 min-h-[44px] rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 whitespace-nowrap cursor-pointer active:scale-[0.98]">이전</button>
+                  <button type="button" onClick={() => goStep(3)} className="flex-1 min-h-[44px] rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold whitespace-nowrap cursor-pointer active:scale-[0.98]">다음</button>
+                </div>
+              </div>
+            )}
+            {!createdOrder && step === 3 && (
+              <div className="p-6 space-y-4">
+                <dl className="bg-slate-50 border border-slate-200 rounded-2xl p-4 grid grid-cols-[auto,1fr] gap-x-4 gap-y-1.5 text-sm">
+                  <dt className="text-slate-600">상품</dt><dd className="font-bold text-slate-900">{modalProduct.name}</dd>
+                  <dt className="text-slate-600">기간</dt><dd className="font-bold text-slate-900">{months}개월 · {startsOn}부터</dd>
+                  {modalProduct.perRegion && (<><dt className="text-slate-600">지역</dt><dd className="font-bold text-slate-900">{region}</dd></>)}
+                  <dt className="text-slate-600">입금자명</dt><dd className="font-bold text-slate-900">{depositor}</dd>
+                  {quote && (<>
+                    <dt className="text-slate-600">공급가</dt><dd className="font-bold tabular-nums">{won(quote.supply)}</dd>
+                    <dt className="text-slate-600">부가세 (10%)</dt><dd className="font-bold tabular-nums">{won(quote.vat)}</dd>
+                    <dt className="font-bold text-slate-900">입금액</dt><dd className="font-black text-slate-900 tabular-nums">{won(quote.total)}</dd>
+                  </>)}
+                </dl>
+                <div className="rounded-2xl border border-slate-200 p-4 text-xs text-slate-600 space-y-1 leading-relaxed">
+                  <p>· 신청하면 3영업일 동안 구좌를 잡아 둬요. 그 안에 입금하지 않으면 예약이 자동으로 풀려요.</p>
+                  <p>· 노출 시작 전 취소·소재 반려로 시작하지 못하면 전액 환불해요.</p>
+                  <p>· 노출 중 환불은 남은 날만큼 일할로 돌려 드려요(위약금 없음). 장애로 노출되지 않은 기간은 연장하거나 일할로 환불해요.</p>
+                  <p>· 광고비는 상담 요청·수임 건수와 관계없는 정액이에요.</p>
+                </div>
+                <label className="flex items-start gap-2 text-sm font-bold text-slate-800 cursor-pointer">
+                  <input type="checkbox" checked={agreeRules} onChange={e => setAgreeRules(e.target.checked)} className="w-4 h-4 mt-0.5 accent-brand" />
+                  입금 기한과 환불 규정을 확인했어요.
+                </label>
+                {submitError && <p className="text-sm text-rose-600" role="alert">{submitError}</p>}
+                <div className="flex gap-3">
+                  <button type="button" onClick={() => goStep(2)} disabled={submitting} className="flex-1 min-h-[44px] rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 whitespace-nowrap cursor-pointer active:scale-[0.98]">이전</button>
+                  <button type="button" onClick={submitOrder} disabled={submitting || !quote || !agreeRules} className="flex-1 min-h-[44px] rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{submitting ? '신청 중…' : '신청하기'}</button>
+                </div>
+              </div>
+            )}
+            {!createdOrder && step === 1 ? (
               <div className="p-6 space-y-5">
                 <div className="space-y-2">
                   <span className="text-sm font-bold text-slate-800">계약 기간</span>
@@ -417,10 +531,6 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                     <input value={region} onChange={e => setRegion(e.target.value)} maxLength={30} placeholder="예: 서울, 경기 남부" className="w-full p-3 rounded-xl border border-slate-200 text-sm" />
                   </label>
                 )}
-                <label className="block space-y-1.5">
-                  <span className="text-sm font-bold text-slate-800">입금자명</span>
-                  <input value={depositor} onChange={e => setDepositor(e.target.value)} maxLength={40} placeholder="통장에 찍힐 이름" className="w-full p-3 rounded-xl border border-slate-200 text-sm" />
-                </label>
                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-1.5 text-sm">
                   {quoteError && <p className="text-rose-600" role="alert">{quoteError}</p>}
                   {!quoteError && !quote && <div className="h-16 rounded-xl bg-slate-100 animate-pulse" />}
@@ -437,11 +547,11 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                 </div>
                 {submitError && <p className="text-sm text-rose-600" role="alert">{submitError}</p>}
                 <div className="flex gap-3">
-                  <button onClick={() => setModalProduct(null)} disabled={submitting} className="flex-1 min-h-[44px] rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 whitespace-nowrap cursor-pointer active:scale-[0.98]">취소</button>
-                  <button onClick={submitOrder} disabled={submitting || !quote} className="flex-1 min-h-[44px] rounded-xl bg-[#1E3A5F] hover:bg-[#163152] text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">{submitting ? '신청 중…' : '신청하기'}</button>
+                  <button type="button" onClick={() => setModalProduct(null)} className="flex-1 min-h-[44px] rounded-xl border-2 border-slate-200 text-sm font-bold text-slate-600 whitespace-nowrap cursor-pointer active:scale-[0.98]">취소</button>
+                  <button type="button" onClick={() => goStep(2)} disabled={!quote && !quoteError} className="flex-1 min-h-[44px] rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 cursor-pointer active:scale-[0.98]">다음</button>
                 </div>
               </div>
-            ) : (
+            ) : createdOrder ? (
               <div className="p-6 space-y-4 text-center">
                 <Check className="w-10 h-10 text-emerald-600 mx-auto" />
                 <p className="font-extrabold text-lg text-slate-900">광고를 신청했습니다</p>
@@ -453,7 +563,7 @@ export default function AdBillingTab({ officeId, lawyerId, lawyerName, canManage
                 <p className="text-xs text-slate-500">입금이 확인되면 노출 시작일부터 광고가 나갑니다. 세금계산서는 사업자 정보의 이메일로 발행됩니다.</p>
                 <button onClick={() => { setModalProduct(null); setSub('orders'); }} className="w-full min-h-[44px] rounded-xl bg-slate-900 text-white font-bold text-sm whitespace-nowrap cursor-pointer active:scale-[0.98]">주문 내역 보기</button>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

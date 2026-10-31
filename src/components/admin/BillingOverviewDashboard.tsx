@@ -21,6 +21,7 @@ import {
 import { toast } from 'sonner';
 import type { User as LawyerType, AdOrder } from '../../types';
 import { localYmd } from '../../utils/localDate';
+import { splitVatInclusive } from '../../utils/vat';
 
 interface Props {
   lawyers: LawyerType[];
@@ -94,8 +95,19 @@ export default function BillingOverviewDashboard({
     const failedInvoice = adOrders.filter(o => o.taxInvoice?.status === 'failed' || o.modifiedTaxInvoice?.status === 'failed');
     const undated = paidOrders.filter(o => !paidDateOf(o)).length;
     const active = adOrders.filter(o => o.status === 'active');
+    // 공급가·부가세 나누기 (AD-8): 서버가 주문 때 정한 값 → 발행한 세금계산서 값 → 합계에서 계산
+    const supplyOf = (o: AdOrder) => (typeof o.supplyAmount === 'number' ? o.supplyAmount : o.taxInvoice?.supplyCost ?? splitVatInclusive(Number(o.totalPrice) || 0).supply);
+    const vatOf = (o: AdOrder) => (typeof o.vatAmount === 'number' ? o.vatAmount : o.taxInvoice?.tax ?? (Number(o.totalPrice) || 0) - supplyOf(o));
+    // 같은 기간에 환불한 주문 (취소 시각 기준)
+    const refunded = adOrders.filter(o => o.status === 'cancelled' && (Number(o.refundAmount) || 0) > 0 && (!periodStart || (o.cancelledAt && new Date(o.cancelledAt).getTime() >= periodStart.getTime())));
+    const refundTotal = refunded.reduce((s, o) => s + (Number(o.refundAmount) || 0), 0);
     return {
       periodRevenue: inPeriod.reduce((s, o) => s + (Number(o.totalPrice) || 0), 0),
+      periodSupply: inPeriod.reduce((s, o) => s + supplyOf(o), 0),
+      periodVat: inPeriod.reduce((s, o) => s + vatOf(o), 0),
+      refundCount: refunded.length,
+      refundTotal,
+      refundSplit: splitVatInclusive(refundTotal),
       periodCount: inPeriod.length,
       pendingCount: pending.length,
       pendingAmount: pending.reduce((s, o) => s + (Number(o.totalPrice) || 0), 0),
@@ -172,8 +184,8 @@ export default function BillingOverviewDashboard({
     const statusLabel: Record<AdOrder['status'], string> = { pending: '입금대기', paid: '입금확인', active: '집행중', expired: '종료', cancelled: '취소' };
     const rows = adOrders.map(o => {
       const total = Number(o.totalPrice) || 0;
-      const supply = o.taxInvoice?.supplyCost ?? Math.round(total / 1.1);
-      const tax = o.taxInvoice?.tax ?? total - supply;
+      const supply = typeof o.supplyAmount === 'number' ? o.supplyAmount : o.taxInvoice?.supplyCost ?? splitVatInclusive(total).supply;
+      const tax = typeof o.vatAmount === 'number' ? o.vatAmount : o.taxInvoice?.tax ?? total - supply;
       const paid = paidDateOf(o);
       return [
         o.requestedAt ? localYmd(new Date(o.requestedAt)) : '',
@@ -255,6 +267,10 @@ export default function BillingOverviewDashboard({
           </div>
           <div className="text-2xl font-black text-amber-300 font-mono">{metrics.periodRevenue.toLocaleString()}원</div>
           <p className="text-xs text-slate-400">{periodLabel} · {metrics.periodCount}건 (부가세 포함)</p>
+          <p className="text-xs text-slate-300 tabular-nums">공급가 {metrics.periodSupply.toLocaleString()}원 · 부가세 {metrics.periodVat.toLocaleString()}원</p>
+          {metrics.refundCount > 0 && (
+            <p className="text-xs text-rose-300 tabular-nums">같은 기간 환불 {metrics.refundCount}건 {metrics.refundTotal.toLocaleString()}원 (공급가 {metrics.refundSplit.supply.toLocaleString()} · 부가세 {metrics.refundSplit.vat.toLocaleString()})</p>
+          )}
         </div>
 
         <button

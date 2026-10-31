@@ -270,7 +270,7 @@ export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBas
               disabled={recording}
               onClick={() => { const start = durations.slice(0, i).reduce((a, b) => a + b, 0); setT(start + 0.4); draw(start + 0.4); }}
               style={{ flexGrow: d }}
-              className={`h-8 rounded-lg text-[11px] font-bold transition-colors ${i === cur ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+              className={`h-8 rounded-lg text-xs font-bold transition-colors ${i === cur ? 'bg-indigo-600 text-white' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
               aria-label={`${i + 1}번 장면 ${d.toFixed(1)}초`}
             >
               {i + 1}

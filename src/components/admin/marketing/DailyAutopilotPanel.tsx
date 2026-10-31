@@ -451,7 +451,7 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
                 <button key={ch} type="button" role="tab" aria-selected={active === ch} onClick={() => setActive(ch)}
                   className={`min-h-[44px] px-3 rounded-xl text-sm flex items-center gap-2 whitespace-nowrap border transition-colors ${active === ch ? 'bg-white/10 border-indigo-500 text-white font-bold' : 'border-slate-800 text-slate-300 hover:bg-white/5'}`}>
                   <M.icon size={16} className={M.color} />{M.name}
-                  <span className="text-[11px] text-slate-400">{scheduleFor(ch)}</span>
+                  <span className="text-xs text-slate-400">{scheduleFor(ch)}</span>
                   {posted ? <CheckCircle size={14} className="text-emerald-400" aria-label="게시됨" /> : high ? <ShieldAlert size={14} className="text-red-400" aria-label="고위험 표현" /> : null}
                 </button>
               );
