@@ -1,7 +1,8 @@
 // ============================================================
 // 법원 제출용 원스톱 전자계약서 고해상도 PDF 생성 엔진
-// jspdf + html2canvas 기반 클라이언트 사이드 일체형 합본 문서 생성
-// (표지 + 계약서 본문 + 분납약정 + 자필서명 + 감사추적보고서 + 블록체인 각인 QR)
+// 서버 글자 PDF(/api/pdf, H-7)가 기본 — 글자 검색·복사 가능, 전자소송 규칙 제8조④.
+// 로그인이 없거나 서버 PDF가 실패하면 브라우저 그림 PDF(jspdf + html2canvas)로 대신 만든다.
+// (표지 + 계약서 본문 + 분납약정 + 자필서명 + 감사추적 기록 + 원본 확인 QR)
 // ============================================================
 
 import { jsPDF } from 'jspdf';
@@ -12,18 +13,51 @@ import type { ElectronicContract } from '../types';
 import { localYmd } from '../utils/localDate';
 import { feeAmountWon, feeTotalWon } from '../utils/feeUnits';
 import { generateQrCodeDataUrl } from './blockchainAnchorService';
+import { renderTextPdf } from './court/courtPdfService';
+
+const TEXT_PDF_CSS = `@page{size:A4;margin:0}html,body{margin:0;padding:0;background:#fff}body{font-family:'NanumGothic','NanumMyeongjo',sans-serif;color:#0f172a}.pdf-page-item{break-after:page;page-break-after:always;overflow:hidden}.pdf-page-item:last-child{break-after:auto;page-break-after:auto}`;
+
+function downloadBytes(bytes: Uint8Array, filename: string) {
+  const blob = new Blob([bytes], { type: 'application/pdf' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
 
 export async function generateCourtSubmissionPdf(contract: ElectronicContract): Promise<void> {
   const toastId = toast.loading('법원 제출용 고해상도 전자계약 패키지를 생성 중입니다...');
 
   try {
-    // 1. 블록체인 검증용 QR 코드 생성 (Data URL)
+    // 1. 원본 확인용 QR 코드 (서버 전자지문 대조 화면 주소)
     // 검증 QR: 현재 서비스 도메인 기준 (하드코딩된 배포 도메인 대신)
     const verifyUrl = contract.blockchainAnchor?.verifyUrl ||
       `${typeof window !== 'undefined' ? window.location.origin : 'https://mykim.kr'}/?verifyContractId=${encodeURIComponent(contract.id)}`;
     const qrCodeDataUrl = await generateQrCodeDataUrl(verifyUrl);
 
-    // 2. DOM 렌더링용 임시 컨테이너 생성 (사용자 화면 방해 없도록 화면 밖 배치)
+    const sanitizedClientName = contract.clientName.replace(/[^a-zA-Z0-9가-힣]/g, '');
+    const filename = `[법원제출용]_사건위임계약서_${sanitizedClientName}_${contract.id}.pdf`;
+    const rawHtml = buildCourtPdfHtml(contract, qrCodeDataUrl);
+    const safeHtml = DOMPurify.sanitize(rawHtml, { ADD_TAGS: ['style'], ADD_ATTR: ['style', 'class'], ALLOW_DATA_ATTR: true });
+
+    // 2-a. 서버 글자 PDF
+    const text = await renderTextPdf(
+      `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8" /><title>사건위임계약서</title><style>${TEXT_PDF_CSS}</style></head><body>${safeHtml}</body></html>`,
+      { title: '사건위임계약서 및 전자체결 증명서', pageNumbers: false }
+    );
+    if (text.ok) {
+      downloadBytes(text.bytes, filename);
+      toast.dismiss(toastId);
+      toast.success('법원 제출용 전자계약서(글자 PDF)를 내려받았어요.', { duration: 4000 });
+      return;
+    }
+    console.warn('[ContractPdfService] 글자 PDF 실패, 그림 PDF로 만듭니다:', (text as { message?: string }).message);
+
+    // 2-b. DOM 렌더링용 임시 컨테이너 생성 (사용자 화면 방해 없도록 화면 밖 배치)
     const container = document.createElement('div');
     container.id = 'court-pdf-render-container';
     container.style.position = 'fixed';
@@ -35,13 +69,8 @@ export async function generateCourtSubmissionPdf(contract: ElectronicContract): 
     container.style.fontFamily = "-apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', sans-serif";
     container.style.zIndex = '-9999';
 
-    // HTML 구조 빌드 (DOMPurify 기반 XSS 방어)
-    const rawHtml = buildCourtPdfHtml(contract, qrCodeDataUrl);
-    container.innerHTML = DOMPurify.sanitize(rawHtml, {
-      ADD_TAGS: ['style'],
-      ADD_ATTR: ['style', 'class'],
-      ALLOW_DATA_ATTR: true
-    });
+    // HTML 구조 (DOMPurify 기반 XSS 방어)
+    container.innerHTML = safeHtml;
     document.body.appendChild(container);
 
     // 폰트 및 이미지 로딩 보장
@@ -84,13 +113,12 @@ export async function generateCourtSubmissionPdf(contract: ElectronicContract): 
     document.body.removeChild(container);
 
     // 5. 파일 저장
-    const sanitizedClientName = contract.clientName.replace(/[^a-zA-Z0-9가-힣]/g, '');
-    const filename = `[법원제출용]_사건위임계약서_${sanitizedClientName}_${contract.id}.pdf`;
     pdf.save(filename);
 
     toast.dismiss(toastId);
-    toast.success(`법원 제출용 전자계약서가 성공적으로 다운로드되었습니다. (${totalPages}페이지 합본)`, {
-      duration: 4000,
+    toast.success(`전자계약서를 그림 PDF로 내려받았어요. (${totalPages}쪽)`, {
+      description: '서버 글자 PDF를 만들지 못해 그림 PDF로 대신 만들었어요. 법원 제출본은 로그인한 상태에서 다시 받아 주세요.',
+      duration: 6000,
     });
   } catch (err: any) {
     console.error('[ContractPdfService] PDF 생성 오류:', err);
@@ -108,7 +136,6 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
   const idv = contract.identityVerification;
   const hashes = contract.documentHashes;
   const ts = contract.timestampToken;
-  const anchor = contract.blockchainAnchor;
   // 원/만원 자동 감지 (이전: 무조건 ×10,000 → 원 단위로 저장된 3,300,000이 33,000,000,000원으로 찍힘)
   const formattedFee = feeTotalWon(contract.totalFee).toLocaleString('ko-KR');
   const dateFormatted = contract.contractDate || localYmd();
@@ -125,7 +152,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
         <div style="border-bottom: 3px double #0f172a; padding-bottom: 18px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: flex-end;">
           <div>
             <div style="display: inline-block; padding: 3px 8px; background: #0f172a; color: #ffffff; font-size: 11px; font-weight: 800; border-radius: 4px; letter-spacing: 1px; margin-bottom: 8px;">
-              법원 제출용 공인 규격 원본
+              법원 제출용 사본
             </div>
             <h1 style="font-size: 26px; font-weight: 900; margin: 0; color: #0f172a; letter-spacing: -0.5px;">사건위임계약서 및 전자체결 증명서</h1>
             <p style="font-size: 11px; color: #475569; margin: 5px 0 0 0;">
@@ -204,31 +231,31 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
               <td style="padding: 10px 14px; text-align: center; color: #047857; font-weight: bold;">${!!hashes?.finalHash ? '[확인]' : '[-]'}</td>
             </tr>
             <tr style="background: #eff6ff;">
-              <td style="padding: 10px 14px; font-weight: bold; background: #dbeafe; color: #1e3a8a;">5. 블록체인 불변성</td>
+              <td style="padding: 10px 14px; font-weight: bold; background: #dbeafe; color: #1e3a8a;">5. 전자지문 보관</td>
               <td style="padding: 10px 14px; color: #1e3a8a; font-weight: 500;">
-                ${anchor?.isRealOnChain && anchor?.txHash ? `블록체인 기록 (Tx: <span style="font-family: monospace; font-size: 10px;">${anchor.txHash.slice(0, 24)}...</span>)` : '블록체인 미기록 (전자지문은 서버 보관)'}
+                ${hashes?.finalHash ? '체결본 전자지문(SHA-256)을 마이김변 서버에 보관' : '체결 전 (보관할 전자지문 없음)'}
               </td>
-              <td style="padding: 10px 14px; text-align: center; color: #1d4ed8; font-weight: bold;">${anchor?.isRealOnChain ? '[기록]' : '[-]'}</td>
+              <td style="padding: 10px 14px; text-align: center; color: #1d4ed8; font-weight: bold;">${hashes?.finalHash ? '[보관]' : '[-]'}</td>
             </tr>
           </table>
         </div>
 
-        <!-- 블록체인 스마트폰 즉시 검증 QR 안내 박스 -->
+        <!-- 원본 확인 QR 안내 박스 -->
         <div style="border: 1.5px dashed #2563eb; background: #f0f7ff; border-radius: 10px; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
           <div style="flex: 1;">
             <div style="font-size: 13px; font-weight: 800; color: #1e3a8a; margin-bottom: 4px;">
-              스마트폰 카메라로 진위여부 즉시 검증 (QR 코드)
+              QR 코드로 원본 확인
             </div>
             <p style="font-size: 11px; color: #334155; line-height: 1.5; margin: 0;">
-              사법부(법원) 재판부 및 관계자는 스마트폰 기본 카메라로 우측 QR 코드를 비추면 별도 프로그램 설치 없이 <strong>저장된 계약서가 체결 당시와 같은지</strong> 확인할 수 있습니다.
+              휴대폰 카메라로 오른쪽 QR 코드를 비추면 마이김변 확인 화면에서 <strong>저장된 계약서가 체결 당시와 같은지</strong>(서버 전자지문 대조) 볼 수 있습니다.
             </p>
             <div style="font-size: 10px; font-family: monospace; color: #64748b; margin-top: 6px;">
-              체결본 해시: ${hashes?.finalHash ? hashes.finalHash.slice(0, 36) + '...' : '7e2b19f0...'}
+              체결본 해시: ${hashes?.finalHash ? hashes.finalHash.slice(0, 36) + '...' : '(체결 전)'}
             </div>
           </div>
           <div style="text-align: center; background: #ffffff; padding: 8px; border-radius: 8px; border: 1px solid #bfdbfe; flex-shrink: 0;">
             ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" style="width: 90px; height: 90px; display: block;" alt="진위검증 QR" />` : ''}
-            <span style="font-size: 9px; font-weight: bold; color: #2563eb; display: block; margin-top: 4px;">사법부 즉시 검증</span>
+            <span style="font-size: 9px; font-weight: bold; color: #2563eb; display: block; margin-top: 4px;">원본 확인</span>
           </div>
         </div>
       </div>
@@ -349,14 +376,14 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
     </div>
   `;
 
-  // 3페이지: 전자서명법 공인 감사추적 인증서 (Audit Trail Certificate) + 블록체인 영구 각인
+  // 3페이지: 체결 감사추적 기록 + 원본 확인 QR
   const page3 = `
     <div class="pdf-page-item" style="width: 794px; min-height: 1120px; height: 1120px; box-sizing: border-box; padding: 45px 55px; position: relative; background: #ffffff; display: flex; flex-direction: column; justify-content: space-between;">
       <div>
         <div style="border-bottom: 2px solid #0f172a; padding-bottom: 12px; margin-bottom: 18px; display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span style="background: #0f172a; color: #fff; font-size: 9px; font-weight: 800; padding: 2px 6px; border-radius: 3px;">AUDIT TRAIL</span>
-            <h2 style="font-size: 18px; font-weight: 900; margin: 4px 0 0 0; color: #0f172a;">전자계약 체결 및 사법 감사추적 인증서</h2>
+            <h2 style="font-size: 18px; font-weight: 900; margin: 4px 0 0 0; color: #0f172a;">전자계약 체결 감사추적 기록</h2>
           </div>
           
         </div>
@@ -400,22 +427,17 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
             </div>
           </div>
 
-          <!-- 4. 블록체인(Polygon PoS) 분산원장 영구 각인 정보 -->
+          <!-- 4. 원본 확인 QR (서버 전자지문 대조) -->
           <div style="border: 1.5px solid #2563eb; border-radius: 8px; padding: 12px 14px; background: #eff6ff;">
-            <div style="font-weight: 800; color: #1e3a8a; margin-bottom: 6px; display: flex; justify-content: space-between;">
-              <span>4. 블록체인 기록 및 검증 QR</span>
-              
-            </div>
+            <div style="font-weight: 800; color: #1e3a8a; margin-bottom: 6px;">4. 원본 확인 QR</div>
             <div style="display: flex; gap: 14px; align-items: center;">
               <div style="flex: 1; font-size: 10px; line-height: 1.7; color: #1e293b;">
-                <div><strong>블록체인 기록:</strong> ${anchor?.isRealOnChain ? (anchor.network || '기록됨') : '미기록 (전자지문은 서버 보관)'}</div>
-                ${anchor?.isRealOnChain && anchor?.txHash ? `<div style="font-family: monospace;"><strong>Tx Hash:</strong> ${anchor.txHash}</div>` : ''}
-                ${anchor?.isRealOnChain && anchor?.blockNumber ? `<div><strong>블록 번호:</strong> #${anchor.blockNumber.toLocaleString()}</div>` : ''}
-                <div style="font-size: 9.5px; color: #2563eb; margin-top: 2px;">QR 코드로 검증 화면을 열어 전자지문을 다시 계산해 볼 수 있습니다.</div>
+                <div><strong>전자지문 보관:</strong> ${hashes?.finalHash ? '체결본 전자지문(SHA-256)을 마이김변 서버에 보관' : '체결 전 (보관할 전자지문 없음)'}</div>
+                <div style="font-size: 9.5px; color: #2563eb; margin-top: 2px;">QR 코드로 확인 화면을 열어 전자지문을 다시 계산해 볼 수 있습니다.</div>
               </div>
               <div style="text-align: center; background: #fff; padding: 6px; border-radius: 6px; border: 1px solid #bfdbfe; flex-shrink: 0;">
-                ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" style="width: 72px; height: 72px; display: block;" alt="블록체인 검증 QR" />` : ''}
-                <span style="font-size: 8.5px; color: #1e3a8a; font-weight: bold;">원본 검증</span>
+                ${qrCodeDataUrl ? `<img src="${qrCodeDataUrl}" style="width: 72px; height: 72px; display: block;" alt="원본 확인 QR" />` : ''}
+                <span style="font-size: 8.5px; color: #1e3a8a; font-weight: bold;">원본 확인</span>
               </div>
             </div>
           </div>
@@ -443,7 +465,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
         </div>
         <div style="border-top: 1px solid #cbd5e1; padding-top: 8px; display: flex; justify-content: space-between; font-size: 10px; color: #64748b;">
           <span>my김변 전자계약 체결 기록</span>
-          <span>감사추적 인증서 [3 / 3]</span>
+          <span>감사추적 기록 [3 / 3]</span>
           <span>문서관리번호: ${contract.id}</span>
         </div>
       </div>

@@ -3,6 +3,7 @@
 // 선고일·집회일·면책 결정일은 cases(기록 버튼), 그 밖의 파산 진행 값은 case_bankruptcy_details.
 // 기한 계산은 법정 기간만(선고 +7일 서류 제출, +14일 면제재산 신청, 면책허가 공고 +14일 즉시항고 등). 판단은 하지 않는다.
 // ============================================================
+import { calculateCourtDeadlineDetail } from '../taskTemplateService';
 import { supabase, isSupabaseConfigured } from '../../supabaseClient';
 import { toRpcError, NOT_CONFIGURED, type RpcResult } from '../office/rpcResult';
 
@@ -107,12 +108,22 @@ function addDays(ymd: string, n: number): string {
 
 export interface BankruptcyDeadline { key: string; label: string; date: string; basis: string }
 
+/** 법정 기간: 초일 불산입 + 말일이 토요일·공휴일이면 다음 날 (민법 제157·161조, T-3) */
+function legalDue(ymd: string, days: number): { date: string; note: string } {
+  const d = calculateCourtDeadlineDetail(ymd, days);
+  const ext = d.extendedOver.length ? ` · 말일이 ${d.extendedOver.map(e => e.reason).join(', ')}이라 다음 날로` : '';
+  const miss = d.holidayDataMissing ? ' · 공휴일 자료가 없는 해라 직접 확인' : '';
+  return { date: d.date, note: ext + miss };
+}
+
 /** 선고일·집회일·면책 결정일에서 법정 기한을 계산한다. 날짜가 없는 항목은 만들지 않는다 */
 export function bankruptcyDeadlines(input: { declaredOn?: string; creditorsMeetingOn?: string; dischargeDecidedOn?: string; dischargeResult?: BankruptcyDetails['dischargeResult'] }): BankruptcyDeadline[] {
   const out: BankruptcyDeadline[] = [];
   if (input.declaredOn) {
-    out.push({ key: 'docs7', label: '누락 서류 관재인 제출', date: addDays(input.declaredOn, 7), basis: '선고일부터 7일 (관재인 안내문)' });
-    out.push({ key: 'exempt14', label: '면제재산 결정신청 기한', date: addDays(input.declaredOn, 14), basis: '선고일부터 14일 (법 제383조 ③)' });
+    const docs = legalDue(input.declaredOn, 7);
+    out.push({ key: 'docs7', label: '누락 서류 관재인 제출', date: docs.date, basis: '선고일부터 7일 (관재인 안내문)' + docs.note });
+    const exempt = legalDue(input.declaredOn, 14);
+    out.push({ key: 'exempt14', label: '면제재산 결정신청 기한', date: exempt.date, basis: '선고일부터 14일 (법 제383조 ③)' + exempt.note });
     out.push({ key: 'interview', label: '관재인 면담 예상 (2주~1달)', date: addDays(input.declaredOn, 14), basis: '직무편람: 선고 후 2주~1달' });
     out.push({ key: 'early', label: '선면책 검토 가능 (선고 1년)', date: addDays(input.declaredOn, 365), basis: '실무준칙 제377호' });
   }
@@ -121,9 +132,11 @@ export function bankruptcyDeadlines(input: { declaredOn?: string; creditorsMeeti
   }
   if (input.dischargeDecidedOn) {
     if (input.dischargeResult === 'denied') {
-      out.push({ key: 'appeal_denied', label: '면책불허가 즉시항고 기한', date: addDays(input.dischargeDecidedOn, 7), basis: '송달일부터 1주 (송달일 기준으로 다시 확인)' });
+      const due = legalDue(input.dischargeDecidedOn, 7);
+      out.push({ key: 'appeal_denied', label: '면책불허가 즉시항고 기한', date: due.date, basis: '송달일부터 1주 (송달일 기준으로 다시 확인)' + due.note });
     } else {
-      out.push({ key: 'appeal_granted', label: '면책허가 즉시항고 기간 끝 (예상)', date: addDays(input.dischargeDecidedOn, 14), basis: '공고일부터 14일 (공고일 기준으로 다시 확인)' });
+      const due = legalDue(input.dischargeDecidedOn, 14);
+      out.push({ key: 'appeal_granted', label: '면책허가 즉시항고 기간 끝 (예상)', date: due.date, basis: '공고일부터 14일 (공고일 기준으로 다시 확인)' + due.note });
     }
   }
   return out.sort((a, b) => a.date.localeCompare(b.date));

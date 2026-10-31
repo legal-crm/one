@@ -36,6 +36,7 @@ import {
   getFeePresets, 
   saveFeePreset, 
   deleteFeePreset, 
+  refreshFeePresets,
   type FeePreset 
 } from '../../../services/feePresetService';
 import ContractWizard from '../ContractWizard';
@@ -176,6 +177,8 @@ export default function Stage2ContractRetainerView({
 
   // ── 수임료 프리셋 (메모리) 상태 ──
   const [feePresets, setFeePresets] = useState<FeePreset[]>(() => getFeePresets());
+  // 사무소 프리셋은 서버에서 읽는다 (다른 직원이 저장한 것도 보이게)
+  useEffect(() => { let alive = true; void refreshFeePresets().then(list => { if (alive) setFeePresets(list); }); return () => { alive = false; }; }, []);
   const [activePresetId, setActivePresetId] = useState<string>('preset-standard-300');
   const [isSavePresetModalOpen, setIsSavePresetModalOpen] = useState<boolean>(false);
   const [newPresetName, setNewPresetName] = useState<string>('');
@@ -558,14 +561,14 @@ export default function Stage2ContractRetainerView({
   };
 
   // ── 3-2. 현재 수임료 조건을 새 프리셋으로 저장 ──
-  const handleSaveCurrentAsPreset = () => {
+  const handleSaveCurrentAsPreset = async () => {
     if (!newPresetName.trim()) {
       toast.error('프리셋 명칭을 입력해 주세요.');
       return;
     }
 
     try {
-      const saved = saveFeePreset({
+      const saved = await saveFeePreset({
         name: newPresetName.trim(),
         description: newPresetDesc.trim() || undefined,
         hasDeposit,
@@ -586,9 +589,9 @@ export default function Stage2ContractRetainerView({
       setIsSavePresetModalOpen(false);
       setNewPresetName('');
       setNewPresetDesc('');
-      toast.success(`'${saved.name}' 프리셋이 저장되었습니다.`);
-    } catch (e) {
-      toast.error('프리셋 저장 중 오류가 발생했습니다.');
+      toast.success(`'${saved.name}' 프리셋을 사무소 설정에 저장했어요.`);
+    } catch (e: any) {
+      toast.error(e?.message || '프리셋을 저장하지 못했어요.');
     }
   };
 
@@ -604,7 +607,12 @@ export default function Stage2ContractRetainerView({
     });
     if (!confirmed) return;
 
-    deleteFeePreset(presetId);
+    try {
+      await deleteFeePreset(presetId);
+    } catch (err: any) {
+      toast.error(err?.message || '프리셋을 지우지 못했어요.');
+      return;
+    }
     const updated = getFeePresets();
     setFeePresets(updated);
     if (activePresetId === presetId) {

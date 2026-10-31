@@ -6,7 +6,7 @@
 
 ---
 
-> **10월 재판정 (2026-11-01, 작업 계획서 A-1):** 미완 128건을 지금 코드로 다시 확인했어요. ✅ 해결 79 · 🔁 결정 변경 15 · ⚙ 운영 설정 8 · ➡ 트랙 이관 19 · ⏭ 출시 후 7. 표시는 각 항목 끝 '[10월 재판정]'. `[x]`는 코드로 확인한 것만 붙였고, 결정 변경·이관·운영 설정·출시 후 항목은 `[ ]`로 두고 근거(파일·트랙 번호)를 적었어요. 이관 항목의 실제 진행은 `docs/launch_prep_work_plan.md` 트랙에서 관리해요.
+> **10월 재판정 (2026-11-01, 작업 계획서 A-1):** 미완 128건을 지금 코드로 다시 확인했어요. ✅ 해결 83 · 🔁 결정 변경 15 · ⚙ 운영 설정 8 · ➡ 트랙 이관 15 · ⏭ 출시 후 7. 표시는 각 항목 끝 '[10월 재판정]'. `[x]`는 코드로 확인한 것만 붙였고, 결정 변경·이관·운영 설정·출시 후 항목은 `[ ]`로 두고 근거(파일·트랙 번호)를 적었어요. 이관 항목의 실제 진행은 `docs/launch_prep_work_plan.md` 트랙에서 관리해요.
 
 ## 📌 문서 개요
 
@@ -326,7 +326,7 @@
 - [x] **터치 서명 캔버스 / 도장** — ⚠️ 부분 구현 — **[10월 재판정]** ✅ 해결: 직인 스튜디오(branding/SealStudioModal)·office_seals(ST-5) → 계약 A4 날인, 의뢰인 이름 도장 services/client/sealImage.ts
   - ✅ `devicePixelRatio` 배율(휴대폰에서 흐림 해소), 점 하나 찍기 방지(최소 획 길이), 44px 버튼·`type="button"`·라벨/도움말 연결 *(수정)*
   - ❌ 디지털 인감 도장 생성 기능 없음. PDF의 가짜 "[법률사무소 공인인 날인]"·"[전자 자필서명 날인완료]" 자리표시 → "[서명 전]" *(수정)*
-- [ ] **법원 제출용 PDF (`contractPdfService.ts`)** — ⚠️ 부분 구현 — **[10월 재판정]** ➡ 계획서 트랙으로 이관: services/contractPdfService.ts 아직 html2canvas 그림 PDF. 계약 PDF 글자 PDF 전환은 H-7·ST-5
+- [x] **법원 제출용 PDF (`contractPdfService.ts`)** — ⚠️ 부분 구현 — **[10월 재판정]** ✅ 해결(11-01 후속): 서버 글자 PDF(/api/pdf)가 기본, 로그인이 없거나 실패할 때만 그림 PDF로 대신 만들고 안내. '블록체인' 표기·가짜 해시 기본값·'공인 규격'·'사법부 즉시 검증' 문구를 서버 전자지문·원본 확인으로 교체
   - ✅ 가짜 기본값 제거: 원본/체결 해시, Tx 해시·블록 번호, 타임스탬프 토큰, 승인번호 `TX-PORTONE-V2`, **수임료 입금 은행 '신한은행'**(계약 조항 제3조), IP *(수정)*
   - ✅ "법적 효력 100% 충족", 무조건 `[확인완료]`, "ISO/IEC 27001", "블록체인 봉인 시 효력 발생"(계약 조항) 제거 → 실제 기록이 있을 때만 `[확인]`, 효력 발생은 양 당사자 서명 시점 *(수정)*
   - ℹ️ 체결 즉시 자동 생성이 아니라 완료 화면·검증기의 다운로드 버튼으로 생성 (브라우저 html2canvas)
@@ -1289,7 +1289,7 @@
   - ✅ `LawyerAttestationModal`의 '변호사법 제109조·제34조' 부정확 인용을 삭제했습니다.
 - [x] **개발 데모 계약** — ✅ `seedMockContracts`는 localStorage에만 씁니다. Supabase upsert를 제거했습니다. *(수정)*
 - [x] **PDF (`contractPdfService`)** — ✅ 로컬 날짜와 실제 KST 발급일시를 씁니다. '민사소송법 제358조 공인 증빙서' 문구를 정정했습니다. *(수정)*
-- [ ] ⚠️ 수임료 프리셋(`feePresetService`)의 부가세 기본값과 `totalFee` 만원 반올림은 심층 점검하지 않았습니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: feePresetService 프리셋 localStorage·VAT 기본 true, ContractWizard 887 만원 반올림·기본 180 그대로 → FE-3 원 단위 생성기
+- [ ] ⚠️ 수임료 프리셋(`feePresetService`)의 부가세 기본값과 `totalFee` 만원 반올림은 심층 점검하지 않았습니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: feePresetService 사무소 프리셋은 서버 사무소 설정(work_defaults)으로 옮김·ContractWizard 기본 180만 원 삭제(11-01). 남은 것: 계약서 totalFee 만원 반올림(888행) → FE-3 원 단위 생성기
 - [x] ⚠️ 원격 서명 로컬 경로(Supabase 미설정 시)는 브라우저 검증만 합니다. 개발 전용입니다. — **[10월 재판정]** ✅ 해결: contractService LOCAL_ONLY = !isSupabaseConfigured(20행) → 로컬 경로는 개발 전용, 운영은 서버 electronic_contracts(20261031003100)
 
 #### 2-10-B. 인장/도장 스튜디오 (`SealStudioModal.tsx`)
@@ -1391,7 +1391,7 @@
 - [ ] ❌ **채권조사확정재판(제604조) 대응 모듈은 없습니다.** 이의 탭은 기록 전용이며 이의기간 추적이 없습니다. — **[10월 재판정]** ⏭ 출시 후: 제604조 대응 미구현(PostCommencementManagementModal 529 안내). 계획서 G 표: Q26 결정상 백업·스케줄러 외 나머지 출시 후
 - [ ] ⚠️ 채권자집회 가이드는 호출 측이 기일·장소를 넘기지 않아 '기일 지정 대기중'으로 표시됩니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: CompanionDashboard 705·MyPageModals 158이 여전히 courtName·caseNumber만 넘김(기일·장소 없음) → CM-11 의뢰인 다음 일정
 - [x] ⚠️ 의뢰인 납부기록(회생동행)은 localStorage에만 저장됩니다. — **[10월 재판정]** ✅ 해결: 회생동행 기록 서버 저장 client_companion_records(20261031003400), companionRecordStore·hydrateCompanionRecords(ClientRole 1084)
-- [ ] ⚠️ 공휴일은 즉시항고 기한 계산에 반영하지 않습니다(기한은 결정문으로 확인하도록 안내). — **[10월 재판정]** ➡ 계획서 트랙으로 이관: bankruptcyCaseService 124~126·사후관리 안내는 달력일·'다시 확인' 안내만, 공휴일 미반영 → T-3 기한 계산기(근거 프리셋·즉시항고)
+- [x] ⚠️ 공휴일은 즉시항고 기한 계산에 반영하지 않습니다(기한은 결정문으로 확인하도록 안내). — **[10월 재판정]** ✅ 해결(11-01 후속): bankruptcyDeadlines의 법정 기한(누락 서류 7일·면제재산 14일·면책 즉시항고 1주/14일)이 초일 불산입 + 말일 토요일·공휴일이면 다음 날(calculateCourtDeadlineDetail, utils/koreanHolidays)로 계산하고 연장 사유·공휴일 자료 없는 해를 표시
 
 - **검증**
   - `tsc` 오류 238건입니다(새 오류 없음). `npm run build` 통과했습니다.
@@ -1852,7 +1852,7 @@
   - ✅ 재통화 간격은 10분 이상일 때만 저장합니다.
 - [x] ❌ **020 마이그레이션은 이 환경에서 적용·실행해 보지 못했습니다.** staff_members 테이블 정의가 저장소에 없어 컬럼(permissions jsonb, created_at 등)을 추정했습니다. 스테이징 적용 후 파일 끝의 확인 항목을 점검해야 합니다. 미적용이면 업무 저장이 스키마 오류로 실패하고, 이제는 그 오류가 화면에 표시됩니다. — **[10월 재판정]** ✅ 해결: 운영 DB 기준선 20261029000000에 반영·시험 DB 대조 일치, 이후 office_foundation(20261030000000)으로 사무소 판정 교체
 - [x] ❌ **직원이 대표의 고객·상담 데이터를 함께 보지는 못합니다.** 업무·일정·스레드·알림은 대표 사무소 단위로 공유되지만, crm_clients·consult_requests RLS는 변호사 본인 기준입니다. 직원 기록도 사무소(firm) 단위가 아니라 '초대한 대표' 단위입니다. — **[10월 재판정]** ✅ 해결: crm_clients 사무소 RLS(20261031000100 case.view/edit), 직원 상담 요청 보기 request_viewer_lawyer_id(20261030000200·0300)
-- [ ] ❌ **세션 차단은 여전히 권고형입니다.** Supabase JWT·refresh token을 폐기하지 않습니다. 정지된 직원은 서버 RLS(020의 사무소 제외)와 1분 재확인으로 막습니다. 동시 접속 수 제한은 없습니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: 관리자 정지·퇴사는 auth.sessions 삭제(revoke_user_sessions_internal), 사무소 정지는 user_sessions만·동시 접속 제한 없음 → RB-7
+- [x] ❌ **세션 차단은 여전히 권고형입니다.** Supabase JWT·refresh token을 폐기하지 않습니다. 정지된 직원은 서버 RLS(020의 사무소 제외)와 1분 재확인으로 막습니다. 동시 접속 수 제한은 없습니다. — **[10월 재판정]** ✅ 해결(11-01 후속): 관리자 정지·퇴사에 더해 사무소 직원 정지(active → suspended/left)도 로그인 세션(auth.sessions)을 바로 지움(트리거 office_member_status_sessions, 20261101002500, 대표 제외). 동시 접속 수 제한은 RB-7 보안 정책 화면에서 따로
 - [ ] ❌ **일정 알림 발송·반복 종료일이 없습니다.** 대법원 결정문의 CRM·캘린더 자동 추출과 2-Way(보안문자) 입력 화면도 없습니다. 보정명령은 버튼으로 등록하고, 기한 14일은 추정값입니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: 일정 알림 발송은 해결(20261101001600 pg_cron), 반복 종료일 없음·2-Way 보안문자 화면·자동 감지는 CODEF 키 필요 → CM-7
 - [ ] ❌ **백업 복원 기능과 서버 DB 백업이 없습니다.** 백업은 이 브라우저 저장소 기준입니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: ST-13 암호화 내보내기(office_data_export)만 있고 복원·Supabase 정기 백업(Free 요금제) 없음 → G-2
 - [x] ❌ **변호사 Q&A 답변·관리자 문의는 서버에 저장되지 않습니다**(App 상태 + 브라우저 저장소). 공개 Q&A 시드(가상 변호사 답변)는 의뢰인 화면 콘텐츠라 이번 범위에서 바꾸지 않았습니다. — **[10월 재판정]** ✅ 해결: Q&A 답변 lawyer_answer_client_qa·변호사 문의 서버 등록(20261030000500 CT-1), 시드 가상 답변은 서버 미설정 DEV만
@@ -1860,7 +1860,7 @@
 - [x] ⚠️ 커스텀 역할·직원 활동 로그·CRM 설정(상태·제휴사·텔레그램 방)은 브라우저 공용 localStorage입니다. — **[10월 재판정]** ✅ 해결: 커스텀 역할 office_custom_roles·활동 기록 office_audit_logs(20261030000000), 영업 설정 sales_settings 서버(20261101000900)
 - [ ] ⚠️ 5대 역할 중 'Paralegal'은 없습니다. 실제 기본 역할은 OWNER·LAWYER·CONSULTANT·STAFF·ACCOUNTING입니다. — **[10월 재판정]** 🔁 결정 변경(폐기·수정): 역할 체계 확정: officePermissions.ts OfficeRole = owner·lawyer·consultant·clerk·accounting + 맞춤 역할, Paralegal 없음
 - [ ] ⚠️ 표준 업무 패키지는 4종입니다(체크리스트의 7종 아님). 공휴일 자료는 2025~2028년만 있으므로 매년 추가해야 합니다. 2027년 이후 노동절·제헌절의 대체공휴일 적용 여부는 확인하지 못했습니다. — **[10월 재판정]** ⚙ 운영 설정: 업무 패키지 4종은 그대로(taskTemplateService), 공휴일은 business_holidays(서버)·koreanHolidays.ts — 매년 운영자가 추가
-- [ ] ⚠️ 직원이 '전체 공유' 일정을 지울 권한(manageCalendar)이 있어도, 020 RLS는 작성자·대표만 삭제를 허용합니다. 이 경우 삭제 실패가 표시됩니다. — **[10월 재판정]** ➡ 계획서 트랙으로 이관: calendar_tenant_delete 정책이 여전히 담당자·OWNER만(기준선 3721행) → RB-4 권한 목록 하나로(officePermissions·서버 규칙)
+- [x] ⚠️ 직원이 '전체 공유' 일정을 지울 권한(manageCalendar)이 있어도, 020 RLS는 작성자·대표만 삭제를 허용합니다. 이 경우 삭제 실패가 표시됩니다. — **[10월 재판정]** ✅ 해결(11-01 후속): 공용(firm) 일정은 사건 보기 범위 '전체' 구성원도 고치기·지우기 가능(20261101002400, 화면 manageCalendar = case.view 전체와 같은 기준). 개인·변호사 공유 일정은 담당자·대표 그대로
 - [x] ⚠️ 대법원 프록시는 로그인 사용자 누구나(의뢰인 포함) 또는 Turnstile 토큰으로 호출할 수 있습니다. 운영에 `SCOURT_ALLOW_MOCK=true`를 넣으면 시연 데이터가 반환됩니다(클라이언트는 저장하지 않음). — **[10월 재판정]** ✅ 해결: 사무소 활성 구성원만 호출(isActiveOfficeMember, scourt-proxy.js, 11-01). 하루 1회 감지는 CODEF 키 뒤(CM-7)
 - [x] ⚠️ `ExternalClientModal`은 쓰이지 않습니다(외부 고객 등록은 `NewCaseModal`). 프로필 저장이 서버에 반영되는지(`setLawyers`)는 확인하지 못했습니다. — **[10월 재판정]** ✅ 해결: ExternalClientModal 삭제(11-01 ea0b768), 프로필은 useLawyerProfileSync가 lawyers·lawyer_private_profiles에 저장
 
@@ -2487,28 +2487,24 @@
 
 미완 항목의 다음 할 일을 묶었어요. 출시 전 차단 = 트랙 이관 중 출시 전 트랙, 운영 설정 = 사용자·운영자가 키·설정을 넣어야 하는 것, 출시 후 = 계획서상 출시 뒤.
 
-### ➡ 계획서 트랙 (개발로 해결) (19)
+### ➡ 계획서 트랙 (개발로 해결) (15)
 
 | 섹션 | 근거·할 일 |
 |:---|:---|
 | 1-1 | Q&A·칼럼은 서버 콘텐츠(useServerContent)로 해결. 홈 변호사 소개 배너(01 1-C)는 AD-4, 홈 공지 위치는 CT-6에서 아직 |
 | 1-2 | 챗봇에 '해결 희망 목표' 질문 없음, 저축은행/대부업 한 선택지(AIRehabChatbotV2.tsx 3059). I-3 질문 개편 남음. 탕감률 문구는 I-1로 삭제 |
-| 1-6 | services/contractPdfService.ts 아직 html2canvas 그림 PDF. 계약 PDF 글자 PDF 전환은 H-7·ST-5 |
 | 2-3 | CaseListView.tsx 6단계 목록·칸반·서버 단계 배지 있음. 칸반·캘린더 서버 데이터·일괄 처리는 CM-6 |
 | 2-3 | CaseListView 담당자·사건유형·기한 임박 필터만 있음. 법원·서류 미제출·수임료 연체 필터·저장된 보기 서버는 CM-6 |
 | 2-4 | CopilotRuleSetManager 삭제됨. 사무소 '사건 검토 기준' 서버화·분석 적용은 미구현(검색 0) → CV-5 |
 | 2-6 | pipeline/LegalFlowThirteenStepper.tsx 여전히 별도 단계 기준(CrmTab·Stage5). 서버 단계표 case_stage_definitions로 통합은 CM-2 |
 | 2-8 | PropertyValuationModal 공시가 130%·차량 평가 산식 검증·시험 없음 → B-2 정답 검증·LS-10 정답 세트 |
 | 2-8 | D5103 incomeExpenseService.ts 165 가구원 정수(Math.max(1,인원))·2026 고정. 편집기·퀵툴은 0.5인 지원 → B-6(D5103 계산 통합) |
-| 2-10 | feePresetService 프리셋 localStorage·VAT 기본 true, ContractWizard 887 만원 반올림·기본 180 그대로 → FE-3 원 단위 생성기 |
+| 2-10 | feePresetService 사무소 프리셋은 서버 사무소 설정(work_defaults)으로 옮김·ContractWizard 기본 180만 원 삭제(11-01). 남은 것: 계약서 totalFee 만원 반올림(888행) → FE-3 원 단위 생성기 |
 | 2-11 | CompanionDashboard 705·MyPageModals 158이 여전히 courtName·caseNumber만 넘김(기일·장소 없음) → CM-11 의뢰인 다음 일정 |
-| 2-11 | bankruptcyCaseService 124~126·사후관리 안내는 달력일·'다시 확인' 안내만, 공휴일 미반영 → T-3 기한 계산기(근거 프리셋·즉시항고) |
 | 2-12 | 인쇄본은 공식 문항 반영·글자 PDF 저장까지, 공식 양식 원문·접수본 대조는 BK-10 |
 | 2-12 | 6개월 생계비는 중위소득×40%×6 공식·기준표 서버(calc_standard_sets, LS-1)로 해결, 소액임차 지역 표는 코드 상수 → LS-9 |
-| 2-16 | 관리자 정지·퇴사는 auth.sessions 삭제(revoke_user_sessions_internal), 사무소 정지는 user_sessions만·동시 접속 제한 없음 → RB-7 |
 | 2-16 | 일정 알림 발송은 해결(20261101001600 pg_cron), 반복 종료일 없음·2-Way 보안문자 화면·자동 감지는 CODEF 키 필요 → CM-7 |
 | 2-16 | ST-13 암호화 내보내기(office_data_export)만 있고 복원·Supabase 정기 백업(Free 요금제) 없음 → G-2 |
-| 2-16 | calendar_tenant_delete 정책이 여전히 담당자·OWNER만(기준선 3721행) → RB-4 권한 목록 하나로(officePermissions·서버 규칙) |
 | 3-4 | OP-8: 프로필·등록증은 서버(lawyers·lawyer_private_profiles)에 있으나 등록증 base64를 jsonb에 둠 → 비공개 저장소·확정 30일 뒤 삭제 남음 |
 
 ### ⚙ 운영 설정 (사용자·운영자 할 일) (8)

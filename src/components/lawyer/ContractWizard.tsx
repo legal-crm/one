@@ -1,3 +1,4 @@
+import { feeTotalWon } from '../../utils/feeUnits';
 import { getDefaultDebtCertUnitFee } from '../../services/debt/debtAgencyDefaults';
 import { DELIVERY_UNIT_FEE_KRW } from '../../services/court/courtFees';
 import React, { useState, useRef } from 'react';
@@ -77,7 +78,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
       clientPostcode: initialContract.clientPostcode || '',
       caseStageList: initialContract.caseStageList || ['개시결정'],
       statementFees: initialContract.statementFees || {
-        baseFee: (initialContract.totalFee || 180) * 10000,
+        baseFee: feeTotalWon(initialContract.totalFee), // 수임료 기본값 없음 (변호사가 입력, 이전: 180만 원 가정)
         successFee: initialContract.successFee?.amount || 0,
         otherFee: 0,
       },
@@ -752,7 +753,7 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
     const totalCourt = deliveryFee + stampFee + debtCertFee + miscFee + provisionalDeposit;
 
     // 계산서 수임료 (그림 4-2 좌측)
-    const statementBaseFee = c.statementFees?.baseFee ?? ((c.totalFee || 180) * 10000);
+    const statementBaseFee = c.statementFees?.baseFee ?? feeTotalWon(c.totalFee);
     const statementSuccessFee = c.statementFees?.successFee ?? (c.successFee?.enabled ? (c.successFee.amount || 0) : 0);
     const statementOtherFee = c.statementFees?.otherFee ?? 0;
     const statementSubtotal = statementBaseFee + statementSuccessFee + statementOtherFee;

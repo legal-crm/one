@@ -1,3 +1,4 @@
+import { setFeePresetOfficeScope } from '../services/feePresetService';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from './common/DialogProvider';
@@ -383,6 +384,7 @@ export default function LawyerRole({
   useEffect(() => {
     // 서류 기준(사무소 체크리스트·발급일 기준)도 서버에서 읽는다 (DP-1). 사무소가 없으면 기본 목록
     void setDocTemplateOfficeScope(currentOfficeId);
+    setFeePresetOfficeScope(currentOfficeId || null);
     if (!currentOfficeId) return;
     void loadOfficeProfile(currentOfficeId);
     void loadOfficeCopyRules(currentOfficeId || null);

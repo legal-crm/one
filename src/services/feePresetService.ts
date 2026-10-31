@@ -1,8 +1,9 @@
 /**
  * feePresetService.ts
  * 
- * 변호사 사무실별 수임료 및 분납 조건 세팅(계약금, 착수금, 분납 방식, 회차, 납부일, 부가세, 서식 스타일)을
- * 프리셋(메모리)으로 저장하고 불러오는 서비스 모듈.
+ * 변호사 사무실별 수임료 및 분납 조건 세팅(계약금, 착수금, 분납 방식, 회차, 납부일, 부가세, 서식 스타일) 프리셋.
+ * 사무소가 만든 프리셋은 서버 사무소 설정(office_settings 'work_defaults'.feePresets)에 저장한다 (FE-3·S).
+ * 이전: 그 브라우저(localStorage)에만 있어 다른 직원·기기에서 보이지 않았다. 서버가 없을 때(개발)만 브라우저에 둔다.
  */
 
 export interface FeePreset {
@@ -30,7 +31,54 @@ export interface FeePreset {
   contractStyle: 'simple_box' | 'standard';
 }
 
+import { loadOfficeSettings, saveOfficeSettings } from './office/officeSettingsService';
+
 const STORAGE_KEY = 'legal_crm_fee_presets_v1';
+const MAX_OFFICE_PRESETS = 15;
+
+let presetOfficeId: string | null = null;
+let officePresets: FeePreset[] = [];
+let workDefaults: Record<string, unknown> = {};
+let workDefaultsVersion: number | undefined;
+
+/** 로그인한 사무소 (LawyerRole). 정해지면 서버에서 프리셋을 읽는다 */
+export function setFeePresetOfficeScope(officeId: string | null): void {
+  if (presetOfficeId === officeId) return;
+  presetOfficeId = officeId;
+  officePresets = [];
+  workDefaults = {};
+  workDefaultsVersion = undefined;
+  if (officeId) void refreshFeePresets();
+}
+
+/** 서버 프리셋 다시 읽기 (실패하면 기본 프리셋만) */
+export async function refreshFeePresets(): Promise<FeePreset[]> {
+  if (!presetOfficeId) return getFeePresets();
+  const r = await loadOfficeSettings<Record<string, unknown>>(presetOfficeId, 'work_defaults');
+  if (r.ok) {
+    workDefaults = r.data?.data || {};
+    workDefaultsVersion = r.data?.version;
+    const list = Array.isArray(workDefaults.feePresets) ? (workDefaults.feePresets as FeePreset[]) : [];
+    officePresets = list.filter(p => p && typeof p.id === 'string').map(p => ({ ...p, isSystemDefault: false }));
+  }
+  return getFeePresets();
+}
+
+async function writeOfficePresets(next: FeePreset[]): Promise<void> {
+  if (!presetOfficeId) throw new Error('사무소 정보가 없어 저장하지 못했어요.');
+  const payload = { ...workDefaults, feePresets: next };
+  const r = await saveOfficeSettings(presetOfficeId, 'work_defaults', payload, workDefaultsVersion);
+  if (r.ok === false) {
+    if (/version|40001/i.test(r.message || r.code || '')) {
+      await refreshFeePresets();
+      throw new Error('다른 사람이 먼저 프리셋을 바꿨어요. 목록을 새로 불러왔으니 다시 저장해 주세요.');
+    }
+    throw new Error(/permission|42501/i.test(r.message || r.code || '') ? '사무소 설정을 바꿀 권한이 없어요. 대표에게 요청해 주세요.' : (r.message || '프리셋을 서버에 저장하지 못했어요.'));
+  }
+  workDefaults = payload;
+  workDefaultsVersion = r.data.version;
+  officePresets = next;
+}
 
 /**
  * 실무 기본 프리셋 4종
@@ -109,14 +157,13 @@ export const DEFAULT_FEE_PRESETS: FeePreset[] = [
 ];
 
 /**
- * 모든 프리셋 조회 (시스템 기본 + 사용자 저장)
+ * 모든 프리셋 조회 (시스템 기본 + 사무소 저장)
  */
 export function getFeePresets(): FeePreset[] {
+  if (presetOfficeId) return [...DEFAULT_FEE_PRESETS, ...officePresets];
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return DEFAULT_FEE_PRESETS;
-    }
+    if (!raw) return DEFAULT_FEE_PRESETS;
     const userPresets: FeePreset[] = JSON.parse(raw);
     return [...DEFAULT_FEE_PRESETS, ...userPresets];
   } catch (err) {
@@ -128,48 +175,35 @@ export function getFeePresets(): FeePreset[] {
 /**
  * 새 프리셋 저장 (또는 덮어쓰기)
  */
-export function saveFeePreset(presetData: Omit<FeePreset, 'id' | 'createdAt' | 'isSystemDefault'> & { id?: string }): FeePreset {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const userPresets: FeePreset[] = raw ? JSON.parse(raw) : [];
-
-    const now = new Date().toISOString();
-    const id = presetData.id || `preset-custom-${Date.now()}`;
-    const newPreset: FeePreset = {
-      ...presetData,
-      id,
-      isSystemDefault: false,
-      createdAt: now,
-    };
-
-    const existingIndex = userPresets.findIndex(p => p.id === id);
-    if (existingIndex >= 0) {
-      userPresets[existingIndex] = newPreset;
-    } else {
-      userPresets.unshift(newPreset);
-    }
-
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(userPresets));
+export async function saveFeePreset(presetData: Omit<FeePreset, 'id' | 'createdAt' | 'isSystemDefault'> & { id?: string }): Promise<FeePreset> {
+  const now = new Date().toISOString();
+  const id = presetData.id || `preset-custom-${Date.now()}`;
+  const newPreset: FeePreset = { ...presetData, id, isSystemDefault: false, createdAt: now };
+  if (presetOfficeId) {
+    const list = officePresets.filter(p => p.id !== id);
+    if (list.length >= MAX_OFFICE_PRESETS) throw new Error(`프리셋은 사무소당 ${MAX_OFFICE_PRESETS}개까지 저장할 수 있어요. 안 쓰는 것을 지워 주세요.`);
+    await writeOfficePresets([newPreset, ...list]);
     return newPreset;
-  } catch (err) {
-    console.error('Failed to save fee preset:', err);
-    throw err;
   }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  const userPresets: FeePreset[] = raw ? JSON.parse(raw) : [];
+  const existingIndex = userPresets.findIndex(p => p.id === id);
+  if (existingIndex >= 0) userPresets[existingIndex] = newPreset;
+  else userPresets.unshift(newPreset);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(userPresets));
+  return newPreset;
 }
 
 /**
- * 사용자 프리셋 삭제
+ * 사무소 프리셋 삭제
  */
-export function deleteFeePreset(id: string): boolean {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return false;
-    const userPresets: FeePreset[] = JSON.parse(raw);
-    const filtered = userPresets.filter(p => p.id !== id);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-    return true;
-  } catch (err) {
-    console.error('Failed to delete fee preset:', err);
-    return false;
+export async function deleteFeePreset(id: string): Promise<void> {
+  if (presetOfficeId) {
+    await writeOfficePresets(officePresets.filter(p => p.id !== id));
+    return;
   }
+  const raw = localStorage.getItem(STORAGE_KEY);
+  if (!raw) return;
+  const userPresets: FeePreset[] = JSON.parse(raw);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(userPresets.filter(p => p.id !== id)));
 }
