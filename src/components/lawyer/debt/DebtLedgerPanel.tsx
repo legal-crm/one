@@ -17,6 +17,7 @@ import {
   DEBT_LEDGER_CHANGED_EVENT, addDebtCertificates, deleteDebtCertificate, loadAgencyOrders, loadDebtAgencies, loadDebtLedger,
   migrateLegacyDebtOrder, recordAgencyOrder, updateDebtCertificate, type AgencyOrder, type DebtAgency,
 } from '../../../services/debt/debtLedgerService';
+import { parseCreditorCsvFile } from '../../../services/court/competitorCreditorCsv';
 import { loadCaseFilesByIds } from '../../../services/corrections/correctionService';
 import DebtAgencySettingsModal from './DebtAgencySettingsModal';
 import { getCaseFileUrl, uploadCaseFile } from '../../../services/files/caseFileService';
@@ -115,6 +116,28 @@ export default function DebtLedgerPanel(p: Props) {
     toast.success(`${r.data.length}곳을 장부에 넣었어요.`);
     void load();
   };
+  // 다른 프로그램(디던비·로패스·전자소송) 채권자 CSV에서 장부 줄 만들기 (NF-10)
+  const csvInputRef = React.useRef<HTMLInputElement>(null);
+  const importCsv = async (file: File) => {
+    const parsed = await parseCreditorCsvFile(file);
+    if (parsed.rows.length === 0) { toast.error(parsed.warnings[0] || '가져올 채권자가 없어요.'); return; }
+    const existing = new Set((rows || []).map(r => r.creditorName.replace(/\s/g, '')));
+    const fresh = parsed.rows.filter(r => !existing.has(r.name.replace(/\s/g, '')));
+    const skipped = parsed.rows.length - fresh.length;
+    const ok = await dialog.confirm({
+      title: '채권자 CSV 가져오기',
+      message: `${parsed.rows.length}곳을 읽었어요${skipped ? ` (이미 장부에 있는 ${skipped}곳은 건너뜀)` : ''}. ${fresh.length}곳을 장부에 '요청 전'으로 넣을까요?${parsed.warnings.length ? `\n\n확인할 점: ${parsed.warnings.slice(0, 3).join(' / ')}` : ''}`,
+      confirmText: '장부에 넣기',
+    });
+    if (!ok || fresh.length === 0) return;
+    setBusy(true);
+    const start = (rows || []).reduce((m, r) => Math.max(m, r.seq), 0);
+    const r = await addDebtCertificates(officeId, caseKey, fresh.map((c, i) => ({ creditorName: c.name, seq: start + i + 1, source: 'office', claimedPrincipal: c.principal })));
+    setBusy(false);
+    if (r.ok === false) { toast.error(r.message); return; }
+    toast.success(`${r.data.length}곳을 장부에 넣었어요. 금액은 진술 원금으로만 들어가요(증명서로 확인 필요).`);
+    void load();
+  };
   const addOne = async () => {
     const name = await dialog.prompt({ title: '채권자 추가', message: '채권자(금융기관) 이름을 적어 주세요.' });
     if (!name || !name.trim()) return;
@@ -199,6 +222,8 @@ export default function DebtLedgerPanel(p: Props) {
             {agencyOpen && <DebtAgencySettingsModal officeId={officeId} onClose={() => setAgencyOpen(false)} onSaved={setAgencies} />}
             {canEdit && <button type="button" onClick={() => p.onOpenAgencyApplication(rows)} className={`${btn} border border-slate-200 text-slate-700`}><FileSpreadsheet className="w-3.5 h-3.5" /> 대행 의뢰서·위임장</button>}
             {canEdit && <button type="button" disabled={busy} onClick={() => void recordSend()} className={`${btn} bg-indigo-600 text-white`}><Send className="w-3.5 h-3.5" /> 대행사에 보냄 기록</button>}
+            {canEdit && <button type="button" disabled={busy} onClick={() => csvInputRef.current?.click()} className={`${btn} border border-slate-200 text-slate-700`} title="디던비·로패스·전자소송 채권자 CSV"><FileSpreadsheet className="w-3.5 h-3.5" /> CSV에서 불러오기</button>}
+            {canEdit && <input ref={csvInputRef} type="file" accept=".csv,text/csv" className="hidden" onChange={e => { const fl = e.target.files?.[0]; e.target.value = ''; if (fl) void importCsv(fl); }} />}
             {canEdit && <button type="button" onClick={() => void addOne()} className={`${btn} bg-[#1E3A5F] text-white`}><Plus className="w-3.5 h-3.5" /> 채권자 추가</button>}
           </div>
         </div>

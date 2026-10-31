@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { X, Upload, FileSpreadsheet, AlertTriangle, Check, Download, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx-js-style'; // 주의: xlsx-js-style 1.2.0은 SheetJS 0.18.5 기반 — CVE-2023-30533(0.19.3에서 수정)·CVE-2024-22363 미해결. 파일 크기·행 수 제한으로 노출만 줄임
+import RecentImportsList from './RecentImportsList';
 import { IntakeChannel, INTAKE_CHANNEL_CONFIG } from '../../types';
 import { formatPhone, isValidKoreanPhone } from '../../services/crmService';
 import ModalPortal from '../common/ModalPortal';
@@ -34,8 +35,10 @@ export function matchIntakeChannel(value: string): IntakeChannel | null {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onImport: (cases: ImportedCase[]) => void;
+  onImport: (cases: ImportedCase[], meta?: { fileName: string; fileHash: string | null }) => void;
   existingRequests: Array<{ id: string; clientName?: string; phone?: string; status?: string }>;
+  /** 서버 사무소 (있으면 최근 가져오기·되돌리기를 보여 준다) */
+  officeId?: string;
 }
 
 export interface ImportedCase {
@@ -64,7 +67,7 @@ const TARGET_FIELDS = [
   { key: 'specialMemo', label: '메모' },
 ];
 
-export default function ImportCasesModal({ isOpen, onClose, onImport, existingRequests }: Props) {
+export default function ImportCasesModal({ isOpen, onClose, onImport, existingRequests, officeId }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +78,7 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
   const [defaultIntakeChannel, setDefaultIntakeChannel] = useState<IntakeChannel>('naver_ad');
   
   const [allowDuplicates, setAllowDuplicates] = useState(false);
+  const fileMetaRef = React.useRef<{ fileName: string; fileHash: string | null } | null>(null);
 
   // Reset modal state
   const handleClose = () => {
@@ -111,6 +115,12 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
     reader.onload = (e) => {
       try {
         const data = e.target?.result;
+        // 같은 파일을 두 번 가져오는지 확인하는 지문 (NF-10, 내용은 보내지 않음)
+        if (data instanceof ArrayBuffer && typeof crypto !== 'undefined' && crypto.subtle) {
+          void crypto.subtle.digest('SHA-256', data).then(h => {
+            fileMetaRef.current = { fileName: file.name, fileHash: Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join('') };
+          }).catch(() => { fileMetaRef.current = { fileName: file.name, fileHash: null }; });
+        } else fileMetaRef.current = { fileName: file.name, fileHash: null };
         const workbook = XLSX.read(data, { type: 'array', sheetRows: MAX_IMPORT_ROWS + 1 });
         const firstSheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[firstSheetName];
@@ -285,7 +295,7 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
       return;
     }
 
-    onImport(casesToImport);
+    onImport(casesToImport, fileMetaRef.current || undefined);
     handleClose();
   };
 
@@ -333,6 +343,7 @@ export default function ImportCasesModal({ isOpen, onClose, onImport, existingRe
         <div className="flex-1 overflow-y-auto p-6">
           {step === 1 && (
             <div className="space-y-6">
+              {officeId && <RecentImportsList officeId={officeId} />}
               <div 
                 onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
                 onDragLeave={() => setIsDragging(false)}

@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { Search, Copy, Check, MapPin, Hash, User, ListPlus, ListChecks, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { CREDITOR_DIRECTORY, CreditorDirectoryItem } from '../../../../services/court/creditorAddressDirectory';
+import { creditorNeedsCheck, isCreditorDirectoryFromServer, type CreditorDirectoryItem } from '../../../../services/court/creditorAddressDirectory';
+import { useCreditorDirectory } from '../../../../hooks/useCreditorDirectory';
+import CreditorSuggestModal from '../../creditors/CreditorSuggestModal';
 import { setDockShared, useDockShared } from '../dockShared';
 import { copyText, useCopyFeedback } from '../clipboard';
 
@@ -25,16 +27,19 @@ export default function CreditorSearchTool() {
   const [searchTerm, setSearchTerm] = useState('');
   const [category, setCategory] = useState<CategoryFilter>('ALL');
   const { copiedKey, copy } = useCopyFeedback();
+  const directory = useCreditorDirectory();
+  // 수정 제안 창: undefined = 닫힘, null = 새 채권자, 항목 = 그 채권자 수정 (NF-5)
+  const [suggestFor, setSuggestFor] = useState<CreditorDirectoryItem | null | undefined>(undefined);
 
   const basketItems = useMemo(
-    () => basket.map(id => CREDITOR_DIRECTORY.find(c => c.id === id)).filter((c): c is CreditorDirectoryItem => !!c),
-    [basket],
+    () => basket.map(id => directory.find(c => c.id === id)).filter((c): c is CreditorDirectoryItem => !!c),
+    [basket, directory],
   );
 
   // 검색 및 필터링
   const filteredList = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    return CREDITOR_DIRECTORY.filter(item => {
+    return directory.filter(item => {
       if (category === 'BASKET' && !basket.includes(item.id)) return false;
       if (category !== 'ALL' && category !== 'BASKET' && item.category !== category) return false;
       if (!term) return true;
@@ -47,7 +52,7 @@ export default function CreditorSearchTool() {
         item.alias.some(a => a.toLowerCase().includes(term))
       );
     });
-  }, [searchTerm, category, basket]);
+  }, [searchTerm, category, basket, directory]);
 
   const toggleBasket = (item: CreditorDirectoryItem) => {
     const inBasket = basket.includes(item.id);
@@ -63,7 +68,7 @@ export default function CreditorSearchTool() {
 • 대표자: ${item.representative}
 • 법인/사업자등록번호: ${item.bizNumber}
 • 법원 송달장소: (${item.zipCode}) ${item.serviceAddress}
-• 대표전화: ${item.phone || '해당 없음'}`;
+• 대표전화: ${item.phone || '해당 없음'}${item.fax ? `\n• 팩스: ${item.fax}` : ''}`;
 
   const handleCopyFull = (item: CreditorDirectoryItem) => {
     copy(`[채권자 송달정보]\n${fullInfo(item)}\n${CAUTION}`, `${item.officialName} 송달정보를 복사했습니다.`, item.id);
@@ -92,7 +97,12 @@ export default function CreditorSearchTool() {
     <div className="p-3.5 space-y-3 text-xs text-slate-800">
       <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-xl px-2 py-1.5 leading-snug">
         참고용 주소록입니다. 대표자 변경·본점 이전이 잦으므로 채권자목록 작성 전 법인등기사항증명서로 반드시 확인하세요.
+        {!isCreditorDirectoryFromServer() && ' (서버 목록을 불러오지 못해 기본 목록을 보여 주고 있어요.)'}
       </p>
+      <div className="flex justify-end">
+        <button type="button" onClick={() => setSuggestFor(null)} className="text-xs font-bold text-indigo-800 hover:underline cursor-pointer">목록에 없는 채권자 제안하기</button>
+      </div>
+      {suggestFor !== undefined && <CreditorSuggestModal creditor={suggestFor} onClose={() => setSuggestFor(undefined)} />}
 
       {/* ── 담은 채권자 바 ── */}
       {basketItems.length > 0 && (
@@ -228,6 +238,12 @@ export default function CreditorSearchTool() {
                       </span>
                     </div>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">검색어: {item.alias.join(', ')}</p>
+                    <p className="text-xs mt-0.5">
+                      {creditorNeedsCheck(item)
+                        ? <span className="font-bold text-amber-800">확인 필요{item.verifiedOn ? ` (마지막 확인 ${item.verifiedOn})` : ' (확인일 없음)'}</span>
+                        : <span className="text-slate-600">확인일 {item.verifiedOn}{item.source ? ` · ${item.source}` : ''}</span>}
+                      <button type="button" onClick={() => setSuggestFor(item)} className="ml-2 font-bold text-indigo-800 hover:underline cursor-pointer">수정 제안</button>
+                    </p>
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
@@ -291,6 +307,12 @@ export default function CreditorSearchTool() {
                   </span>
                   <Copy className="w-3 h-3 text-slate-500 shrink-0 mt-0.5" aria-hidden="true" />
                 </button>
+                {(item.fax || item.certDesk) && (
+                  <p className="text-xs text-slate-700 px-1">
+                    {item.fax && <span className="mr-2">팩스 <span className="font-mono font-bold">{item.fax}</span></span>}
+                    {item.certDesk && <span>발급 창구: {item.certDesk}</span>}
+                  </p>
+                )}
               </div>
             );
           })

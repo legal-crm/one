@@ -19,7 +19,7 @@ import ModalPortal from '../../common/ModalPortal';
 import { useDialog } from '../../common/DialogProvider';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepaymentCreditor } from '../../../services/repayment/repaymentTypes';
-import { CREDITOR_DIRECTORY, type CreditorDirectoryItem } from '../../../services/court/creditorAddressDirectory';
+import { getCreditorDirectory, type CreditorDirectoryItem } from '../../../services/court/creditorAddressDirectory';
 import { CourtBatchFilingService } from '../../../services/court/CourtBatchFilingService';
 
 interface CreditorManagementModalProps {
@@ -62,9 +62,9 @@ function CreditorManagementModalInner({
   const [showDirDropdown, setShowDirDropdown] = useState(false);
 
   const filteredDirectory = useMemo(() => {
-    if (!dirSearch.trim()) return CREDITOR_DIRECTORY.slice(0, 10);
+    if (!dirSearch.trim()) return getCreditorDirectory().slice(0, 10);
     const q = dirSearch.toLowerCase();
-    return CREDITOR_DIRECTORY.filter(item => 
+    return getCreditorDirectory().filter(item => 
       item.officialName.toLowerCase().includes(q) ||
       item.alias.some(a => a.toLowerCase().includes(q))
     ).slice(0, 15);

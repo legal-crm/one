@@ -34,7 +34,7 @@ import {
 } from '../../../services/repayment/repaymentCalculationEngine';
 import { exportCourtRepaymentScheduleExcel } from '../../../services/repayment/repaymentExcelExporter';
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
-import { matchCreditorPreset, searchCreditorAddress, CREDITOR_DIRECTORY, type CreditorDirectoryItem } from '../../../services/court/creditorAddressDirectory';
+import { matchCreditorPreset, searchCreditorAddress, type CreditorDirectoryItem } from '../../../services/court/creditorAddressDirectory';
 import PrintableRepaymentPlanModal from './PrintableRepaymentPlanModal';
 import SecuredDebtCalculatorModal from './SecuredDebtCalculatorModal';
 import IncomeExpenseModal from './IncomeExpenseModal';

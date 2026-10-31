@@ -83,6 +83,7 @@ import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type 
 import { createTask, createTaskBatch } from '../../services/taskTicketService';
 import { templateForMilestone, tasksFromTemplate } from '../../services/cases/stageTaskTemplates';
 import TrashCaseList from './case/TrashCaseList';
+import { findImportedFile, importCasesToServer, undoImportJob } from '../../services/cases/caseImportService';
 import { loadWorkQueue, formatDue, WORK_GROUP_LABEL, type WorkItem } from '../../services/office/workQueueService';
 import ClosedCasesArchive from './case/ClosedCasesArchive';
 import { STAGE_TEST_REQUEST_IDS } from '../../data';
@@ -1314,7 +1315,29 @@ export default function CrmTab({
   }, [setRequests, notifySaved]);
 
   /** 대량 업로드 핸들러 */
-  const handleBulkImport = useCallback(async (cases: ImportedCase[]) => {
+  const handleBulkImport = useCallback(async (cases: ImportedCase[], meta?: { fileName: string; fileHash: string | null }) => {
+    // 서버 사무소: 줄마다 서버 사건을 만들고 가져온 기록을 남긴다 (NF-10, 되돌리기 가능)
+    if (officeId) {
+      const dup = await findImportedFile(officeId, meta?.fileHash || null);
+      if (dup) {
+        const again = await dialog.confirm({
+          title: '이미 가져온 파일이에요',
+          message: `${new Date(dup.createdAt).toLocaleDateString('ko-KR')}에 같은 파일로 사건 ${dup.createdCount}건을 만들었어요. 그래도 다시 가져올까요?`,
+          confirmText: '다시 가져오기', variant: 'warning',
+        });
+        if (!again) return;
+      }
+      setIsImportModalOpen(false);
+      const toastId = toast.loading(`사건 ${cases.length}건을 만드는 중…`);
+      const res = await importCasesToServer(officeId, cases, meta, (d, t) => toast.loading(`사건 만드는 중… ${d}/${t}`, { id: toastId }));
+      if (res.created === 0) { toast.error(`사건을 만들지 못했어요. ${res.failed[0]?.message || ''}`, { id: toastId }); return; }
+      const job = res.job;
+      toast.success(`사건 ${res.created}건을 만들었어요.${res.failed.length ? ` ${res.failed.length}건은 확인이 필요해요.` : ''}`, {
+        id: toastId, duration: 15000,
+        action: job ? { label: '되돌리기', onClick: () => { void undoImportJob(job).then(u => u.ok ? toast.success(`${u.trashed}건을 휴지통으로 옮겼어요.`) : toast.error(u.message || '되돌리지 못했어요.')); } } : undefined,
+      });
+      return;
+    }
     const saves: Promise<boolean>[] = [];
     // 템플릿의 한글 사건유형 → 내부 코드
     const mapCaseType = (v?: string): CrmClientExtension['caseType'] => {
@@ -1361,7 +1384,7 @@ export default function CrmTab({
     const failed = results.filter(ok => !ok).length;
     if (failed === 0) toast.success(`${results.length}건 일괄 등록 완료`);
     else toast.warning(`${results.length}건 중 ${failed}건은 서버 저장에 실패해 이 기기에만 저장되었습니다.`);
-  }, [setRequests]);
+  }, [setRequests, officeId, dialog]);
 
   /** 이탈 사유 확정 핸들러 */
   const handleDropOffConfirm = useCallback((reason: DropOffReason, detail: string) => {
@@ -2309,6 +2332,7 @@ export default function CrmTab({
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImport={handleBulkImport}
+        officeId={officeId || undefined}
         existingRequests={myRequests}
       />
       <ExportCasesModal

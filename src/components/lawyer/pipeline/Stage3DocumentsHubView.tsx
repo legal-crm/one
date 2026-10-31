@@ -37,6 +37,8 @@ import { CARRIER_LIST, getCarrierTrackingUrl, getCarrierLabel } from '../../../u
 import SmartDocumentDropzone from './SmartDocumentDropzone';
 import CorrectionPrepCard from './CorrectionPrepCard';
 import DebtLedgerPanel from '../debt/DebtLedgerPanel';
+import CreditorDispatchPanel from '../debt/CreditorDispatchPanel';
+import { isBankruptcyCaseType } from '../../../services/cases/caseTypeOf';
 import CertificateVaultCard from '../vault/CertificateVaultCard';
 import { won } from '../quickdock/ui/money';
 
@@ -1182,6 +1184,17 @@ export default function Stage3DocumentsHubView({
             });
             setIsAgencyAppModalOpen(true);
           }}
+        />
+      )}
+      {/* 채권자 일괄 발송 (NF-4): 장부 채권자마다 대리인 선임 통지서·발급 요청서 → 서류함 + 발송 기록 */}
+      {currentSection === 'debt-cert' && officeId && canEditDocs && (
+        <CreditorDispatchPanel
+          officeId={officeId}
+          caseKey={clientRequest.id}
+          debtorName={clientRequest.clientName || ''}
+          procedure={isBankruptcyCaseType(crmExt as any, clientRequest as any) ? 'bankruptcy' : 'rehab'}
+          courtName={crmExt?.courtCase?.courtName || (clientRequest as any).court || ''}
+          lawyerName={(clientRequest as any).assignedLawyerName || ''}
         />
       )}
       {/* 옛 화면(브라우저 저장)은 서버 사무소가 없는 개발 환경에서만 */}

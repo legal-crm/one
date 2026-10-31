@@ -35,6 +35,7 @@ import NotificationBell from './lawyer/NotificationBell';
 import ConsultStyleProfile from './lawyer/ConsultStyleProfile';
 import { confirmClientCopy, findProhibitedExpressions, loadOfficeCopyRules } from '../services/proposalCompliance';
 import { buildProposalSnapshot } from '../services/proposal/clientProposalModel';
+import { loadCreditorRegistry } from '../services/court/creditorRegistryService';
 import { decideProposalReview, listPendingProposalReviews, registerSeal, requestProposalReview } from '../services/office/officeSettingsService';
 import OfficeSettingsPanel, { OfficeSealCard } from './lawyer/settings/OfficeSettingsPanel';
 import { loadSealCache } from '../services/office/sealCache';
@@ -386,6 +387,10 @@ export default function LawyerRole({
     void loadOfficeCopyRules(currentOfficeId || null);
     void loadSealCache(currentOfficeId);
   }, [currentOfficeId]);
+  // 공용 채권자 정보(서버, NF-5) — 채권자 검색·자동 매칭·서식이 이 목록을 쓴다
+  useEffect(() => {
+    void loadCreditorRegistry().then(r => { if (r.ok === false) console.warn('[채권자 정보]', r.message); });
+  }, []);
 
   // ── 상담 요청이 없는 사건(직접 등록·영업 리드 이관): 서버 사건을 사건 관리 목록에 넣는다 (CM·SL) ──
   const officeWorkspaceCases = useOfficeWorkspaceCases(currentOfficeId);

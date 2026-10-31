@@ -213,7 +213,8 @@ export async function findCaseByWorkspaceKey(officeId: string, key: string): Pro
 export async function listOfficeWorkspaceCases(officeId: string): Promise<RpcResult<Array<{ case: CaseRecord; client: OfficeClient | null }>>> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;
   const { data, error } = await supabase.from('cases').select('*, office_clients(*)')
-    .eq('office_id', officeId).is('consult_request_id', null).is('deleted_at', null).eq('is_test', false)
+    // 예시 사건(is_test, NF-11)도 사무소 목록에는 보인다 — 제목에 [예시]가 붙고 의뢰인 화면·통계에는 쓰이지 않는다
+    .eq('office_id', officeId).is('consult_request_id', null).is('deleted_at', null)
     .order('created_at', { ascending: false }).limit(1000);
   if (error) return toRpcError(error);
   return { ok: true, data: (data || []).map((r: any) => ({ case: mapCase(r), client: r.office_clients ? mapClient(r.office_clients) : null })) };

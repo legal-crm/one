@@ -12,6 +12,7 @@ import AccountsPanel from './admin/AccountsPanel';
 import ConsultMonitorPanel from './admin/ConsultMonitorPanel';
 import PrivacyRequestsPanel from './admin/PrivacyRequestsPanel';
 import LegalDocumentsPanel from './admin/LegalDocumentsPanel';
+import CreditorRegistryPanel from './admin/CreditorRegistryPanel';
 import PlatformFeaturesPanel from './admin/PlatformFeaturesPanel';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
@@ -5006,6 +5007,7 @@ export default function AdminRole({
             <div className="space-y-6 animate-fadeIn">
               {isSupabaseConfigured && <PlatformFeaturesPanel />}
               {isSupabaseConfigured && <LegalDocumentsPanel />}
+              {isSupabaseConfigured && <CreditorRegistryPanel />}
               <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6">
                 <div>
                   <h3 className="font-extrabold text-lg text-white flex items-center gap-2">

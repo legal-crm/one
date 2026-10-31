@@ -17,8 +17,21 @@ export interface CreditorDirectoryItem {
   serviceAddress: string;        // 법원 우편물 송달장소
   phone?: string;                // 대표 전화
   isPriorityDefault?: boolean;   // 조세/4대보험 우선권 기본값 여부
+  // ── 서버 공용 채권자 정보(NF-5)에서 오는 칸 ──
+  fax?: string;
+  /** 부채증명서 발급 창구 안내 */
+  certDesk?: string;
+  /** 출처 (예: 홈페이지 공시, 사무소 제안 확인) */
+  source?: string;
+  /** 마지막 확인일 (YYYY-MM-DD). 없거나 1년 지났으면 '확인 필요' */
+  verifiedOn?: string | null;
+  version?: number;
 }
 
+/**
+ * 코드에 남긴 초기 목록 — 서버 공용 채권자 정보(creditor_registry)를 못 읽었을 때만 쓴다.
+ * 확인일이 없어 화면에는 '확인 필요'로 보인다. 화면·계산은 getCreditorDirectory()를 쓴다.
+ */
 export const CREDITOR_DIRECTORY: CreditorDirectoryItem[] = [
   // ── 1. 시중은행 및 특수은행 ──
   {
@@ -656,7 +669,7 @@ export function searchCreditorAddress(query: string): CreditorDirectoryItem[] {
   if (!query || !query.trim()) return [];
   const clean = query.replace(/\s+/g, '').toLowerCase();
 
-  return CREDITOR_DIRECTORY.filter(item => {
+  return getCreditorDirectory().filter(item => {
     // 1. 공식명 매칭
     const officialClean = item.officialName.replace(/\s+/g, '').toLowerCase();
     if (officialClean.includes(clean)) return true;
@@ -679,4 +692,32 @@ export function matchCreditorPreset(name: string): CreditorDirectoryItem | null 
 
   // 가장 짧고 정확한 별칭을 가진 항목 우선
   return results[0];
+}
+
+// ── 서버 공용 채권자 정보 (NF-5) ──
+let activeDirectory: CreditorDirectoryItem[] | null = null;
+const listeners = new Set<() => void>();
+
+/** 지금 쓰는 채권자 목록 (서버에서 읽었으면 서버 값, 아니면 코드 초기 목록) */
+export function getCreditorDirectory(): CreditorDirectoryItem[] {
+  return activeDirectory || CREDITOR_DIRECTORY;
+}
+export function isCreditorDirectoryFromServer(): boolean {
+  return activeDirectory !== null;
+}
+export function setCreditorDirectory(list: CreditorDirectoryItem[] | null): void {
+  activeDirectory = list && list.length > 0 ? list : null;
+  listeners.forEach(fn => { try { fn(); } catch { /* 화면 갱신 실패는 무시 */ } });
+}
+export function subscribeCreditorDirectory(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => { listeners.delete(fn); };
+}
+
+/** 확인일이 없거나 1년 넘게 지났으면 '확인 필요' */
+export function creditorNeedsCheck(item: Pick<CreditorDirectoryItem, 'verifiedOn'>, now: Date = new Date()): boolean {
+  if (!item.verifiedOn) return true;
+  const t = new Date(`${item.verifiedOn}T00:00:00`).getTime();
+  if (!Number.isFinite(t)) return true;
+  return now.getTime() - t > 365 * 86400000;
 }
