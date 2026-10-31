@@ -352,7 +352,7 @@ export default function ChatView({
       // 변호사 화면 필터(chatSelectors)가 이 문장으로 구분하므로 저장 문구는 그대로 둔다(의뢰인 화면은 consultFlow에서 바꿔 보여 줌)
       onAddMessage(
         currentRequest.id,
-        `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 시작할 수 있습니다.`,
+        `${bid.lawyerName} 변호사님의 제안서를 수락하셨습니다. 이제 1:1 상담을 시작할 수 있습니다.`,
         'system', 'system', '시스템 안내', bid.lawyerId
       );
     } else {
@@ -509,8 +509,6 @@ export default function ChatView({
             <Button onClick={browseLawyersForRequest} leftIcon={<ListChecks className="w-4 h-4" aria-hidden="true" />}>변호사 고르기</Button>
           </>
         );
-      case 'open_waiting':
-        return <Button variant="secondary" onClick={browseLawyersForRequest}>변호사 직접 고르기</Button>;
       case 'counseling':
         return currentChatProposal && !isChatClosedWithCurrent
           ? <Button onClick={() => setContractSelectProposal(currentChatProposal)} leftIcon={<Check className="w-4 h-4" aria-hidden="true" />}>수임 계약 진행</Button>
@@ -554,7 +552,6 @@ export default function ChatView({
   const lockedCopy: Record<string, string> = {
     no_check: '내 상황 체크를 마치고 변호사에게 상담을 요청하면, 제안서를 받은 뒤 이곳에서 1:1로 대화할 수 있어요.',
     choose_lawyers: '변호사에게 상담을 요청하면, 제안서를 받은 뒤 이곳에서 1:1로 대화할 수 있어요.',
-    open_waiting: '제안서가 도착한 뒤 \'상담 시작\'을 누르면 그 변호사와 대화할 수 있어요.',
     waiting_reply: '변호사가 제안서를 보내면 \'상담 시작\'으로 대화를 열 수 있어요.',
     review_proposals: '제안서의 \'상담 시작\'을 누르면 그 변호사와 1:1로 대화할 수 있어요.',
     closed: '종료된 상담입니다.',

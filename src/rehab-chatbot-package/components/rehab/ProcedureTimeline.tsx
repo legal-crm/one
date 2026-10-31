@@ -82,7 +82,7 @@ const PROCEDURE_STEPS: ProcedureStep[] = [
     },
     {
         id: 6,
-        title: '🎉 면책 결정 (빚 완전 탕감 & 새 출발!)',
+        title: '면책 결정 (남은 채무의 책임 면제)',
         description: '변제를 다 마치면 남은 빚의 법적 책임이 영구 면제돼요',
         duration: '2~4주',
         icon: <Award className="w-5 h-5 text-rose-600" />,

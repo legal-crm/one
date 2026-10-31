@@ -1,5 +1,5 @@
 import React from 'react';
-import { Check, Clock, Globe, ListChecks, MessageCircle, Scale, Sparkles, Trash2, UserCheck } from 'lucide-react';
+import { Check, Clock, ListChecks, MessageCircle, Scale, Sparkles, Trash2, UserCheck } from 'lucide-react';
 import type { ConsultProposal, User as UserType } from '../../../types';
 import { cn } from '../../../utils/cn';
 import { Badge, Button, EmptyState } from '../ui';
@@ -68,17 +68,6 @@ export default function MatchPanel({
           title="내 상황 체크를 마치면 변호사에게 요청할 수 있어요"
           description="체크 결과를 받는 변호사를 확인하고 동의한 뒤 보냅니다."
         />
-      );
-    }
-    if (stage === 'open_waiting') {
-      return (
-        <div className="rounded-2xl border border-brand/20 bg-brand-light/60 p-4 flex items-start gap-3">
-          <Globe className="w-5 h-5 text-brand mt-0.5 shrink-0" aria-hidden="true" />
-          <div className="text-sm leading-relaxed break-keep">
-            <p className="font-bold text-slate-900">공개 요청을 올렸어요</p>
-            <p className="text-slate-700">등록·승인된 변호사가 요청을 확인하고 제안서를 보내면 이곳에 표시됩니다. 실명과 연락처는 공개되지 않습니다.</p>
-          </div>
-        </div>
       );
     }
     return (

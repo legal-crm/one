@@ -1547,7 +1547,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                             <span className="font-bold text-slate-900 font-mono">{formatCurrency(totalRepaymentCalculated)}</span>
                           </div>
                           <div className="pt-2.5 border-t border-emerald-200/80 text-xs text-emerald-900 font-bold flex items-center justify-between">
-                            <span>예상 감면액 (탕감받는 돈)</span>
+                            <span>갚지 않아도 되는 금액(예상)</span>
                             <span className="text-sm font-black text-emerald-700 font-mono">{formatCurrency(estimatedReduction)}</span>
                           </div>
                           <div className="text-xs text-emerald-800 font-medium mt-1 flex items-center gap-1">
@@ -2045,7 +2045,7 @@ export const PremiumProposalReportModal: React.FC<PremiumProposalReportModalProp
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-slate-900">
-                      📋 스마트폰으로 5분 만에 끝내는 필수 사전 서류
+                      📋 스마트폰으로 준비하는 필수 사전 서류
                     </h3>
                     <p className="text-xs text-slate-500 mt-0.5">
                       미리 떼어두시면 서류 접수 및 사건 개시 기간이 최대 2주일 단축됩니다.

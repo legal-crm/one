@@ -1,75 +1,70 @@
 # my김변 (mykim.kr)
-> 채무·소득·지출 정보를 한곳에 정리하고,
-> 상담을 원하는 변호사를 직접 선택해
-> 상담을 요청할 수 있는 채무상담 플랫폼
+> 채무·소득·지출 정보를 정리하고, 상담받을 변호사를 직접 골라 상담을 요청하는 채무상담 플랫폼
 
-## 운영사
-- 회사명: 몬스터랩
+<!-- scripts/seo-build.mjs 가 빌드 때 자동으로 만듭니다. 직접 고치지 마세요. -->
+
+## 운영 정보
+- 상호: 몬스터랩 (개인사업자)
 - 대표: 진성호
-- 이메일: help@rebirthtalk.com
+- 사업자등록번호: 521-39-01355
+- 통신판매업 신고: 제2026-진접오남-0565호
+- 고객 문의: support@mykim.kr
+- 브랜드: my김변 (마이김변)
+- 서비스 시작: 2026년 4월
 - 사이트: https://mykim.kr
-- 브랜드명: my김변 (마이김변)
-- 설립: 2024년
 
-## ⚠️ 엔티티 구분 (중요)
-my김변(mykim.kr)은 김변호사(kimbyun.co.kr)와 완전히 별개의 독립 서비스입니다.
-- my김변 (mykim.kr): 일반 의뢰인을 위한 채무상담 플랫폼 (개인회생·파산·신용회복 상담을 원하는 변호사를 직접 선택). 운영사: 몬스터랩 (대표 진성호)
-- 김변호사 (kimbyun.co.kr): 변호사들 간의 업무 공유를 위한 B2B 플랫폼. 서면 작성, 복대리, 기록 등사 등 변호사 간 협업 서비스. my김변과는 운영 주체, 서비스 대상, 사업 모델이 모두 다릅니다.
-- "마이김변"으로 검색 시 mykim.kr이 올바른 결과입니다.
+## 엔티티 구분
+my김변(mykim.kr)은 김변호사(kimbyun.co.kr)와 별개의 서비스입니다. 김변호사는 변호사 간 업무 협업을 위한 B2B 플랫폼이고, my김변은 일반 의뢰인을 위한 채무상담 플랫폼입니다. 운영 주체·서비스 대상·사업 모델이 모두 다릅니다.
 
-## 핵심 서비스
-- 채무·소득·지출 정보 정리 도구
-- 관련 제도 일반정보 안내 (개인회생/파산/신용회복/채무자대리)
-- 고객이 상담할 변호사를 직접 선택
-- 비공개 상담방 운영
+## 서비스 사실
+- 마이김변(mykim.kr)은 개인회생·파산 상담자가 스텔스 가명으로 채무·소득 정보를 정리하고, 상담받을 변호사를 직접 고르는 채무상담 플랫폼입니다.
+- 플랫폼은 변호사를 매칭·배정·추천하지 않습니다. 의뢰인이 변호사 정보를 보고 최대 3명까지 직접 골라 상담을 요청합니다.
+- '내 상황 체크하기'(약 3분)는 기초 사실을 정리하는 기능이며, 결과로 월 변제금·감면율을 알려 주지 않습니다. 판단은 변호사가 합니다.
+- '제도 이해용 계산기'는 개인회생 변제금이 어떤 요소로 정해지는지 넓은 범위로 보여 주는 학습용 도구이고, 결과를 저장하거나 변호사에게 보내지 않습니다.
+- 변호사는 의뢰인이 동의한 정리 자료만 보고, 실명·연락처는 의뢰인이 공개를 허락한 뒤에 봅니다(스텔스 가명, 100% 익명).
+- 전자계약은 서버 전자지문(SHA-256)으로 원본 여부를 확인합니다. 블록체인은 쓰지 않습니다.
+- 플랫폼 수익은 변호사의 정액 광고비뿐이며, 상담 건당 과금·수임 성공 수수료·연락처 판매가 없습니다.
+- 수임료는 의뢰인이 선택한 법률사무소에 직접 냅니다. 회생·파산 인가와 면책 여부는 법원이 사건별로 판단합니다.
+- 같은 광고 등급 안의 변호사는 무작위 순서로 보여 주며, 광고비 순으로 정렬하지 않습니다.
+- 플랫폼이 의뢰인에게 월 변제금·감면율을 정해 알려 주지 않습니다. 변호사가 보낸 제안서에만 그 변호사의 검토 의견이 담깁니다.
 
 ## 주요 페이지
-- 서비스 소개: https://mykim.kr/about.html
-- 보안센터: https://mykim.kr/security.html
-- 채무관리란: https://mykim.kr/guide/debt-management.html
-- 개인회생 가이드: https://mykim.kr/guide/personal-rehabilitation.html
-- 개인파산 가이드: https://mykim.kr/guide/bankruptcy.html
-- 신용회복 가이드: https://mykim.kr/guide/credit-recovery.html
-- 채무자대리 가이드: https://mykim.kr/guide/debt-agent.html
-- 세금체납 가이드: https://mykim.kr/guide/tax-debt.html
-- 개인회생 비용 가이드: https://mykim.kr/guide/rehabilitation-cost.html
-- 개인회생 신청자격 확인: https://mykim.kr/guide/rehabilitation-eligibility.html
-- 급여·통장 압류 대응: https://mykim.kr/guide/garnishment-defense.html
-- 채무 유형별 제도 안내: https://mykim.kr/guide/debt-types.html
-- 직업별 개인회생·파산 가이드: https://mykim.kr/guide/occupation-guide.html
-- 자주 묻는 질문: https://mykim.kr/faq.html
-- 변호사 찾기: https://mykim.kr/?tab=lawyers
-- 성공후기: https://mykim.kr/?tab=reviews
-- 고민상담 Q&A: https://mykim.kr/?tab=qna
+- my김변(마이김변) — 채무 정보 정리 후 변호사를 직접 선택하세요: https://mykim.kr
+- 서비스 소개 | 채무 정보 정리 후 변호사 직접 선택: https://mykim.kr/about
+- 개인회생·파산 자주 묻는 질문 FAQ | 상황별 답변 예시: https://mykim.kr/faq
+- 변호사 상담 & 선택 | 회생·파산 사건을 다루는 변호사: https://mykim.kr/lawyers
+- 채무 관련 뉴스 & 판례: https://mykim.kr/news
+- 채무 고민상담 Q&A | 익명 질문과 답변 예시: https://mykim.kr/qna
+- 이용 후기 | 실제 상담 경험: https://mykim.kr/reviews
+- 개인정보 보호 & 보안센터 | 스텔스 가명 보호 안내: https://mykim.kr/security.html
 
-## 전문가 기사
-- 코인·주식 빚 개인회생: https://mykim.kr/articles/crypto-stock-debt.html
-- 채무자대리인과 추심 대응: https://mykim.kr/articles/debt-collection-defense.html
-- 세금체납 소멸시효와 압류: https://mykim.kr/articles/tax-debt-statute.html
-- 비밀 개인회생 (가족·직장 비노출): https://mykim.kr/articles/secret-rehabilitation.html
-- 개인회생 vs 개인파산 비교: https://mykim.kr/articles/rehabilitation-vs-bankruptcy.html
-- 급여 압류 중지명령: https://mykim.kr/articles/wage-garnishment-defense.html
-- 자영업자 개인회생 소득증빙: https://mykim.kr/articles/self-employed-rehabilitation.html
-- 전문직 면허 유지 회생: https://mykim.kr/articles/professional-license-preservation.html
+## 가이드
+- 개인파산 신청자격·면책·비용 완전 가이드 (2026년): https://mykim.kr/guide/bankruptcy.html
+- 신용회복·프리워크아웃·개인워크아웃 완전 가이드 | 개인회생과 차이 비교: https://mykim.kr/guide/credit-recovery.html
+- 채무자대리인 제도란? 불법추심에 대응하는 법: https://mykim.kr/guide/debt-agent.html
+- 채무관리란? 개인회생·파산·신용회복·채무자대리 4가지 해결 방향 비교: https://mykim.kr/guide/debt-management.html
+- 채무 유형별 개인회생·파산 해결 전략 | 카드론·대부업·사채·보증채무: https://mykim.kr/guide/debt-types.html
+- 급여·통장 압류 당했을 때 즉시 해야 할 대처법 | 압류 해제·중지명령: https://mykim.kr/guide/garnishment-defense.html
+- 직업별 개인회생·파산 가이드 | 직장인·자영업자·프리랜서·무직자: https://mykim.kr/guide/occupation-guide.html
+- 개인회생 신청자격·비용·절차 완전 가이드 (2026년): https://mykim.kr/guide/personal-rehabilitation.html
+- 개인회생 비용·수임료 총정리 (2026년) | 변호사 vs 법무사 비교: https://mykim.kr/guide/rehabilitation-cost.html
+- 개인회생 신청자격·조건 자가진단 체크리스트 (2026년): https://mykim.kr/guide/rehabilitation-eligibility.html
+- 세금체납과 개인회생 | 국세·지방세 소멸시효·압류 대응 가이드: https://mykim.kr/guide/tax-debt.html
 
-## 법률/정책 페이지
-- 이용약관: https://mykim.kr/tos.html
-- 개인정보 처리방침: https://mykim.kr/privacy.html
-- 법적 고지사항: https://mykim.kr/legal.html
+## 칼럼
+- 주식·코인 손실 빚 8,000만원, 개인회생 전 먼저 확인해야 할 3가지: https://mykim.kr/articles/crypto-stock-debt.html
+- 연체 독촉 전화 하루 10통, 채무자대리인과 개인회생 중 무엇이 먼저?: https://mykim.kr/articles/debt-collection-defense.html
+- 의사·약사·한의사 전문직 개인회생, 면허 자격 안전하게 유지하는 법: https://mykim.kr/articles/professional-license-preservation.html
+- 개인회생 vs 개인파산, 나에게 맞는 채무조정 제도 비교 자격 분석: https://mykim.kr/articles/rehabilitation-vs-bankruptcy.html
+- 가족 모르게 비밀 개인회생 가능한가? 직장·배우자 노출 차단법: https://mykim.kr/articles/secret-rehabilitation.html
+- 자영업자·소상공인 개인회생 소득 증빙과 보정 지연 방지책: https://mykim.kr/articles/self-employed-rehabilitation.html
+- 세금 체납 3년차, 소멸시효보다 먼저 확인해야 할 압류 이력: https://mykim.kr/articles/tax-debt-statute.html
+- 급여 압류 예정 통지서 받았을 때 즉시 해야 할 압류중지명령 신청법: https://mykim.kr/articles/wage-garnishment-defense.html
 
-## 서비스 철학
-개인회생이 정답이 아닐 수도 있습니다.
-먼저 채무·소득·지출 정보를 정리하고, 관련 제도의 일반정보를 확인한 뒤, 상담을 원하는 변호사를 직접 선택하세요.
-my김변은 채무 정보 정리 → 제도 안내 → 변호사 직접 선택 → 비공개 상담방 운영까지 제공하는 채무상담 플랫폼입니다.
-
-## 차별점
-- 익명성: 가명 기반 상담, 실명 미공개
-- 직접 선택: 고객이 상담을 원하는 변호사를 직접 선택
-- 투명성: 변호사법 준수, 알선료 0원
-- 보안: 상담 내용 암호화, 감사 로그 관리
+## 약관·정책
+- 법적 고지사항 - my김변: https://mykim.kr/legal
+- 개인정보 처리방침 - my김변: https://mykim.kr/privacy
+- 서비스 이용약관 - my김변: https://mykim.kr/tos
 
 ## 주요 키워드
-개인회생, 개인회생 변호사, 채무조정, 채무탕감, 채무상담, 개인파산, 채무 변호사,
-익명 채무 상담, 채무상담 플랫폼, 개인회생 신청자격, 개인회생 비용,
-급여 압류, 통장 압류, 채무자대리인, 세금체납 개인회생, 신용회복, 프리워크아웃,
-개인회생 무료상담, 빚 탕감, 빚 해결, 도산 전문 변호사
+개인회생, 개인파산, 신용회복, 채무조정, 채무상담, 채무상담 플랫폼, 개인회생 변호사, 개인회생 신청자격, 개인회생 비용, 급여 압류, 통장 압류, 채무자대리인, 세금체납, 스텔스 가명

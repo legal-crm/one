@@ -12,7 +12,7 @@ import JSZip from 'jszip';
 import {
   autopilotApi, AutopilotStatus, CampaignChannels, CampaignStatus, ChannelId, ChannelPost, DailyContext, GroupId, GROUP_CHANNELS,
   NewsItem, RotationTheme, Scene, scanChannelsLocal, channelPlainText, blogTextToHtml, explainAutopilotError,
-  fallbackImageUrl, toDataUrl, MARKETING_DISCLAIMER_SHORT, CampaignRow, ComplianceIssue,
+  toDataUrl, MARKETING_DISCLAIMER_SHORT, CampaignRow, ComplianceIssue,
 } from '../../../services/marketingAutopilotService';
 import ShortsVideoRenderer from './ShortsVideoRenderer';
 import { drawBlogImage, drawCardSlide, ensureFonts, loadImage, canvasToBlob, downloadBlob } from './canvasArt';
@@ -622,14 +622,12 @@ function BlogEditor({ value, onChange, date }: { value: NonNullable<CampaignChan
   const makeImages = async () => {
     setLoading(true);
     const out = await Promise.all(value.images.slice(0, 4).map(async (img, i) => {
-      try { return await loadImage((await autopilotApi.image(img.prompt, BLOG_IMAGE_SPECS[i].ar)).dataUrl); } catch {
-        try { return await loadImage(await toDataUrl(fallbackImageUrl(img.prompt, BLOG_IMAGE_SPECS[i].w, BLOG_IMAGE_SPECS[i].h, 31 + i))); } catch { return null; }
-      }
+      try { return await loadImage((await autopilotApi.image(img.prompt, BLOG_IMAGE_SPECS[i].ar)).dataUrl); } catch { return null; }
     }));
     setBgs(out);
     setLoading(false);
     const miss = out.filter(o => !o).length;
-    if (miss) toast.info(`${miss}장은 배경 없이 그라데이션으로 표시합니다.`);
+    if (miss) toast.error(`AI 배경 ${miss}장을 만들지 못해 그라데이션으로 표시합니다. 잠시 뒤 다시 만들어 보세요.`);
   };
 
   const downloadZip = async () => {
@@ -694,7 +692,7 @@ function CardnewsEditor({ value, onChange, date }: { value: NonNullable<Campaign
   const makeBg = async () => {
     setLoading(true);
     try { setBg(await loadImage((await autopilotApi.image(value.backgroundPrompt, '1:1')).dataUrl)); } catch {
-      try { setBg(await loadImage(await toDataUrl(fallbackImageUrl(value.backgroundPrompt, 1080, 1080, 77)))); toast.info('무료 폴백 배경을 썼습니다.'); } catch { toast.error('배경을 만들지 못했습니다.'); }
+      toast.error('AI 배경을 만들지 못했습니다. 그라데이션 배경으로 표시합니다.');
     }
     setLoading(false);
   };

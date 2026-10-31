@@ -186,11 +186,7 @@ export async function pcmBase64ToAudioBuffer(ctx: BaseAudioContext, base64: stri
   return buf;
 }
 
-/** 무료 폴백 배경 (Pollinations, 키 불필요 — 제3자 서비스이므로 상업 이용 조건 확인 필요) */
-export function fallbackImageUrl(prompt: string, w: number, h: number, seed = 7): string {
-  const clean = prompt.replace(/[가-힣ㄱ-ㅎㅏ-ㅣ]/g, '').replace(/\s+/g, ' ').trim();
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(`${clean}, photorealistic, no text, no letters, no logo`)}?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
-}
+// (무료 폴백 배경 Pollinations는 상업 이용 조건이 보장되지 않아 삭제 — M0. AI 배경이 실패하면 그라데이션으로 표시)
 
 /** 외부 이미지 URL → data URL (캔버스 오염 방지) */
 export async function toDataUrl(src: string): Promise<string> {

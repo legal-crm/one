@@ -9,6 +9,7 @@ import {
 import { toast } from 'sonner';
 import { fetchConsultCooldownRemaining } from '../services/cms/contentService';
 import { useDialog } from './common/DialogProvider';
+import { captureFirstTouch, initAnalytics, trackEvent } from '../services/marketing/attribution';
 import { Client, FinancialProfile, ConsultRequest, ConsultStatus, User as LawyerType, ConsultMessage, IntakeData, NewsArticle, ClientQA, SuccessReview, MainBanner, Notice, Member, ActivityLog, MemberRole, PlatformConfig, ClientInquiry, AppSettings, PopupConfig, LawyerInquiry } from '../types';
 import { migrateAnonymousRequests, saveOwnConsultRequestStrict, clientRequestLawyers, loadMyConsultSeats } from '../services/consultService';
 import { calculateRehabPlan } from '../rehabEngine';
@@ -720,6 +721,7 @@ export default function ClientRole({
     }
 
     if (added.length > 0) {
+      trackEvent('consult_request_sent');
       // 안내문이 '○○ 변호사님'으로 끝나므로 이름에 붙은 '변호사'는 뗀다
       const names = added
         .map(id => directoryLawyers.find(x => x.id === id))
@@ -861,6 +863,9 @@ export default function ClientRole({
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
   // 진행 중 변호사 자리: 로그인·변호사 찾기/내 관리방을 열 때·요청 목록이 바뀔 때 서버에서 다시 센다 (거절·기한 지남은 서버가 반영)
   const seatRefreshKey = requests.map(r => `${r.id}:${r.status}:${(r.selectedLawyerIds || []).length}`).join('|');
+  // 첫 유입 경로 기록·방문 분석(환경변수가 있을 때만), 변호사 찾기 열람 단계 (M-6, 입력값 없음)
+  useEffect(() => { captureFirstTouch(); initAnalytics(); }, []);
+  useEffect(() => { if (activeTab === 'lawyers') trackEvent('lawyer_list_viewed'); }, [activeTab]);
   useEffect(() => {
     if (!isLoggedIn) { setSeatInfo(null); return; }
     if (activeTab === 'lawyers' || activeTab === 'chat') refreshSeats();
@@ -1709,6 +1714,7 @@ export default function ClientRole({
 
   const handleIntakeSubmit = (intakeData: IntakeData, navigateToLawyers: boolean = true) => {
     if (!checkCooldown()) return;
+    trackEvent('check_completed');
     const result = calculateRehabPlan(intakeData, effectiveSettings);
     
     // Convert Won units to Man-won (10,000 KRW) units

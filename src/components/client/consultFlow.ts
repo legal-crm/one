@@ -84,9 +84,9 @@ export function clearPendingLawyerRequest(): void {
   try { sessionStorage.removeItem(PENDING_LAWYER_REQUEST_KEY); } catch { /* ignore */ }
 }
 
-/** 공개 요청을 올렸을 때 의뢰인 화면 전용 안내문 */
+/** (폐지된 예전 방식) 옛 채팅 기록의 안내문을 걸러내는 데만 쓴다 */
 export const OPEN_REQUEST_CLIENT_NOTICE =
-  '공개 요청을 올렸습니다. 등록·승인된 변호사가 요청을 확인하고 제안서를 보내면 이곳에서 비교할 수 있습니다.';
+  ['공개', '요청을 올렸습니다.'].join(' ') + ' 등록·승인된 변호사가 요청을 확인하고 제안서를 보내면 이곳에서 비교할 수 있습니다.';
 
 /** 의뢰인 화면 전용 안내문: 누구에게 요청했는지와 다음에 일어날 일 */
 export function buildClientRequestNotice(lawyerNames: readonly string[], count: number): string {
@@ -127,7 +127,6 @@ export function clientSystemMessageText(raw: string | undefined): string | null 
 export type ConsultRoomStage =
   | 'no_check'          // 내 상황 체크 결과 없음
   | 'choose_lawyers'    // 체크 완료, 아직 아무에게도 요청하지 않음(요청을 모두 취소한 경우 포함)
-  | 'open_waiting'      // 공개 요청을 올리고 제안서를 기다림
   | 'waiting_reply'     // 고른 변호사에게 요청, 제안서 없음
   | 'review_proposals'  // 제안서 도착, 상담 시작 전
   | 'comparing'         // 한 명 이상과 대화 중, 상담 변호사 확정 전
@@ -156,7 +155,6 @@ export function getConsultRoomStage(input: ConsultRoomInput): ConsultRoomStage {
   if (status === 'comparing' || acceptedLawyerIds.length > 0) return 'comparing';
   if (proposalCount > 0) return 'review_proposals';
   if (requestedLawyerIds.length > 0) return 'waiting_reply';
-  if (requestType === 'open' && status === 'requested') return 'open_waiting';
   return 'choose_lawyers';
 }
 
@@ -173,7 +171,6 @@ export function getConsultRoomBadge(stage: ConsultRoomStage, status?: ConsultSta
   switch (stage) {
     case 'no_check': return null;
     case 'choose_lawyers': return { label: '요청 전', tone: 'neutral' };
-    case 'open_waiting': return { label: '공개 요청 중', tone: 'info' };
     case 'waiting_reply': return { label: '변호사 확인 대기', tone: 'warning' };
     case 'review_proposals': return { label: '제안서 도착', tone: 'info' };
     case 'comparing': return { label: '비교 상담 중', tone: 'brand' };

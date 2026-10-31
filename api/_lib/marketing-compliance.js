@@ -2,6 +2,8 @@
 // 목적: AI가 만든 문장에서 변호사법·변호사 광고에 관한 규정·표시광고법상 위험 표현을 찾아
 //       자동 치환하거나 사람 확인이 필요한 항목으로 표시한다.
 // 주의: 이 검사는 규칙 기반 1차 필터다. 법률 검토를 대신하지 않는다.
+// 결정 사항 규칙(전담·배정·매칭·추천·견적 비교·블록체인·공개 요청 등)은 공통 사전 compliance-terms.js에서 읽는다 (M-9).
+import { DECISION_RULES, decisionRuleRegex } from './compliance-terms.js';
 
 /** 모든 콘텐츠 하단에 붙는 고지문 */
 export const MARKETING_DISCLAIMER =
@@ -103,6 +105,10 @@ export const COMPLIANCE_RULES = [
     pattern: /변호사(?:를|을)?\s*(소개|알선|연결)(?:해\s*드|시켜|해줍)|(최적|맞춤)\s*변호사\s*(배정|매칭)/g,
     hint: '플랫폼은 알선하지 않습니다. "변호사 정보를 확인하고 직접 선택"으로 표현하세요.',
   },
+  // 공통 사전의 결정 사항 규칙
+  ...DECISION_RULES.filter(r => r.id !== 'free-legal-consult').map(r => ({
+    id: r.id, severity: r.severity, label: r.label, pattern: decisionRuleRegex(r, 'g'), hint: r.hint,
+  })),
 ];
 
 /** 숫자 주장(%, 배, 통, 명, 건, 만원, 억) — 출처 텍스트에 없으면 근거 확인 필요 */

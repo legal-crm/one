@@ -104,7 +104,7 @@ export default function MyPageView(props: MyPageViewProps) {
           {/* ═══ [제안서 중심 Proposal-First 트래커] ═══ */}
           {/* 계약 전 단계(!isContracted)일 때는 제안서 작성 중/도착 상태를 최우선 센터피스로 렌더링 */}
           {/* 요청을 보낸 뒤에만 진행을 보여 준다 (아무에게도 요청하지 않았는데 '검토 중'으로 보이지 않게) */}
-          {!isContracted && !!profile && !!activeRequest && ['open_waiting', 'waiting_reply', 'review_proposals', 'comparing', 'counseling'].includes(getRequestRoomStage(activeRequest)) && (
+          {!isContracted && !!profile && !!activeRequest && ['waiting_reply', 'review_proposals', 'comparing', 'counseling'].includes(getRequestRoomStage(activeRequest)) && (
             <ClientProposalTracker
               proposals={allProposals}
               activeRequest={activeRequest || requests[0]}

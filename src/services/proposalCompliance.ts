@@ -6,28 +6,10 @@
 // (이전: 금지 표현이 브라우저(localStorage)에만 저장돼 다른 기기·직원에게 적용되지 않았다)
 // ============================================================
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { CLIENT_COPY_TERMS } from '../../api/_lib/compliance-terms.js';
 
-/** 변호사 광고규정상 문제 소지가 큰 공통 표현 (결과 보장·과장·알선 오해) */
-export const DEFAULT_PROHIBITED_EXPRESSIONS = [
-  '100% 보장',
-  '100% 가능',
-  '100% 비밀 보장',
-  '인가 보장',
-  '면책 보장',
-  '무조건',
-  '확실히',
-  '반드시 인가',
-  '전격 면책',
-  '획기적',
-  '완벽히 방어',
-  '기적',
-  '전액 탕감',
-  '최대 90% 탕감',
-  '전담 변호사',
-  '변호사 배정',
-  '업계 1위',
-  '최고의 변호사',
-];
+/** 변호사 광고규정상 문제 소지가 큰 공통 표현 (결과 보장·과장·알선 오해) — 공통 사전 api/_lib/compliance-terms.js (M-9) */
+export const DEFAULT_PROHIBITED_EXPRESSIONS: string[] = [...CLIENT_COPY_TERMS];
 
 /** 공개 Q&A 검사 기본 목록 — 서버 qna_flagged_terms와 같아야 해서 따로 고정 (바꾸면 서버 함수도 같이) */
 export const QNA_BASE_TERMS = ['100% 보장', '100% 비밀 보장', '인가 보장', '면책 보장', '무조건', '확실히', '반드시 인가', '전격 면책', '획기적', '완벽히 방어'];

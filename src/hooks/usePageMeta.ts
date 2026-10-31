@@ -36,8 +36,8 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
     description: '채무 정보를 정리하고, 상담을 원하는 변호사를 직접 선택하세요. 익명 진단부터 변호사 선택까지, 채무상담 플랫폼 my김변.',
   },
   request: {
-    title: '익명 채무 진단 | 내 상황 체크하기 | my김변',
-    description: '익명으로 채무 상황을 정리하고 나에게 맞는 해결 방향을 확인합니다.',
+    title: '내 상황 체크하기 | 채무 정보 정리 | my김변',
+    description: '스텔스 가명으로 채무·소득 정보를 정리하고, 상담받을 변호사를 직접 골라 요청합니다.',
   },
   lawyers: {
     title: '변호사 찾기 | 회생·파산 상담 변호사 | my김변',

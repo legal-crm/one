@@ -259,7 +259,7 @@ export const filterAndSanitizeMessagesForLawyer = (
         if (!mentionsMe) {
           continue;
         }
-        const sanitizedText = '의뢰인이 변호사님의 제안서를 수락하셨습니다. 이제 1:1 전담 상담을 진행하실 수 있습니다.';
+        const sanitizedText = '의뢰인이 변호사님의 제안서를 수락하셨습니다. 이제 1:1 상담을 진행하실 수 있습니다.';
         if (seenSystemTexts.has(sanitizedText)) continue;
         seenSystemTexts.add(sanitizedText);
         result.push({

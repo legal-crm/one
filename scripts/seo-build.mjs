@@ -15,6 +15,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { PLATFORM_FACTS_LINES } from '../api/_lib/compliance-terms.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const PUBLIC = path.join(ROOT, 'public');
@@ -153,10 +154,11 @@ function main() {
     const p = analyze(file, rel);
     const prev = prevByUrl.get(urlKey(p.url));
     let lastmod;
+    const changed = !prev || prev.hash !== p.hash;
     if (prev && prev.hash === p.hash && prev.lastmod) lastmod = prev.lastmod;
     else if (prev) lastmod = today;
     else lastmod = p.dateModified || prevSitemap.get(urlKey(p.url)) || p.datePublished || today;
-    return { ...p, lastmod };
+    return { ...p, lastmod, changed };
   }).sort((a, b) => (ORDER[a.section] - ORDER[b.section]) || a.url.localeCompare(b.url));
 
   // 중복 title/description·canonical 탐지
@@ -245,14 +247,138 @@ function main() {
   const changed = [
     writeIfChanged('sitemap.xml', sitemap) && 'sitemap.xml',
     writeIfChanged('rss.xml', rss) && 'rss.xml',
-    writeIfChanged('seo-manifest.json', JSON.stringify(manifest, null, 2) + '\n') && 'seo-manifest.json',
+    writeIfChanged('seo-manifest.json', JSON.stringify(manifest, null, 2).replace(/,\n\s*"changed": (?:true|false)/g, '') + '\n') && 'seo-manifest.json',
+    writeIfChanged('llms.txt', buildLlmsTxt(indexable)) && 'llms.txt',
   ].filter(Boolean);
 
   console.log(`[seo-build] 페이지 ${pages.length}개 (색인 대상 ${indexable.length}, RSS ${feedItems.length}) · 이슈 있는 페이지 ${manifest.counts.pagesWithIssues}개 · 갱신: ${changed.join(', ') || '없음'}`);
+  return { indexable };
+}
+
+// ── llms.txt 자동 생성 (M0, GEO): 회사 사실은 공통 사전·고정 값, 페이지 목록은 색인 대상에서 ──
+function buildLlmsTxt(indexable) {
+  const line = p => `- ${p.title.replace(/\s*\|\s*my김변.*$/, '').trim() || p.url}: ${p.url}`;
+  const legal = new Set(['tos.html', 'privacy.html', 'legal.html']);
+  const pages = indexable.filter(p => (p.section === 'page' || p.section === 'home') && !legal.has(p.file));
+  const guides = indexable.filter(p => p.section === 'guide');
+  const articles = indexable.filter(p => p.section === 'article');
+  const legals = indexable.filter(p => legal.has(p.file));
+  return [
+    '# my김변 (mykim.kr)',
+    '> 채무·소득·지출 정보를 정리하고, 상담받을 변호사를 직접 골라 상담을 요청하는 채무상담 플랫폼',
+    '',
+    '<!-- scripts/seo-build.mjs 가 빌드 때 자동으로 만듭니다. 직접 고치지 마세요. -->',
+    '',
+    '## 운영 정보',
+    '- 상호: 몬스터랩 (개인사업자)',
+    '- 대표: 진성호',
+    '- 사업자등록번호: 521-39-01355',
+    '- 통신판매업 신고: 제2026-진접오남-0565호',
+    '- 고객 문의: support@mykim.kr',
+    '- 브랜드: my김변 (마이김변)',
+    '- 서비스 시작: 2026년 4월',
+    '- 사이트: https://mykim.kr',
+    '',
+    '## 엔티티 구분',
+    'my김변(mykim.kr)은 김변호사(kimbyun.co.kr)와 별개의 서비스입니다. 김변호사는 변호사 간 업무 협업을 위한 B2B 플랫폼이고, my김변은 일반 의뢰인을 위한 채무상담 플랫폼입니다. 운영 주체·서비스 대상·사업 모델이 모두 다릅니다.',
+    '',
+    '## 서비스 사실',
+    ...PLATFORM_FACTS_LINES.map(l => `- ${l}`),
+    '- 같은 광고 등급 안의 변호사는 무작위 순서로 보여 주며, 광고비 순으로 정렬하지 않습니다.',
+    '- 플랫폼이 의뢰인에게 월 변제금·감면율을 정해 알려 주지 않습니다. 변호사가 보낸 제안서에만 그 변호사의 검토 의견이 담깁니다.',
+    '',
+    '## 주요 페이지',
+    ...pages.map(line),
+    '',
+    '## 가이드',
+    ...guides.map(line),
+    '',
+    '## 칼럼',
+    ...articles.map(line),
+    '',
+    '## 약관·정책',
+    ...legals.map(line),
+    '',
+    '## 주요 키워드',
+    '개인회생, 개인파산, 신용회복, 채무조정, 채무상담, 채무상담 플랫폼, 개인회생 변호사, 개인회생 신청자격, 개인회생 비용, 급여 압류, 통장 압류, 채무자대리인, 세금체납, 스텔스 가명',
+    '',
+  ].join('\n');
+}
+
+// ── 배포 빌드에서만: 운영 중인 SNS(sameAs) 반영, 바뀐 페이지 IndexNow 자동 전송 ──
+const SOCIAL_HOSTS = {
+  naver_blog: /^https:\/\/(m\.)?blog\.naver\.com\//, naver_cafe: /^https:\/\/(m\.)?cafe\.naver\.com\//,
+  instagram: /^https:\/\/(www\.)?instagram\.com\//, threads: /^https:\/\/(www\.)?threads\.(net|com)\//,
+  youtube: /^https:\/\/(www\.)?youtube\.com\//, tiktok: /^https:\/\/(www\.)?tiktok\.com\//,
+  facebook: /^https:\/\/(www\.)?facebook\.com\//, kakao_channel: /^https:\/\/pf\.kakao\.com\//,
+};
+
+async function fetchSocialChannels() {
+  const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+  const key = process.env.VITE_SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  const r = await fetch(`${url.replace(/\/$/, '')}/rest/v1/platform_config?id=eq.social_channels&select=data`, {
+    headers: { apikey: key, Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) return null;
+  const rows = await r.json();
+  const list = Array.isArray(rows?.[0]?.data?.channels) ? rows[0].data.channels : [];
+  return list.filter(c => c && c.active && typeof c.url === 'string' && SOCIAL_HOSTS[c.channel]?.test(c.url)).map(c => c.url).slice(0, 10);
+}
+
+function applySameAs(urls) {
+  const json = JSON.stringify(urls);
+  for (const rel of ['index.html', 'public/about.html']) {
+    const file = path.join(ROOT, rel);
+    if (!fs.existsSync(file)) continue;
+    const html = fs.readFileSync(file, 'utf8');
+    const next = html.replace(/"sameAs":\s*\[[^\]]*\]/g, `"sameAs": ${json}`);
+    if (next !== html) fs.writeFileSync(file, next, 'utf8');
+  }
+}
+
+async function submitIndexNow(urls) {
+  const key = String(process.env.INDEXNOW_KEY || '5283c27badad10634284ba2943977400').trim();
+  const payload = JSON.stringify({ host: 'mykim.kr', key, keyLocation: `${ORIGIN}/${key}.txt`, urlList: urls.slice(0, 100) });
+  const endpoints = [['IndexNow', 'https://api.indexnow.org/indexnow'], ['Naver', 'https://searchadvisor.naver.com/indexnow']];
+  const results = await Promise.all(endpoints.map(async ([engine, u]) => {
+    try {
+      const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json; charset=utf-8' }, body: payload, signal: AbortSignal.timeout(10000) });
+      return { engine, status: r.status, ok: r.status === 200 || r.status === 202 };
+    } catch { return { engine, status: 0, ok: false }; }
+  }));
+  // 전송 기록은 서버에 (관리자 SEO 화면이 읽음)
+  const sUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const sKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (sUrl && sKey) {
+    await fetch(`${sUrl.replace(/\/$/, '')}/rest/v1/seo_indexnow_log`, {
+      method: 'POST',
+      headers: { apikey: sKey, Authorization: `Bearer ${sKey}`, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
+      body: JSON.stringify({ source: 'build', urls: urls.slice(0, 100), ok: results.some(x => x.ok), results }),
+      signal: AbortSignal.timeout(8000),
+    }).catch(() => {});
+  }
+  return results;
+}
+
+async function deployExtras(indexable) {
+  if (!process.env.VERCEL) return; // 로컬 빌드는 추적 파일을 바꾸지 않는다
+  try {
+    const social = await fetchSocialChannels();
+    if (social) { applySameAs(social); console.log(`[seo-build] sameAs ${social.length}개 반영`); }
+  } catch (e) { console.warn('[seo-build] SNS 채널을 읽지 못해 sameAs를 비워 둡니다:', e?.message || e); }
+  if (process.env.VERCEL_ENV !== 'production') return;
+  const changedUrls = indexable.filter(p => p.changed).map(p => p.url);
+  if (changedUrls.length === 0) return;
+  try {
+    const res = await submitIndexNow(changedUrls);
+    console.log(`[seo-build] IndexNow ${changedUrls.length}개 전송: ${res.map(r => `${r.engine} ${r.status}`).join(', ')}`);
+  } catch (e) { console.warn('[seo-build] IndexNow 전송 실패(빌드는 계속):', e?.message || e); }
 }
 
 try {
-  main();
+  const out = main();
+  await deployExtras(out?.indexable || []);
 } catch (e) {
   console.warn('[seo-build] 생성 실패 — 기존 파일을 유지하고 빌드를 계속합니다:', e?.message || e);
 }

@@ -1954,7 +1954,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 </h3>
                                 <p className="text-sm text-slate-500 leading-relaxed mb-5">
                                     {loginPromptAction === 'consultation'
-                                        ? '전담 변호사를 선택하고 상담을 요청하려면 로그인이 필요합니다. 로그인 후 진단 결과가 내 관리방에 안전하게 저장됩니다.'
+                                        ? '변호사를 직접 선택하고 상담을 요청하려면 로그인이 필요합니다. 로그인 후 진단 결과가 내 관리방에 안전하게 저장됩니다.'
                                         : loginPromptAction === 'pdf'
                                             ? '진단 결과를 PDF로 저장하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
                                             : '진단 결과를 공유하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'}

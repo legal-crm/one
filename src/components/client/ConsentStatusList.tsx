@@ -55,7 +55,7 @@ export default function ConsentStatusList() {
       title: '변호사에게 상담 정보 제공',
       done: !!lastThirdParty,
       detail: lastThirdParty
-        ? `최근 ${formatDateTime(lastThirdParty.at)} · ${lastThirdParty.scope === 'open' ? '공개 요청' : `변호사 ${lastThirdParty.lawyerIds.length}명`}${(consents.thirdParty?.length || 0) > 1 ? ` (총 ${consents.thirdParty!.length}회)` : ''}`
+        ? `최근 ${formatDateTime(lastThirdParty.at)} · 변호사 ${lastThirdParty.lawyerIds.length}명${(consents.thirdParty?.length || 0) > 1 ? ` (총 ${consents.thirdParty!.length}회)` : ''}`
         : '아직 변호사에게 상담 정보를 보내지 않았습니다. 상담을 요청할 때 받는 변호사를 확인하고 동의합니다.',
     },
   ];

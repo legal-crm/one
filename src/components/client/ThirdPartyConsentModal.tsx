@@ -47,9 +47,7 @@ export default function ThirdPartyConsentModal({ open, scope, recipients, onClos
   const rows: Array<{ label: string; value: React.ReactNode }> = [
     {
       label: '받는 사람',
-      value: scope === 'open' ? (
-        <span>마이김변에 등록·승인된 변호사 중 요청을 확인한 변호사</span>
-      ) : (
+      value: (
         <ul className="space-y-1">
           {recipients.map(r => (
             <li key={r.id}>
@@ -72,7 +70,7 @@ export default function ThirdPartyConsentModal({ open, scope, recipients, onClos
       onClose={onClose}
       size="md"
       icon={<ShieldCheck className="w-5 h-5" />}
-      title={scope === 'open' ? '공개 요청으로 제안을 받을까요?' : '변호사에게 상담 정보를 보낼까요?'}
+      title="변호사에게 상담 정보를 보낼까요?"
       description="요청을 보내기 전에 받는 사람과 보내는 정보를 확인해 주세요."
       dismissible={!submitting}
       footer={

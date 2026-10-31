@@ -8,19 +8,21 @@ import {
   fixCompliance, ensureDisclaimer, scanCampaignTexts, scanCompliance,
   MARKETING_DISCLAIMER, MARKETING_DISCLAIMER_SHORT,
 } from './marketing-compliance.js';
+import { PLATFORM_FACTS_LINES } from './compliance-terms.js';
 
 // ─────────────────────────────────────────────────────────────
 // 1. 요일별 7대 장점 로테이션 (0=일 ~ 6=토, 한국 시간 기준)
 //    기획서 문구 중 규정 위반 소지('유출 0%', '전문 변호사 매칭')는 사실 표현으로 바꿨다.
+//    10월 결정 반영(M0): 블록체인·서류 공유 링크·30초 진단·여러 사무소 견적 표현 삭제. code 값은 저장 데이터와 맞추려고 그대로 둔다.
 // ─────────────────────────────────────────────────────────────
 export const ROTATION_THEMES = [
-  { day: 0, code: 'weekly_diagnosis', emoji: '📊', title: '주간 자가진단', hook: '이번 주 회생 뉴스, 내 빚에도 해당될까?', solution: '최신 기준을 반영한 30초 익명 자가진단과 변제금 계산기로 먼저 확인해 보세요 (결과는 참고용).', keywords: ['기준', '생계비', '변제', '개정', '통계', '계산'] },
-  { day: 1, code: 'voice_statement', emoji: '⚡', title: '서류 혁신', hook: '수십 종 서류 떼고 진술서 쓰다 밤새우셨나요?', solution: '말로 설명하면 진술서 초안을 만들어 주는 AI 음성 진술서와 제출 서류 정리 기능(DocHub)을 써 보세요.', keywords: ['서류', '진술서', '신청', '절차', '보정', '제출'] },
-  { day: 2, code: 'stealth_selection', emoji: '🛡️', title: '안심 탐색', hook: '번호 남겼다가 영업 전화에 시달리셨죠?', solution: '변호사 프로필을 직접 확인하고, 010 번호를 공개하지 않는 스텔스 가명으로 여러 사무소에 견적·상담을 요청할 수 있습니다.', keywords: ['불법추심', '추심', '대출', '광고', '개인정보', '브로커', '사기'] },
-  { day: 3, code: 'lawyer_welcome', emoji: '⚖️', title: '전문가 협업', hook: '서류가 부실해서 보정명령 받으면 어쩌나 걱정되시나요?', solution: '표준 양식으로 정리한 서류를 선택한 변호사와 공유해, 변호사가 사건 검토에 집중할 수 있게 돕습니다.', keywords: ['법원', '보정', '실무준칙', '변호사', '기각', '인가'] },
-  { day: 4, code: 'doc_compatibility', emoji: '🔗', title: '높은 호환성', hook: '이미 다른 곳에 맡겼는데 서류 준비가 막막하신가요?', solution: '어느 사무소에서 진행하든, 나홀로 신청하든 마이김변에서 서류를 만들어 담당 변호사에게 링크·QR로 전달할 수 있습니다.', keywords: ['나홀로', '신청', '서류', '법률구조', '지원'] },
-  { day: 5, code: 'mobile_contract', emoji: '📱', title: '비대면 기술', hook: '평일에 사무실 방문할 시간이 없으신가요?', solution: '모바일 전자계약으로 방문 없이 계약하고, 계약서 해시를 블록체인에 기록해 원본을 확인할 수 있습니다.', keywords: ['비대면', '디지털', '모바일', '온라인', '전자'] },
-  { day: 6, code: 'rehab_companion', emoji: '🤝', title: '면책 완주', hook: '인가 후 혼자 갚다가 미납되면 어떻게 되나요?', solution: '매월 변제금 납부일 알림과 미납 경고를 챙겨주는 회생동행 캘린더로 변제 기간을 관리해 보세요.', keywords: ['변제', '미납', '면책', '폐지', '인가', '생계'] },
+  { day: 0, code: 'weekly_diagnosis', emoji: '📊', title: '내 상황 정리', hook: '이번 주 회생 뉴스, 내 빚에도 해당될까?', solution: "'내 상황 체크하기'(약 3분)로 채무·소득을 먼저 정리하고, 제도 이해용 계산기로 변제금이 어떤 요소로 정해지는지 알아보세요. 내 사건의 판단은 상담하는 변호사가 합니다.", keywords: ['기준', '생계비', '변제', '개정', '통계', '계산'] },
+  { day: 1, code: 'voice_statement', emoji: '⚡', title: '서류 혁신', hook: '수십 종 서류 떼고 진술서 쓰다 밤새우셨나요?', solution: '어떤 서류가 필요한지 단계별로 정리한 안내를 보고, 선택한 변호사와 함께 준비 목록을 하나씩 채워 보세요.', keywords: ['서류', '진술서', '신청', '절차', '보정', '제출'] },
+  { day: 2, code: 'stealth_selection', emoji: '🛡️', title: '안심 탐색', hook: '번호 남겼다가 영업 전화에 시달리셨죠?', solution: '변호사 프로필을 직접 확인하고, 010 번호를 공개하지 않는 스텔스 가명으로 최대 3명에게 상담을 요청할 수 있습니다.', keywords: ['불법추심', '추심', '대출', '광고', '개인정보', '브로커', '사기'] },
+  { day: 3, code: 'lawyer_welcome', emoji: '⚖️', title: '변호사와 함께', hook: '서류가 부실해서 보정명령 받으면 어쩌나 걱정되시나요?', solution: '정리한 내용을 내가 고른 변호사에게만 보내고, 변호사가 요청한 서류를 마이김변에서 올려 함께 준비할 수 있습니다.', keywords: ['법원', '보정', '실무준칙', '변호사', '기각', '인가'] },
+  { day: 4, code: 'doc_compatibility', emoji: '🔗', title: '절차 안내', hook: '회생과 파산, 무엇이 다른지부터 막막하신가요?', solution: '마이김변 가이드에서 개인회생·개인파산·신용회복의 일반적인 절차와 필요한 서류를 먼저 살펴보세요. 내 사건에 맞는 방법은 변호사와 상담해 정하세요.', keywords: ['나홀로', '신청', '서류', '법률구조', '지원'] },
+  { day: 5, code: 'mobile_contract', emoji: '📱', title: '비대면 기술', hook: '평일에 사무실 방문할 시간이 없으신가요?', solution: '모바일 전자계약으로 방문 없이 계약하고, 서버 전자지문(SHA-256)으로 계약서가 체결 당시와 같은지 확인할 수 있습니다.', keywords: ['비대면', '디지털', '모바일', '온라인', '전자'] },
+  { day: 6, code: 'rehab_companion', emoji: '🤝', title: '면책 완주', hook: '인가 후 혼자 갚다가 미납되면 어떻게 되나요?', solution: '매월 변제금 납부일을 알려 주는 회생동행 캘린더로 변제 기간을 관리해 보세요.', keywords: ['변제', '미납', '면책', '폐지', '인가', '생계'] },
 ];
 
 export const GOLDEN_SCHEDULE = [
@@ -312,26 +314,24 @@ const SocialSchema = z.object({
 // ─────────────────────────────────────────────────────────────
 // 5. 프롬프트
 // ─────────────────────────────────────────────────────────────
+// 기능 사실은 공통 사전(compliance-terms.js PLATFORM_FACTS_LINES)이 원본이다 (M-9)
 const PLATFORM_FACTS = `[마이김변 기능 사실 — 아래 목록에 있는 기능만, 아래 표현 수준으로만 언급]
-- 변호사 탐색: 의뢰인이 변호사 프로필(경력·분야·후기)을 직접 보고 여러 사무소를 골라 견적·상담을 요청할 수 있음
-- 스텔스 가명: 상담 요청 단계에서 010 번호를 변호사에게 공개하지 않고 인앱 채팅으로 소통할 수 있음
-- AI 음성 진술서: 말로 설명하면 법원 제출용 진술서 초안을 만들어 줌 (최종 검토는 변호사와 본인)
-- 서류 정리(DocHub): 수입지출목록·재산목록 등 제출 서류를 한곳에서 정리
-- 서류 공유(LawyerDocShare): 다른 사무소에 맡겼거나 나홀로 신청하는 경우에도 서류를 만들어 담당 변호사에게 링크·QR로 전달
-- 모바일 전자계약: 방문 없이 계약하고 계약서 해시를 블록체인에 기록해 원본 확인 가능
-- 회생동행: 인가 후 매월 변제금 납부일 알림과 미납 경고
-- 익명 자가진단·변제금 계산기: 30초 입력으로 참고용 결과 확인 (법적 판단 아님)`;
+${PLATFORM_FACTS_LINES.map(l => `- ${l}`).join('\n')}
+- 회생동행: 인가 후 매월 변제금 납부일 알림
+[쓰지 않는 기능·표현 — 언급 금지] 블록체인 기록, 서류 공유 링크·QR, 30초 진단·AI 자가진단, 여러 사무소 견적·견적 비교, 공개 요청, 변호사 매칭·배정·추천, 전담 변호사, 무료 법률상담, 결과로 정해 주는 변제금·감면율`;
 
 const RULES = `[광고 규정 — 반드시 지킬 것]
 1. 결과 보장·단정 금지: "100% 탕감/면책", "무조건 인가", "반드시 해결" 등. → "요건을 충족하면 법원 기준에 따라 검토됩니다"
 2. 근거 없는 수치·통계·성공률·승소율 금지. 숫자는 [뉴스 팩트]에 있는 것만 쓴다.
 3. "국내 최초/유일/최고/1위" 같은 최상급·비교 표현 금지.
 4. "역경매·입찰·최저가·가격 경쟁" 표현 금지. 플랫폼은 변호사를 알선·배정하지 않는다. → "의뢰인이 변호사 정보를 확인하고 직접 선택"
-5. "무료 상담", "○○ 전문 변호사" 표현 금지 (무료는 자가진단 같은 플랫폼 기능에만).
+5. "무료 상담", "○○ 전문 변호사" 표현 금지 (플랫폼 기능 이용료가 없다는 사실만 쓴다).
 6. "검수 완료", "변호사법 100% 준수" 같은 자기 인증 금지. 실제 후기·사례를 지어내지 않는다 (예시는 "예시"라고 밝힌다).
 7. 공포 조장·과장 수식어("기적", "인생 역전", "빚 0원") 금지. 차분하고 정확한 정보 전달 톤.
 8. 법원 판단은 사건마다 다르며 개별 사안은 변호사 상담이 필요하다는 점을 밝힌다.
-9. 뉴스 원문에 없는 제도 변경·날짜·금액을 만들지 않는다. 불확실하면 "보도에 따르면"으로 쓴다.`;
+9. 뉴스 원문에 없는 제도 변경·날짜·금액을 만들지 않는다. 불확실하면 "보도에 따르면"으로 쓴다.
+10. "전담·배정·매칭·추천"(변호사), "탕감"(결과처럼), "견적 비교·다중 견적", "블록체인", "공개 요청", "기각 시 환불" 표현 금지. 결과는 "법원이 정한 변제를 마치면 남은 채무에 대해 면책을 받을 수 있다"처럼 절차로 설명한다.
+11. 사람 사례·대화는 실제처럼 쓰지 않는다. 쓰려면 "예시"라고 밝힌다. 실사풍 가상 의뢰인 인물 이미지는 만들지 않는다.`;
 
 function contextBlock(ctx) {
   const n = ctx.news;
@@ -778,7 +778,8 @@ export async function updateCampaign({ id, status, channels, userId }) {
     patch.channels = merged;
     patch.compliance = scanChannels(merged, ctx);
     patch.compliance_score = patch.compliance.score;
-    if (cur.status === 'approved') patch.status = 'ready'; // 수정되면 재승인 필요
+    // 수정되면 재승인 필요 (이전: 이미 게시된 캠페인은 고쳐도 'published'로 남아 다른 채널에 바로 게시됐다)
+    if (cur.status === 'approved' || cur.status === 'published') { patch.status = 'ready'; patch.approved_by = null; patch.approved_at = null; }
   }
   if (status) {
     if (!STATUSES.includes(status)) throw new AiError('잘못된 상태입니다.', 400);
@@ -802,6 +803,18 @@ export async function updateCampaign({ id, status, channels, userId }) {
 //   인스타그램: 이미지 공개 URL 필요 → 이번 단계는 수동 게시
 // ─────────────────────────────────────────────────────────────
 const GRAPH_VER = () => process.env.META_GRAPH_VERSION || 'v23.0';
+
+/** 게시물 링크에 UTM 붙이기 (M-6): utm_source=채널, utm_medium=social, utm_campaign=날짜_테마. mykim.kr 링크만 */
+export function withUtm(url, channel, date, theme) {
+  try {
+    const u = new URL(url);
+    if (!/(^|\.)mykim\.kr$/.test(u.hostname)) return url;
+    if (!u.searchParams.has('utm_source')) u.searchParams.set('utm_source', String(channel || 'social').slice(0, 30));
+    if (!u.searchParams.has('utm_medium')) u.searchParams.set('utm_medium', channel === 'blog' ? 'blog' : 'social');
+    if (!u.searchParams.has('utm_campaign')) u.searchParams.set('utm_campaign', [date, theme].filter(Boolean).join('_').slice(0, 60) || 'daily');
+    return u.toString();
+  } catch { return url; }
+}
 export function publisherStatus() {
   return {
     threads: Boolean(process.env.THREADS_USER_ID && process.env.THREADS_ACCESS_TOKEN),
@@ -870,9 +883,9 @@ export async function publishChannel({ campaignId, channel, manualUrl, userId })
       result = { externalId: null, url: manualUrl || null };
       status = 'published_manual';
     } else if (channel === 'threads' && publisherStatus().threads) {
-      result = await publishThreads(payload, process.env.MARKETING_LANDING_URL);
+      result = await publishThreads(payload, withUtm(process.env.MARKETING_LANDING_URL || 'https://mykim.kr/', 'threads', cur.campaign_date, cur.day_theme_code));
     } else if (channel === 'facebook' && publisherStatus().facebook) {
-      result = await publishFacebook(payload, process.env.MARKETING_LANDING_URL);
+      result = await publishFacebook(payload, withUtm(process.env.MARKETING_LANDING_URL || 'https://mykim.kr/', 'facebook', cur.campaign_date, cur.day_theme_code));
     } else {
       throw new AiError('이 채널은 자동 게시가 설정되지 않았습니다. 직접 게시한 뒤 URL을 기록하세요.', 400);
     }

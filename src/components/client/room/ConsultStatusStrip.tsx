@@ -24,11 +24,6 @@ export function getStageCopy(stage: ConsultRoomStage, ctx: StageCopyContext): { 
         headline: '상담을 요청할 변호사를 골라 주세요',
         description: '최대 3명에게 요청하고 제안서를 비교할 수 있어요. 보내기 전에 받는 변호사를 확인하고 동의합니다.',
       };
-    case 'open_waiting':
-      return {
-        headline: '공개 요청의 제안서를 기다리고 있어요',
-        description: '등록·승인된 변호사가 요청을 확인하고 제안서를 보내면 알려 드릴게요.',
-      };
     case 'waiting_reply':
       return {
         headline: `변호사 ${ctx.requestedCount}명의 답변을 기다리고 있어요`,

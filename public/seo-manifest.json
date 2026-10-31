@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-10-03T06:55:57.956Z",
+  "generatedAt": "2026-10-31T03:50:56.449Z",
   "origin": "https://mykim.kr",
   "counts": {
     "pages": 30,
@@ -41,9 +41,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "home",
-      "hash": "e1d153548e571535",
+      "hash": "c08fba1ac5e11cf7",
       "issues": [],
-      "lastmod": "2026-10-03"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "about.html",
@@ -69,11 +69,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "fb562ded4229a59c",
+      "hash": "a94d7c1f484966a8",
       "issues": [
         "description 짧음 (45자)"
       ],
-      "lastmod": "2026-10-01"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "faq.html",
@@ -97,9 +97,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "a01c3329fb223a9f",
+      "hash": "8b6722d9df08490b",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "lawyers.html",
@@ -124,11 +124,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "31992fafaea375b2",
+      "hash": "e38f8c44669a8a4e",
       "issues": [
         "description 짧음 (33자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "legal.html",
@@ -146,11 +146,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "b3061e7e283a118e",
+      "hash": "2b8e1a495e533ed2",
       "issues": [
         "title 짧음 (14자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "news.html",
@@ -174,11 +174,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "dac87ccfae74460b",
+      "hash": "6ee1c2695dd3e88f",
       "issues": [
         "description 짧음 (31자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "privacy.html",
@@ -196,9 +196,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "e351f8e871210bee",
+      "hash": "bf0214b6f888e05e",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "qna.html",
@@ -222,11 +222,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "1b9d83ebf045d353",
+      "hash": "7475e6dde64996e5",
       "issues": [
         "description 짧음 (45자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "reviews.html",
@@ -250,16 +250,16 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "368c8bbad3da4ff6",
+      "hash": "bbca42b7eb6aed91",
       "issues": [
         "description 짧음 (29자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "security.html",
       "url": "https://mykim.kr/security.html",
-      "title": "개인정보 보호 & 보안센터 | 익명 진단 시스템 안내 | my김변",
+      "title": "개인정보 보호 & 보안센터 | 스텔스 가명 보호 안내 | my김변",
       "titleLength": 36,
       "description": "초기 진단은 완전 익명. 실명·연락처는 동의 전까지 비공개. my김변 보안 안내.",
       "descriptionLength": 45,
@@ -278,11 +278,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "e434a3a99b447f34",
+      "hash": "e95522546c50bb26",
       "issues": [
         "description 짧음 (45자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "tos.html",
@@ -300,9 +300,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "869211eb21d1847e",
+      "hash": "1ade4145d9dec7a5",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/bankruptcy.html",
@@ -326,9 +326,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "4f0de8d994694091",
+      "hash": "9efb6d7d3a4ad1c8",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/credit-recovery.html",
@@ -352,9 +352,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "0723642b188342a4",
+      "hash": "e2fecf91a968073b",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/debt-agent.html",
@@ -378,9 +378,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "b9f5c697a6bffb39",
+      "hash": "ff486aba42c108ee",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/debt-management.html",
@@ -404,9 +404,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "3090c506e2710389",
+      "hash": "1b8397da1cf3b836",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/debt-types.html",
@@ -430,9 +430,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "b92a3aa926a22675",
+      "hash": "01aec16eeadf207a",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/garnishment-defense.html",
@@ -456,11 +456,11 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "046b53dca9440efa",
+      "hash": "e8f2e40939d8cf77",
       "issues": [
         "description 짧음 (31자)"
       ],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/occupation-guide.html",
@@ -484,9 +484,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "6865f6a2e075ce45",
+      "hash": "273c1f96f8d16d7c",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/personal-rehabilitation.html",
@@ -510,9 +510,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "848f1ad5aa2691a4",
+      "hash": "299b5aad2553db4f",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/rehabilitation-cost.html",
@@ -536,9 +536,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "739c2356218094c7",
+      "hash": "7303d576402eae30",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/rehabilitation-eligibility.html",
@@ -562,9 +562,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "4e4a4addc9f4e0e2",
+      "hash": "16b585c125e77402",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "guide/tax-debt.html",
@@ -588,9 +588,9 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "097d1cb3f68fad68",
+      "hash": "721c91ca9b3eff28",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/crypto-stock-debt.html",
@@ -614,9 +614,9 @@
       "datePublished": "2026-05-28",
       "dateModified": "",
       "section": "article",
-      "hash": "529e5e0c20df0723",
+      "hash": "4d3afae692a4b4c9",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/debt-collection-defense.html",
@@ -640,9 +640,9 @@
       "datePublished": "2026-06-01",
       "dateModified": "",
       "section": "article",
-      "hash": "682a69ae863f81bd",
+      "hash": "c832fcc70be8c09d",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/professional-license-preservation.html",
@@ -666,9 +666,9 @@
       "datePublished": "2026-05-10",
       "dateModified": "",
       "section": "article",
-      "hash": "29aecafab7685d8f",
+      "hash": "37cd60f4453dd94f",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/rehabilitation-vs-bankruptcy.html",
@@ -692,9 +692,9 @@
       "datePublished": "2026-05-15",
       "dateModified": "",
       "section": "article",
-      "hash": "d942a4a93dda0b77",
+      "hash": "8a5326369d2b2986",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/secret-rehabilitation.html",
@@ -718,9 +718,9 @@
       "datePublished": "2026-05-30",
       "dateModified": "",
       "section": "article",
-      "hash": "f12e5fcd39bf750f",
+      "hash": "82c8c16ddd45c0b2",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/self-employed-rehabilitation.html",
@@ -744,9 +744,9 @@
       "datePublished": "2026-05-19",
       "dateModified": "",
       "section": "article",
-      "hash": "86551e364ff6a9ad",
+      "hash": "b0cafe8d3dde05cd",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/tax-debt-statute.html",
@@ -770,9 +770,9 @@
       "datePublished": "2026-05-25",
       "dateModified": "",
       "section": "article",
-      "hash": "c08099f8858ee958",
+      "hash": "017942cc2683afba",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     },
     {
       "file": "articles/wage-garnishment-defense.html",
@@ -796,9 +796,9 @@
       "datePublished": "2026-05-22",
       "dateModified": "",
       "section": "article",
-      "hash": "d98421d74aa973a1",
+      "hash": "d95adf05b8b8f282",
       "issues": [],
-      "lastmod": "2026-09-30"
+      "lastmod": "2026-10-31"
     }
   ]
 }

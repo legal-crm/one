@@ -2,6 +2,7 @@ import { supabase, isSupabaseConfigured } from '../supabaseClient';
 import type { ConsultRequest, ConsultMessage, ConsultStatus } from '../types';
 import { isLegacyEncryptedField, isLegacyEncryptedString, LEGACY_ENCRYPTED_MESSAGE_PLACEHOLDER } from '../utils/cryptoField';
 import { getTargetLawyerColumnState, setTargetLawyerColumnState } from './consultMessageSchema';
+import { getFirstTouch } from './marketing/attribution';
 
 // [PART 4] 브라우저 "암호화"(번들 키) 제거 — 평문 저장 + RLS. 이관 전 레거시 암호문은 덮어쓰지 않도록 추적한다.
 const legacyEncryptedProfileIds = new Set<string>();
@@ -390,6 +391,9 @@ export async function saveOwnConsultRequestStrict(input: ConsultRequest): Promis
   const safe: ConsultRequest = validation.success && validation.data ? ({ ...request, ...validation.data } as unknown as ConsultRequest) : request;
   const row = await requestToRow(safe);
   if (legacyEncryptedProfileIds.has(safe.id)) delete (row as any).financial_profile;
+  // 첫 유입 경로(UTM·참조 도메인, 개인정보 없음). 서버가 처음 값만 남긴다 (M-6)
+  const firstTouch = getFirstTouch();
+  if (firstTouch) (row as any).first_touch = firstTouch;
   const { error } = await supabase.from('consult_requests').upsert(row, { onConflict: 'id' });
   if (error) {
     logSupabaseError('saveOwnConsultRequestStrict', error);

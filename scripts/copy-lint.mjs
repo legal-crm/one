@@ -15,6 +15,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { DECISION_RULES, decisionRuleRegex } from '../api/_lib/compliance-terms.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WARN_ONLY = process.argv.includes('--warn');
@@ -60,14 +61,33 @@ const RULES = [
   ['tone', /자폭/, "'자폭' → '삭제'"],
   // 앱 화면의 수치 라벨은 '감면'으로 통일 (공개 안내 글의 일반 설명 '탕감'은 검색어라 허용)
   ['forgive', /탕감/, "'탕감' → '감면'(예상 감면율·예상 감면액)", ['src/']],
+  // 공통 사전(api/_lib/compliance-terms.js)의 결정 사항 규칙 — 마케팅 검사·발송 문구 검사와 같은 목록 (M-9)
+  ...DECISION_RULES.filter(r => r.id !== 'free-legal-consult' && r.id !== 'forgiveness').map(r => [r.id, decisionRuleRegex(r, ''), r.hint]),
 ];
 
 /** 줄 단위 예외: 검색 키워드(메타·JSON-LD), 부정문 고지, 명시적 예외 표시 */
 const LINE_ALLOW = [/name=["']keywords["']/, /"keywords"\s*:/, /copy-lint-ignore/];
 /** 규칙별 예외: '보장하지 않습니다' 같은 고지 문장 */
+const NEGATION = /(?:배정|추천|매칭|정해\s?주)(?:하지|되지|하거나|지)\s?않/;
 const RULE_ALLOW = {
   outcome: [/보장하지\s?않|보장되지\s?않|단정하거나/],
+  'exclusive-lawyer': [NEGATION],
+  recommend: [NEGATION],
+  matching: [NEGATION],
 };
+
+/**
+ * 결정 사항 규칙을 아직 적용하지 않는 파일
+ *  - 약관·처리방침·법적 고지 본문: 외부 자문(R6) 뒤 약관 개정 절차(공지·재동의)로 한 번에 고친다
+ *  - 출시 범위에서 뺀 기능(진입 차단, 코드만 보존)
+ */
+const DECISION_SKIP = new Set([
+  'public/tos.html',
+  'public/privacy.html',
+  'public/legal.html',
+  'src/components/client/UnregisteredLawyerDocViewer.tsx',
+]);
+const DECISION_IDS = new Set(DECISION_RULES.map(r => r.id));
 
 function walk(rel, out) {
   const abs = path.join(ROOT, rel);
@@ -123,6 +143,7 @@ for (const rel of files) {
     const line = stripTrailingComment(raw, isCode);
     for (const [id, re, hint, scope] of RULES) {
       if (scope && !scope.some(prefix => rel.startsWith(prefix))) continue;
+      if (DECISION_IDS.has(id) && DECISION_SKIP.has(rel)) continue;
       if (RULE_ALLOW[id]?.some(allow => allow.test(line))) continue;
       const m = line.match(re);
       if (m) {

@@ -1,6 +1,7 @@
 /**
  * 숏폼 영상 렌더러 (유튜브 쇼츠·틱톡·릴스 공용 9:16)
- * 1) 장면별 AI 배경(서버 Gemini 이미지 모델, 실패 시 무료 폴백) 2) 선택: 장면별 AI 나레이션(Gemini TTS)
+ * 1) 장면별 AI 배경(서버 이미지 모델. 실패한 장면은 기본 그라데이션 배경, 외부 무료 이미지 서비스는 쓰지 않음)
+ * 2) 선택: 장면별 AI 나레이션(서버 TTS)
  * 3) 캔버스에서 켄 번스 모션 + 키네틱 자막 합성 4) MediaRecorder로 실시간 녹화 → MP4(지원 브라우저) 또는 WebM
  * 서버 렌더링·유료 툴 없이 관리자 브라우저에서 완성한다.
  */
@@ -9,7 +10,7 @@ import { Play, Pause, Film, ImagePlus, Mic, Download, RotateCcw, AlertTriangle }
 import { toast } from 'sonner';
 import JSZip from 'jszip';
 import {
-  autopilotApi, fallbackImageUrl, pcmBase64ToAudioBuffer, toDataUrl, Scene,
+  autopilotApi, explainAutopilotError, pcmBase64ToAudioBuffer, Scene,
 } from '../../../services/marketingAutopilotService';
 import { drawVideoFrame, ensureFonts, loadImage, sceneAt, canvasToBlob, downloadBlob } from './canvasArt';
 
@@ -37,7 +38,9 @@ function pickMime(): { mime: string; ext: string } {
 export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBase }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [images, setImages] = useState<(HTMLImageElement | null)[]>(() => scenes.map(() => null));
-  const [imgState, setImgState] = useState<('idle' | 'loading' | 'ai' | 'fallback' | 'error')[]>(() => scenes.map(() => 'idle'));
+  // 'error' = AI 배경을 만들지 못해 기본 그라데이션 배경으로 그린다
+  const [imgState, setImgState] = useState<('idle' | 'loading' | 'ai' | 'error')[]>(() => scenes.map(() => 'idle'));
+  const [imgError, setImgError] = useState<string | null>(null);
   const [audio, setAudio] = useState<(AudioBuffer | null)[]>(() => scenes.map(() => null));
   const [audioLoading, setAudioLoading] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -55,6 +58,7 @@ export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBas
   useEffect(() => {
     setImages(scenes.map(() => null));
     setImgState(scenes.map(() => 'idle'));
+    setImgError(null);
     setT(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visualKey]);
@@ -136,26 +140,31 @@ export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBas
 
   const loadBackgrounds = async () => {
     setImgState(scenes.map(() => 'loading'));
-    const results = await Promise.all(scenes.map(async (s, i) => {
+    setImgError(null);
+    const results = await Promise.all(scenes.map(async s => {
       try {
         const r = await autopilotApi.image(s.visualPrompt, '9:16');
-        return { img: await loadImage(r.dataUrl), state: 'ai' as const };
-      } catch {
-        try {
-          const dataUrl = await toDataUrl(fallbackImageUrl(s.visualPrompt, 1080, 1920, 101 + i * 17));
-          return { img: await loadImage(dataUrl), state: 'fallback' as const };
-        } catch {
-          return { img: null, state: 'error' as const };
-        }
+        return { img: await loadImage(r.dataUrl), state: 'ai' as const, error: '' };
+      } catch (e) {
+        // 실패한 장면은 외부 무료 서비스로 바꾸지 않고 기본 그라데이션 배경으로 둔다
+        return { img: null, state: 'error' as const, error: explainAutopilotError(e) };
       }
     }));
     setImages(results.map(r => r.img));
     setImgState(results.map(r => r.state));
-    const fb = results.filter(r => r.state === 'fallback').length;
-    const err = results.filter(r => r.state === 'error').length;
-    if (err) toast.error(`배경 ${err}장을 만들지 못해 그라데이션을 씁니다.`);
-    else if (fb) toast.info(`AI 이미지 모델 대신 무료 폴백 배경 ${fb}장을 썼습니다.`);
-    else toast.success('장면별 AI 배경을 만들었습니다.');
+    const failed = results.filter(r => r.state === 'error');
+    if (failed.length) {
+      const reason = failed[0].error || '이미지 생성에 실패했습니다.';
+      setImgError(reason);
+      toast.error(
+        failed.length === results.length
+          ? 'AI 배경을 만들지 못했습니다. 모든 장면을 기본 그라데이션 배경으로 녹화합니다.'
+          : `AI 배경 ${failed.length}장을 만들지 못했습니다. 해당 장면은 기본 그라데이션 배경으로 녹화합니다.`,
+        { description: reason },
+      );
+    } else {
+      toast.success('장면별 AI 배경을 만들었습니다.');
+    }
   };
 
   const loadNarration = async () => {
@@ -242,8 +251,8 @@ export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBas
           <canvas ref={canvasRef} width={W} height={H} className="w-full h-full" aria-label="숏폼 영상 미리보기" />
           {imgState.some(s => s === 'loading') && (
             <div className="absolute inset-0 bg-slate-900/70 flex flex-col gap-2 p-4 justify-end" aria-live="polite">
-              <div className="h-3 rounded bg-slate-700 animate-pulse w-2/3" />
-              <div className="h-3 rounded bg-slate-700 animate-pulse w-1/2" />
+              <div className="h-3 rounded-lg bg-slate-700 animate-pulse w-2/3" />
+              <div className="h-3 rounded-lg bg-slate-700 animate-pulse w-1/2" />
               <p className="text-xs text-slate-300">장면 배경 생성 중 (장면당 10~30초)</p>
             </div>
           )}
@@ -299,10 +308,13 @@ export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBas
           <li>• {fmt.ext === 'mp4' ? 'MP4로 저장되어 쇼츠·틱톡·릴스에 바로 올릴 수 있습니다.' : 'WebM으로 저장됩니다. 유튜브·틱톡은 WebM 업로드를 받지만, 인스타그램 릴스는 MP4 변환(CapCut 등)이 필요합니다.'}</li>
           <li>• 배경음악은 넣지 않습니다. 저작권 문제가 없도록 각 플랫폼 앱의 라이선스 음원을 게시할 때 추가하세요.</li>
         </ul>
-        {imgState.includes('fallback') && (
-          <p className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex gap-2">
+        {imgState.includes('error') && (
+          <p role="alert" className="text-xs text-amber-200 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex gap-2">
             <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-            일부 배경은 무료 폴백(Pollinations)으로 만들었습니다. 상업 이용 조건은 보장되지 않으니 중요한 게시물은 AI 배경을 다시 생성하세요.
+            <span>
+              AI 배경 생성에 실패한 장면 {imgState.filter(s => s === 'error').length}개는 기본 그라데이션 배경으로 그립니다.
+              {imgError ? ` (사유: ${imgError})` : ''} 다시 시도하려면 '장면 배경 생성'을 누르세요.
+            </span>
           </p>
         )}
         <ol className="space-y-2">
@@ -311,7 +323,7 @@ export default function ShortsVideoRenderer({ scenes, badge, disclaimer, fileBas
               <div className="flex items-center gap-2 text-xs text-slate-400 mb-1">
                 <span className="font-mono text-indigo-300">#{i + 1} · {durations[i].toFixed(1)}초</span>
                 <span>{s.motion || '자동 모션'}</span>
-                <span>{imgState[i] === 'ai' ? 'AI 배경' : imgState[i] === 'fallback' ? '폴백 배경' : imgState[i] === 'error' ? '배경 실패' : ''}</span>
+                <span>{imgState[i] === 'ai' ? 'AI 배경' : imgState[i] === 'error' ? 'AI 배경 실패 · 그라데이션' : ''}</span>
                 {audio[i] && <span className="text-emerald-300">음성 {audio[i]!.duration.toFixed(1)}초</span>}
               </div>
               <p className="font-bold text-white">{s.caption}</p>

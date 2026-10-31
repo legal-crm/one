@@ -213,7 +213,6 @@ export function SignCompletedScreen({
                 <Fingerprint className="h-4 w-4 text-brand" aria-hidden="true" />
                 체결본 전자지문
               </h2>
-              {anchor?.isRealOnChain && <Badge tone="info">블록체인 기록됨</Badge>}
             </div>
             <p className="mt-2 text-sm leading-relaxed text-slate-600 break-keep">
               체결 시점의 계약서 내용과 서명으로 만든 고유 값(SHA-256)이에요. 나중에 계약서 내용이 바뀌면 이 값이 달라져 변경 여부를 확인할 수 있어요.

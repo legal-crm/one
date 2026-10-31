@@ -2,17 +2,16 @@
 // 전자계약 원본 검증 모달
 // 저장된 계약서 본문·서명으로 SHA-256 전자지문을 브라우저에서 다시 계산해
 // 체결(봉인) 당시 값과 비교한다. (기존: 저장된 두 필드끼리만 비교해 항상 '100% 원본'으로 표시)
-// 블록체인 기록은 실제 온체인 전송(isRealOnChain)된 경우에만 그렇게 표기한다.
+// 블록체인 기록은 쓰지 않는다(서버 전자지문만).
 // ============================================================
 
 import React, { useEffect, useState } from 'react';
 import {
-  ShieldCheck, AlertTriangle, CheckCircle2, ExternalLink,
-  Copy, Check, Download, Database, FileText, X, RefreshCw, Loader2, Info
+  ShieldCheck, AlertTriangle, CheckCircle2,
+  Copy, Check, Download, FileText, X, Loader2, Info
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ElectronicContract } from '../../types';
-import { verifyTxOnChain } from '../../services/blockchainAnchorService';
 import { verifyContractIntegrity, type IntegrityCheckStatus } from '../../services/integrityService';
 import { generateCourtSubmissionPdf } from '../../services/contractPdfService';
 import { maskPersonName, type PublicContractVerification } from '../../services/contractPublicVerifyService';
@@ -70,22 +69,18 @@ const STATUS_COPY: Record<VerifierStatus, { title: string; desc: string; tone: '
 export default function ContractPublicVerifierModal({ isOpen, onClose, contract, publicView = null, revealFullName = false }: Props) {
   const [copiedHash, setCopiedHash] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [verifyingNode, setVerifyingNode] = useState(false);
   const [integrity, setIntegrity] = useState<{ status: VerifierStatus; recomputedFinalHash?: string } | null>(null);
-  const [liveResult, setLiveResult] = useState<{ verifiedOnChain: boolean; hashMatched?: boolean; statusText: string } | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
     // 공개 검증: 서버가 계산한 결과를 그대로 쓴다 (본문·서명은 브라우저로 오지 않는다)
     if (publicView) {
       setIntegrity({ status: publicView.integrity });
-      setLiveResult(null);
       return;
     }
     if (!contract) return;
     let cancelled = false;
     setIntegrity(null);
-    setLiveResult(null);
     verifyContractIntegrity(contract)
       .then(r => { if (!cancelled) setIntegrity(r); })
       .catch(() => { if (!cancelled) setIntegrity({ status: 'error' }); });
@@ -126,7 +121,6 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
       };
   const finalHash = view.finalHash;
   const anchor = view.anchor;
-  const onChain = !!anchor?.isRealOnChain && !!anchor?.txHash;
   const copy = integrity ? STATUS_COPY[integrity.status] : null;
   const clientDisplayName = view.clientDisplayName;
 
@@ -152,19 +146,6 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
       await generateCourtSubmissionPdf(contract);
     } finally {
       setDownloadingPdf(false);
-    }
-  };
-
-  const handleLiveNodeCheck = async () => {
-    if (!onChain || !anchor?.txHash) return;
-    setVerifyingNode(true);
-    try {
-      const res = await verifyTxOnChain(anchor.txHash, finalHash);
-      setLiveResult({ verifiedOnChain: res.verifiedOnChain, hashMatched: res.hashMatched, statusText: res.statusText });
-    } catch {
-      toast.error('블록체인 조회 중 네트워크 오류가 발생했습니다.');
-    } finally {
-      setVerifyingNode(false);
     }
   };
 
@@ -293,60 +274,6 @@ export default function ContractPublicVerifierModal({ isOpen, onClose, contract,
                 <p className="text-[10px] text-slate-400 leading-relaxed">
                   전자지문은 계약서 본문과 양 당사자 서명 이미지로 계산합니다. 같은 내용이면 항상 같은 값이 나오고, 한 글자라도 바뀌면 값이 달라집니다.
                 </p>
-              </div>
-            )}
-
-            {/* 블록체인 기록 — 실제 온체인 전송된 경우에만 */}
-            {anchor && (
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 space-y-2">
-                <h5 className="font-bold text-slate-800 flex items-center gap-1.5 text-xs">
-                  <Database className="w-4 h-4 text-blue-600" aria-hidden="true" />
-                  <span>블록체인 기록</span>
-                </h5>
-                {onChain ? (
-                  <>
-                    <dl className="space-y-1 text-[11px]">
-                      <div className="flex justify-between gap-2"><dt className="text-slate-600">네트워크</dt><dd className="font-bold text-slate-800">{anchor.network}</dd></div>
-                      <div className="flex justify-between gap-2"><dt className="text-slate-600">블록 번호</dt><dd className="font-mono font-bold text-slate-800">#{anchor.blockNumber?.toLocaleString()}</dd></div>
-                      <div><dt className="text-slate-600">트랜잭션</dt><dd className="font-mono text-[10px] text-slate-800 break-all">{anchor.txHash}</dd></div>
-                    </dl>
-                    <div className="flex flex-wrap items-center gap-2 pt-1">
-                      {anchor.explorerUrl && (
-                        <a
-                          href={anchor.explorerUrl}
-                          target="_blank"
-                          rel="noreferrer noopener"
-                          className="inline-flex items-center gap-1 min-h-[44px] px-3 text-blue-700 hover:text-blue-900 underline font-bold"
-                        >
-                          <span>블록 탐색기에서 보기</span>
-                          <ExternalLink className="w-3 h-3" aria-hidden="true" />
-                        </a>
-                      )}
-                      <button
-                        type="button"
-                        onClick={handleLiveNodeCheck}
-                        disabled={verifyingNode}
-                        className="inline-flex items-center gap-1 min-h-[44px] px-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer disabled:opacity-50 whitespace-nowrap"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${verifyingNode ? 'animate-spin' : ''}`} aria-hidden="true" />
-                        <span>{verifyingNode ? '조회 중...' : '블록체인에서 직접 조회'}</span>
-                      </button>
-                    </div>
-                    {liveResult && (
-                      <p className={`text-[11px] font-bold ${liveResult.verifiedOnChain && liveResult.hashMatched ? 'text-emerald-700' : 'text-amber-800'}`}>
-                        {liveResult.verifiedOnChain && liveResult.hashMatched
-                          ? '블록체인 트랜잭션에 이 전자지문이 기록되어 있습니다.'
-                          : liveResult.verifiedOnChain
-                            ? '트랜잭션은 확인되었지만 전자지문 일치 여부는 확인하지 못했습니다.'
-                            : '블록체인에서 트랜잭션을 확인하지 못했습니다.'}
-                      </p>
-                    )}
-                  </>
-                ) : (
-                  <p className="text-[11px] text-slate-600 leading-relaxed">
-                    이 계약서의 전자지문은 블록체인에 전송되지 않았고 서버에만 보관되어 있습니다.
-                  </p>
-                )}
               </div>
             )}
 

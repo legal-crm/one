@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Globe, Search, Bot, CheckCircle2, Clock, ExternalLink, Copy, Check, FileText, RefreshCw, Sparkles, Key,
   AlertTriangle, Send, Download, Eye, ShieldCheck, TrendingUp, Info, Code, XCircle, Loader2, Activity, Rss, ListChecks,
@@ -9,6 +9,9 @@ import {
   type SiteDiagnostics, type CheckStatus, type SeoCheck, type CrawlResult, type ManifestPage,
 } from './seo/seoDiagnostics';
 import { submitIndexNow, type IndexNowEngineResult } from '../../services/indexNowService';
+import { Share2 } from 'lucide-react';
+import { listIndexNowLog, loadSeoState, saveSeoState } from '../../services/marketing/seoAdminService';
+import SocialChannelsPanel from './marketing/SocialChannelsPanel';
 
 // ============================================================
 // [SEO/GEO] 통합 관제센터
@@ -22,10 +25,10 @@ import { submitIndexNow, type IndexNowEngineResult } from '../../services/indexN
 //  - 실시간 진단: 배포된 사이트 파일을 직접 읽어 판정 (seo/seoDiagnostics.ts)
 //  - IndexNow: 서버(/api/generate-statement mode=indexnow)가 Bing·Naver에 실제 전송, 결과 기록
 //  - sitemap.xml·rss.xml·seo-manifest.json 은 빌드 시 scripts/seo-build.mjs 가 자동 생성
-//  - 검색엔진 콘솔 내부 상태(제출·색인 수)는 외부에서 알 수 없으므로 관리자 체크리스트로 기록 (이 브라우저에만 저장)
+//  - 검색엔진 콘솔 내부 상태(제출·색인 수)는 외부에서 알 수 없으므로 관리자 체크리스트로 기록 (서버 admin_seo_state, 2026-10-31 M0)
 // ============================================================
 
-type TabId = 'health' | 'portals' | 'geo' | 'onpage' | 'indexing';
+type TabId = 'health' | 'portals' | 'geo' | 'onpage' | 'indexing' | 'channels';
 type PortalId = 'google' | 'naver' | 'bing';
 
 interface PortalStep { id: string; title: string; desc: string; checkId?: string }
@@ -70,7 +73,7 @@ const PORTALS: PortalDef[] = [
     badge: 'NAVER',
     badgeClass: 'bg-emerald-500/10 text-emerald-400',
     borderClass: 'border-emerald-500/30',
-    defaultAccount: '2882a@naver.com',
+    defaultAccount: '회사 관리 네이버 계정',
     loginMethod: '네이버 계정 직접 로그인',
     consoleUrl: 'https://searchadvisor.naver.com/console/board',
     verifyMeta: 'naver-site-verification',
@@ -107,7 +110,7 @@ const STORAGE_PORTALS_V2 = 'mykim_seo_portals_v2';
 const STORAGE_HISTORY = 'mykim_seo_indexnow_history_v1';
 const STORAGE_GSC_PROPERTY = 'mykim_seo_gsc_property';
 
-interface IndexHistoryItem { id: string; at: string; urls: string[]; ok: boolean; results: IndexNowEngineResult[]; error?: string }
+interface IndexHistoryItem { id: string; at: string; urls: string[]; ok: boolean; results: IndexNowEngineResult[]; error?: string; source?: 'manual' | 'build' }
 
 function loadPortalState(): Record<PortalId, PortalState> {
   const base = Object.fromEntries(PORTALS.map(p => [p.id, { account: p.defaultAccount, memo: '', done: {}, verifyCode: '' }])) as Record<PortalId, PortalState>;
@@ -132,14 +135,6 @@ function loadPortalState(): Record<PortalId, PortalState> {
   return base;
 }
 
-function loadHistory(): IndexHistoryItem[] {
-  try {
-    const saved = localStorage.getItem(STORAGE_HISTORY);
-    return saved ? (JSON.parse(saved) as IndexHistoryItem[]).slice(0, 50) : [];
-  } catch {
-    return [];
-  }
-}
 
 const STATUS_STYLE: Record<CheckStatus, { cls: string; label: string; Icon: typeof CheckCircle2 }> = {
   pass: { cls: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30', label: '정상', Icon: CheckCircle2 },
@@ -177,19 +172,57 @@ export default function SeoGeoManager() {
   const [crawl, setCrawl] = useState<CrawlResult[] | null>(null);
   const [crawlDone, setCrawlDone] = useState<number | null>(null);
   const [portalState, setPortalState] = useState<Record<PortalId, PortalState>>(loadPortalState);
-  const [history, setHistory] = useState<IndexHistoryItem[]>(loadHistory);
+  const [history, setHistory] = useState<IndexHistoryItem[]>([]);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [indexUrls, setIndexUrls] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [gscProperty, setGscProperty] = useState<string>(() => localStorage.getItem(STORAGE_GSC_PROPERTY) || 'sc-domain:mykim.kr');
+  const [gscProperty, setGscProperty] = useState<string>('sc-domain:mykim.kr');
+  const serverLoadedRef = useRef(false);
   const [selectedPageUrl, setSelectedPageUrl] = useState<string>('');
   const [simTitle, setSimTitle] = useState('');
   const [simDesc, setSimDesc] = useState('');
   const [issuesOnly, setIssuesOnly] = useState(false);
 
-  useEffect(() => { localStorage.setItem(STORAGE_PORTALS, JSON.stringify(portalState)); }, [portalState]);
-  useEffect(() => { localStorage.setItem(STORAGE_HISTORY, JSON.stringify(history.slice(0, 50))); }, [history]);
-  useEffect(() => { localStorage.setItem(STORAGE_GSC_PROPERTY, gscProperty); }, [gscProperty]);
+  // 포털 체크리스트·서치콘솔 속성·IndexNow 기록은 서버에 둔다 (M-4, 이전: 관리자 브라우저)
+  const reloadHistory = useCallback(async () => {
+    const h = await listIndexNowLog(50);
+    if (h.ok) setHistory(h.data.map(r => ({ id: r.id, at: r.createdAt, urls: r.urls, ok: r.ok, results: r.results as IndexNowEngineResult[], error: r.error || undefined, source: r.source })));
+  }, []);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      const [p, g] = await Promise.all([loadSeoState<Record<PortalId, PortalState>>('portals'), loadSeoState<{ property?: string }>('gsc_property')]);
+      if (!alive) return;
+      if (p.ok && p.data) {
+        setPortalState(prev => {
+          const next = { ...prev };
+          for (const pt of PORTALS) if (p.data![pt.id]) next[pt.id] = { ...prev[pt.id], ...p.data![pt.id], done: { ...(p.data![pt.id].done || {}) } };
+          return next;
+        });
+      } else if (p.ok && !p.data && localStorage.getItem(STORAGE_PORTALS)) {
+        // 예전 브라우저 기록이 있으면 한 번 서버로 옮긴다
+        await saveSeoState('portals', loadPortalState());
+      }
+      if (g.ok && g.data?.property) setGscProperty(g.data.property);
+      if (!p.ok) toast.error(`검색 포털 기록을 불러오지 못했습니다: ${p.message}`);
+      [STORAGE_PORTALS, STORAGE_PORTALS_V2, STORAGE_HISTORY, STORAGE_GSC_PROPERTY].forEach(k => { try { localStorage.removeItem(k); } catch { /* 무시 */ } });
+      serverLoadedRef.current = true;
+    })();
+    void reloadHistory();
+    return () => { alive = false; };
+  }, [reloadHistory]);
+  useEffect(() => {
+    if (!serverLoadedRef.current) return;
+    const t = window.setTimeout(() => {
+      void saveSeoState('portals', portalState).then(r => { if (!r.ok) toast.error(`체크리스트를 저장하지 못했습니다: ${r.message}`); });
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [portalState]);
+  useEffect(() => {
+    if (!serverLoadedRef.current) return;
+    const t = window.setTimeout(() => { void saveSeoState('gsc_property', { property: gscProperty }); }, 800);
+    return () => window.clearTimeout(t);
+  }, [gscProperty]);
 
   const refresh = useCallback(async () => {
     setDiagLoading(true);
@@ -272,6 +305,7 @@ export default function SeoGeoManager() {
       error: res.ok === false ? res.error : undefined,
     };
     setHistory(prev => [item, ...prev].slice(0, 50));
+    void reloadHistory();
     if (res.ok === false) toast.error(res.error);
     else toast.success(`IndexNow 전송 완료: ${item.urls.length}개 URL`);
   };
@@ -309,6 +343,7 @@ export default function SeoGeoManager() {
 
   const tabs: { id: TabId; label: string; Icon: typeof Search }[] = [
     { id: 'health', label: '실시간 진단', Icon: Activity },
+    { id: 'channels', label: 'SNS 채널·유입', Icon: Share2 },
     { id: 'portals', label: '검색엔진 등록 (구글/네이버/빙)', Icon: Search },
     { id: 'geo', label: 'GEO (AI 검색) 최적화', Icon: Bot },
     { id: 'onpage', label: '온페이지 & SERP 미리보기', Icon: Eye },
@@ -586,6 +621,8 @@ export default function SeoGeoManager() {
           </div>
         </div>
       )}
+
+      {tab === 'channels' && <SocialChannelsPanel />}
 
       {/* ───────────── TAB: GEO ───────────── */}
       {tab === 'geo' && (

@@ -110,7 +110,6 @@ export function getMyPageNextAction(input: NextActionInput): NextAction {
   }
 
   switch (roomStage) {
-    case 'open_waiting':
     case 'waiting_reply':
       return {
         title: '변호사의 제안서를 기다리고 있어요',

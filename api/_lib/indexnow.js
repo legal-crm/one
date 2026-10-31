@@ -81,6 +81,10 @@ export async function handleIndexNow(req, res) {
     target_type: 'seo_urls', target_id: `${urls.length} urls: ${urls[0]}`.slice(0, 250),
     auth_uid: user.id, auth_email: user.email || null, ip_address: ip || null,
   }).then(() => {}, () => {});
+  // 전송 기록은 서버에 (이전: 관리자 브라우저에만 남았다, M-4)
+  await supabase.from('seo_indexnow_log').insert({
+    source: 'manual', urls, ok: results.some(r => r.ok), results, actor_user_id: user.id,
+  }).then(() => {}, () => {});
 
   return res.status(200).json({ ok: results.some(r => r.ok), urls, results });
 }
