@@ -22,7 +22,7 @@ import {
   type AdPromotion,
   type OfficeBillingProfile,
 } from '../../../services/adOrderService';
-import { checkCorpNum, formatCorpNum } from '../../../services/taxInvoiceService';
+import { checkCorpNum, formatCorpNum, openOfficeTaxInvoice } from '../../../services/taxInvoiceService';
 import { setOfficeProfileCache } from '../../../services/lawyer/officeProfile';
 import { CREATIVE_STATUS_LABEL, officeAdStats, setOrderCreative } from '../../../services/ads/adCreativeService';
 import AdCreativesSection, { useOfficeCreatives } from './AdCreativesSection';
@@ -465,6 +465,14 @@ function BillingProfileSection({ officeId, canEdit, canView, orders }: { officeI
 
   const invoices = useMemo(() => orders.filter(o => o.taxInvoice), [orders]);
 
+  // 세금계산서 보기 (AD-6): 주문 번호만 보내고 서버가 권한을 확인해 팝빌 보기 주소를 준다
+  const openInvoice = async (orderId: string, kind: 'issue' | 'modify') => {
+    const popup = window.open('', '_blank', 'noopener');
+    const r = await openOfficeTaxInvoice(orderId, kind);
+    if (r.ok === false) { popup?.close(); toast.error(r.message); return; }
+    if (popup) popup.location.href = r.url; else window.location.assign(r.url);
+  };
+
   if (!officeId) return <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-600">사무소 정보를 불러오지 못했습니다. 다시 로그인해 주세요.</div>;
   if (!canView) return <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-sm text-slate-600">사업자 정보는 '광고 결제·세금계산서 보기' 권한이 있는 구성원만 볼 수 있습니다.</div>;
   if (error) return <ErrorCard message={error} onRetry={load} />;
@@ -580,7 +588,15 @@ function BillingProfileSection({ officeId, canEdit, canView, orders }: { officeI
                   <p className="text-xs text-slate-500">{ymd(o.taxInvoice?.issuedAt)}{o.taxInvoice?.ntsConfirmNum && ` · 승인번호 ${o.taxInvoice.ntsConfirmNum}`}</p>
                   {o.modifiedTaxInvoice && <p className="text-xs text-rose-600">수정발행: {o.modifiedTaxInvoice.modifyReason} ({won(o.modifiedTaxInvoice.totalAmount)})</p>}
                 </div>
-                <span className="text-sm font-black tabular-nums">{won(o.taxInvoice?.totalAmount)}</span>
+                <div className="flex items-center gap-2 flex-wrap justify-end">
+                  <span className="text-sm font-black tabular-nums">{won(o.taxInvoice?.totalAmount)}</span>
+                  <button type="button" onClick={() => void openInvoice(o.id, 'issue')}
+                    className="min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 whitespace-nowrap active:scale-[0.98]">계산서 보기</button>
+                  {o.modifiedTaxInvoice && (
+                    <button type="button" onClick={() => void openInvoice(o.id, 'modify')}
+                      className="min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-xs font-bold text-slate-700 whitespace-nowrap active:scale-[0.98]">수정본 보기</button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>

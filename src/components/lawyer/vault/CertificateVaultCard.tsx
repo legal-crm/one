@@ -5,9 +5,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, CertificateVaultData } from '../../../types';
+import { isSupabaseConfigured } from '../../../supabaseClient';
+import { getCrmOfficeScope } from '../../../services/crmService';
 import { 
   loadCertificateVault, 
-  saveCertificateVault, 
+  fetchOfficeVault,
+  saveOfficeVault,
+  shredServerVault,
   computeDaysRemaining,
   safeCopyToClipboard,
 } from '../../../services/vault/certificateVaultService';
@@ -37,13 +41,7 @@ export default function CertificateVaultCard({
   actorName,
   actorRole,
 }: CertificateVaultCardProps) {
-  const [vault, setVault] = useState<CertificateVaultData>(() => {
-    // 1) crmExt에서 확인
-    if (crmExt?.certificateVault && !isMockVault(crmExt.certificateVault)) return crmExt.certificateVault;
-    // 2) 로컬스토리지에서 확인
-    const loaded = loadCertificateVault(clientId);
-    if (loaded) return loaded;
-    // 3) 등록된 인증서가 없으면 빈 금고 (이전: 가짜 공동인증서·금융인증서·동의서명·열람기록을 생성해 저장)
+  const emptyVault = (): CertificateVaultData => {
     const now = new Date().toISOString();
     return {
       id: `vault_${clientId}`,
@@ -54,23 +52,38 @@ export default function CertificateVaultCard({
       createdAt: now,
       updatedAt: now,
     } as CertificateVaultData;
+  };
+  // 원본은 서버 금고(암호문만, 20261031003400). 서버가 없는 로컬 개발 환경만 기기 사본
+  const [vault, setVault] = useState<CertificateVaultData>(() => {
+    if (!isSupabaseConfigured && crmExt?.certificateVault && !isMockVault(crmExt.certificateVault)) return crmExt.certificateVault;
+    return loadCertificateVault(clientId) || emptyVault();
   });
-
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  useEffect(() => { if (loadError) toast.error(loadError); }, [loadError]);
+  void onUpdateCrmExt;
 
-  // 동기화
   useEffect(() => {
-    if (crmExt?.certificateVault && !isMockVault(crmExt.certificateVault)) {
-      setVault(crmExt.certificateVault);
-    }
-  }, [crmExt?.certificateVault]);
+    if (!isSupabaseConfigured) return;
+    let alive = true;
+    void fetchOfficeVault(getCrmOfficeScope(), clientId).then(r => {
+      if (!alive) return;
+      if (r.ok === false) { setLoadError(r.message); return; }
+      setLoadError(null);
+      setVault(r.vault || emptyVault());
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clientId]);
 
   const handleUpdateVault = async (updated: CertificateVaultData) => {
-    setVault(updated);
-    saveCertificateVault(updated);
-    if (onUpdateCrmExt) {
-      await onUpdateCrmExt({ certificateVault: updated });
-    }
+    const officeId = getCrmOfficeScope();
+    const purpose = updated.accessLogs?.[0]?.purpose;
+    const r = updated.status === 'shredded'
+      ? await shredServerVault(clientId, officeId, purpose)
+      : await saveOfficeVault(officeId, clientId, updated, purpose);
+    if (r.ok === false) { toast.error(`금고를 서버에 저장하지 못했어요: ${r.message}`); return; }
+    setVault(r.vault || updated);
   };
 
   const npki = vault.npki;
@@ -130,7 +143,7 @@ export default function CertificateVaultCard({
                   <span className="text-xs px-1.5 py-0.5 rounded bg-slate-800 text-slate-400">미등록</span>
                 )}
               </div>
-              <p className="text-xs text-slate-400">부채증명서 발급 및 전자소송용 · 이 브라우저에만 보관</p>
+              <p className="text-xs text-slate-400">부채증명서 발급 및 전자소송용 · 보관 PIN 암호문만 서버 보관</p>
             </div>
           </div>
           <button
@@ -188,7 +201,7 @@ export default function CertificateVaultCard({
                 )}
               </div>
               <p className="text-xs text-slate-400 mt-0.5">
-                부채증명서 발급 대행 및 대법원 전자소송(ECFS) 진행용 보관함 · 비밀번호는 앱 내장 키로 암호화, 인증서 파일은 미암호화 상태로 이 브라우저에만 저장
+                부채증명서 발급 대행 및 대법원 전자소송(ECFS) 진행용 보관함 · 개인키·비밀번호는 의뢰인 보관 PIN으로 암호화(서버는 열 수 없음), 열 때마다 사무소 활동 기록
               </p>
             </div>
           </div>
@@ -336,7 +349,7 @@ export default function CertificateVaultCard({
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
             <span>비밀번호 열람 시 목적 입력 필수 · 복사 30초 후 클립보드 소거 시도</span>
           </div>
-          <span className="font-mono text-slate-400">열람 기록 {vault.accessLogs.length}건 (이 브라우저)</span>
+          <span className="font-mono text-slate-400">열람 기록 {vault.accessLogs?.length || 0}건</span>
         </div>
       </div>
 

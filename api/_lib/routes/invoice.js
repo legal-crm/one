@@ -8,7 +8,22 @@
 //   - POST /api/invoice/resend      (세금계산서 이메일 재발송)
 
 import { taxinvoiceService, closedownService, SUPPLIER_INFO, getTodayStr, setCorsHeaders, isTaxinvoiceConfigured, isValidCorpNum } from '../popbill-service.js';
-import { withAuth, isAdminWithMfa } from '../auth-middleware.js';
+import { withAuth, isAdminWithMfa, supabase } from '../auth-middleware.js';
+
+// 주문 기준 확인·기록 (AD-6, 20261031003300). 서버 키가 없으면(로컬) 건너뛴다
+const hasServerKey = () => Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+async function loadOrderTarget(orderId) {
+  if (!hasServerKey()) return null;
+  const { data, error } = await supabase.rpc('ad_order_invoice_target', { p_order_id: String(orderId) });
+  if (error) throw new Error('주문을 확인하지 못했습니다.');
+  return data || null;
+}
+async function recordInvoice(orderId, kind, invoice) {
+  if (!hasServerKey()) return false;
+  const { data, error } = await supabase.rpc('record_ad_order_invoice', { p_order_id: String(orderId), p_kind: kind, p_invoice: invoice });
+  if (error) console.error('[Invoice record]', error.message);
+  return Boolean(data);
+}
 
 // 팝빌 미설정 시 응답 (이전: ok:true + MOCK 국세청승인번호 → 발행된 것처럼 저장·표시됨)
 const notConfigured = (res, what) => res.status(200).json({
@@ -99,6 +114,17 @@ async function handler(req, res) {
     if (totalAmount !== undefined && totalAmount !== null && Number(totalAmount) !== calculatedTotal) {
       return res.status(400).json({ ok: false, error: `합계금액(${totalAmount})이 공급가액+세액(${calculatedTotal})과 다릅니다.` });
     }
+    // 주문에 저장된 금액과 같아야 발행한다 (화면이 보낸 금액을 그대로 믿지 않음)
+    let target = null;
+    try { target = await loadOrderTarget(orderId); } catch (e) { return res.status(500).json({ ok: false, error: e.message }); }
+    if (hasServerKey()) {
+      if (!target) return res.status(404).json({ ok: false, error: '주문을 찾지 못했습니다.' });
+      if (!['paid', 'active', 'expired'].includes(target.status)) return res.status(409).json({ ok: false, error: '입금 확인된 주문만 세금계산서를 발행할 수 있습니다.' });
+      if (target.has_invoice) return res.status(409).json({ ok: false, error: '이미 세금계산서를 발행한 주문입니다.' });
+      if (target.supply != null && (Number(target.supply) !== Number(supplyCost) || Number(target.vat) !== calculatedTax)) {
+        return res.status(400).json({ ok: false, error: `주문 금액(공급가 ${target.supply}원·부가세 ${target.vat}원)과 다릅니다.` });
+      }
+    }
     const invoicerMgtKey = toMgtKey('AD-', orderId);
 
     const taxinvoice = {
@@ -151,18 +177,27 @@ async function handler(req, res) {
         );
       });
 
+      const issuedAt = new Date().toISOString();
+      const ntsConfirmNum = result.ntsconfirmNum || result.ntsConfirmNum || '';
+      // 금액은 숫자로 (이전: 문자열이라 관리자 합계가 '3000000300000'처럼 이어붙었다)
+      const recorded = await recordInvoice(orderId, 'issue', {
+        itemKey: invoicerMgtKey, ntsConfirmNum, issuedAt, writeDate,
+        supplyCost: Number(supplyCost), tax: calculatedTax, totalAmount: calculatedTotal, status: 'issued',
+      });
       return res.status(200).json({
         ok: true,
         data: {
-          ntsConfirmNum: result.ntsconfirmNum || result.ntsConfirmNum || '',
+          ntsConfirmNum,
           // 뷰어·재발송에 쓰는 키 = 문서번호(MgtKey) (이전: 반환하지 않아 뷰어·재발송 버튼이 항상 동작 안 함)
           itemKey: invoicerMgtKey,
           writeDate,
-          supplyCost: String(supplyCost),
-          tax: String(calculatedTax),
-          totalAmount: String(calculatedTotal),
+          issuedAt,
+          supplyCost: Number(supplyCost),
+          tax: calculatedTax,
+          totalAmount: calculatedTotal,
           buyerCorpNum,
           buyerCorpName,
+          recorded,
         }
       });
     } catch (err) {
@@ -275,7 +310,16 @@ async function handler(req, res) {
     const negTax = -Math.abs(calcTax);
     const negTotal = -Math.abs(calcTotal);
     const reasonText = modCode === 2 ? '공급가액 변동(부분환불)' : '계약의 해제(취소환불)';
-    const invoicerMgtKey = toMgtKey('MD-', `${orderId}${Date.now().toString(36)}`);
+    // 수정발행은 주문당 한 번 — 문서번호를 주문에서 만들어 같은 요청이 두 번 와도 팝빌이 중복을 거부한다 (이전: 시각을 붙여 중복 발행 가능)
+    let target = null;
+    try { target = await loadOrderTarget(orderId); } catch (e) { return res.status(500).json({ ok: false, error: e.message }); }
+    if (hasServerKey()) {
+      if (!target || !target.has_invoice) return res.status(409).json({ ok: false, error: '당초 세금계산서가 기록된 주문이 아닙니다.' });
+      if (target.has_modified) return res.status(409).json({ ok: false, error: '이미 수정세금계산서를 발행한 주문입니다.' });
+      if (target.nts_confirm_num && target.nts_confirm_num !== String(orgNTSConfirmNum)) return res.status(400).json({ ok: false, error: '당초 승인번호가 주문 기록과 다릅니다.' });
+      if (target.invoice_supply != null && absSupply > Number(target.invoice_supply)) return res.status(400).json({ ok: false, error: '환불 공급가액이 당초 공급가액보다 큽니다.' });
+    }
+    const invoicerMgtKey = toMgtKey('MD-', orderId);
 
     const taxinvoice = {
       writeDate,
@@ -327,16 +371,25 @@ async function handler(req, res) {
         );
       });
 
+      const issuedAt = new Date().toISOString();
+      const ntsConfirmNum = result.ntsconfirmNum || result.ntsConfirmNum || '';
+      const recorded = await recordInvoice(orderId, 'modify', {
+        itemKey: invoicerMgtKey, ntsConfirmNum, issuedAt, writeDate, modifyCode: modCode,
+        modifyReason: modifyReason || reasonText,
+        supplyCost: negSupplyCost, tax: negTax, totalAmount: negTotal, status: 'issued',
+      });
       return res.status(200).json({
         ok: true,
         data: {
-          ntsConfirmNum: result.ntsconfirmNum || result.ntsConfirmNum || '',
+          ntsConfirmNum,
           itemKey: invoicerMgtKey,
           writeDate,
-          supplyCost: String(negSupplyCost),
-          tax: String(negTax),
-          totalAmount: String(negTotal),
+          issuedAt,
+          supplyCost: negSupplyCost,
+          tax: negTax,
+          totalAmount: negTotal,
           modifyCode: modCode,
+          recorded,
         }
       });
     } catch (err) {
@@ -369,6 +422,31 @@ async function handler(req, res) {
     } catch (err) {
       console.error('[Invoice PDF Error]', err);
       return res.status(200).json({ ok: false, error: err.message || 'PDF URL 조회 실패' });
+    }
+  }
+
+  // 5-1. 사무소: 우리 광고 주문의 세금계산서 보기 (AD-6)
+  //   주문 번호만 받고, 서버가 그 주문 사무소의 '광고 결제·세금계산서 보기' 권한을 확인한 뒤 팝빌 보기 주소를 준다
+  //   (이전: 관리자 전용 pdf 액션을 불러 늘 403)
+  if (action === 'office-pdf') {
+    if (req.method !== 'POST') return res.status(405).json({ ok: false, error: 'Method not allowed' });
+    const { orderId, kind } = req.body || {};
+    if (!orderId || !str(orderId, 64)) return res.status(400).json({ ok: false, error: '주문 번호가 올바르지 않습니다.' });
+    if (!hasServerKey()) return res.status(503).json({ ok: false, error: '서버가 설정되지 않았습니다.' });
+    const { data: itemKey, error: keyErr } = await supabase.rpc('ad_invoice_view_key', {
+      p_order_id: String(orderId), p_user_id: req.user?.id, p_kind: kind === 'modify' ? 'modify' : 'issue',
+    });
+    if (keyErr) return res.status(500).json({ ok: false, error: '권한을 확인하지 못했습니다.' });
+    if (!itemKey) return res.status(403).json({ ok: false, error: '이 주문의 세금계산서를 볼 권한이 없거나 아직 발행되지 않았습니다.' });
+    try {
+      if (!isTaxinvoiceConfigured) return notConfigured(res, '조회');
+      const url = await new Promise((resolve, reject) => {
+        taxinvoiceService.getViewURL(SUPPLIER_INFO.corpNum, 'SELL', String(itemKey), '', (r) => resolve(r), (e) => reject(e));
+      });
+      return res.status(200).json({ ok: true, data: { url } });
+    } catch (err) {
+      console.error('[Invoice office view Error]', err);
+      return res.status(200).json({ ok: false, error: err.message || '세금계산서 보기 주소를 만들지 못했습니다.' });
     }
   }
 

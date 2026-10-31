@@ -13,6 +13,7 @@ import {
 import { CourtRepealThreshold } from '../types/courtPetitionTypes';
 import { getAuthHeaders } from '../supabaseClient';
 import { localYmd } from '../utils/localDate';
+import { readCompanionRecord, writeCompanionRecord, removeCompanionRecord } from './companionRecordStore';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
@@ -89,17 +90,18 @@ function scopedKey(base: string, clientId?: string) {
 }
 
 /** 저장된 회생동행 사건 (없으면 null — 데모 사건을 사용자 사건처럼 보여주지 않는다) */
+// 저장 위치: 로그인 = 서버(client_companion_records), 로그인 전 = 이 기기 (companionRecordStore)
 export function loadRehabCompanionCase(clientId?: string): RehabCompanionCase | null {
-  const keys = clientId ? [scopedKey(COMPANION_STORAGE_KEY, clientId), COMPANION_STORAGE_KEY] : [COMPANION_STORAGE_KEY];
-  for (const key of keys) {
-    const parsed = readCase<RehabCompanionCase>(key);
+  const scopes = clientId ? [clientId, ''] : [''];
+  for (const scope of scopes) {
+    const parsed = readCompanionRecord<RehabCompanionCase>('rehab', scope);
     if (!parsed) continue;
     if (DEMO_REHAB_CASE_IDS.has(parsed.id)) {
-      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      removeCompanionRecord('rehab', scope);
       continue;
     }
     // 다른 의뢰인에게 연결된 전역 사본은 사용하지 않음
-    if (key === COMPANION_STORAGE_KEY && clientId && parsed.clientId && parsed.clientId !== clientId) continue;
+    if (scope === '' && clientId && parsed.clientId && parsed.clientId !== clientId) continue;
     return {
       ...parsed,
       cashflow: {
@@ -121,12 +123,7 @@ export function loadRehabCompanionCaseForClient(clientId?: string): RehabCompani
 // 회생동행 사건 저장 (의뢰인 ID가 있으면 의뢰인별 키에 저장 — 조회 키와 저장 키를 일치시킴)
 export function saveRehabCompanionCase(caseData: RehabCompanionCase, clientId?: string): void {
   const cid = clientId || caseData.clientId;
-  try {
-    const serialized = JSON.stringify({ ...caseData, clientId: cid, updatedAt: new Date().toISOString() });
-    localStorage.setItem(scopedKey(COMPANION_STORAGE_KEY, cid), serialized);
-  } catch (err) {
-    console.error('Error saving companion case:', err);
-  }
+  writeCompanionRecord('rehab', cid || '', { ...caseData, clientId: cid, updatedAt: new Date().toISOString() });
 }
 
 /**
@@ -975,12 +972,12 @@ export function getRecommendedBenefits(
 
 // 파산동행 사건 불러오기 (없으면 null — 데모 사건을 사용자 사건처럼 보여주지 않는다)
 export function loadBankruptcyCase(clientId?: string): BankruptcyCompanionCase | null {
-  const keys = clientId ? [`${BANKRUPTCY_STORAGE_KEY}_${clientId}`, BANKRUPTCY_STORAGE_KEY] : [BANKRUPTCY_STORAGE_KEY];
-  for (const key of keys) {
-    const parsed = readCase<BankruptcyCompanionCase>(key);
+  const scopes = clientId ? [clientId, ''] : [''];
+  for (const scope of scopes) {
+    const parsed = readCompanionRecord<BankruptcyCompanionCase>('bankruptcy', scope);
     if (!parsed) continue;
     if (DEMO_BANKRUPTCY_CASE_IDS.has(parsed.id)) {
-      try { localStorage.removeItem(key); } catch { /* ignore */ }
+      removeCompanionRecord('bankruptcy', scope);
       continue;
     }
     return {
@@ -994,12 +991,7 @@ export function loadBankruptcyCase(clientId?: string): BankruptcyCompanionCase |
 
 /** 기존 사건에 병합 저장 — 사건이 없고 완전한 데이터(id)도 아니면 저장하지 않는다 (부분 값으로 가짜 사건이 생기지 않도록) */
 export function saveBankruptcyCase(data: Partial<BankruptcyCompanionCase>, clientId?: string): void {
-  try {
-    const current = loadBankruptcyCase(clientId);
-    if (!current && !data.id) return;
-    const key = clientId ? `${BANKRUPTCY_STORAGE_KEY}_${clientId}` : BANKRUPTCY_STORAGE_KEY;
-    localStorage.setItem(key, JSON.stringify({ ...(current || {}), ...data }));
-  } catch (err) {
-    console.error('Error saving bankruptcy case:', err);
-  }
+  const current = loadBankruptcyCase(clientId);
+  if (!current && !data.id) return;
+  writeCompanionRecord('bankruptcy', clientId || '', { ...(current || {}), ...data });
 }

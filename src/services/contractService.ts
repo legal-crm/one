@@ -1,11 +1,13 @@
 // ============================================================
 // 전자 계약 서비스
-// Supabase 우선 + localStorage 폴백 하이브리드 동기화
+// 원본은 서버(electronic_contracts). 서버가 설정된 환경에서는 기기 사본을 쓰지 않는다 (10-31, 데이터 저장 원칙)
+// 기기 저장(localStorage)은 Supabase가 없는 로컬 개발 환경 전용
 // ============================================================
 
 import type { ElectronicContract, ContractDocument, ContractDocType, ContractStatus, FeeInstallment, CourtCosts, BankAccountInfo, SuccessFeeAgreement } from '../types';
 import { CONTRACT_DOC_TYPES } from '../types';
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { toast } from 'sonner';
 import { 
   generateContractOriginalHash, 
   generateContractFinalHash, 
@@ -14,6 +16,36 @@ import {
 import { anchorContractToBlockchain } from './blockchainAnchorService';
 
 const STORAGE_KEY = 'electronic_contracts';
+/** 서버가 없는 로컬 개발 환경만 기기에 계약서를 둔다 */
+const LOCAL_ONLY = !isSupabaseConfigured;
+
+function writeLocalContracts(list: ElectronicContract[]) {
+  if (!LOCAL_ONLY) return;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); } catch { /* ignore */ }
+}
+
+/** 표에 칸이 없는 나머지 계약 정보 (주민번호는 넣지 않음, 서면 계약 스캔 파일 본문은 빼고 이름만) */
+function contractExtra(c: ElectronicContract): Record<string, unknown> {
+  const paper = c.paperContractInfo
+    ? { ...c.paperContractInfo, scannedFiles: (c.paperContractInfo.scannedFiles || []).map(f => ({ ...f, url: /^data:/.test(f.url || '') ? '' : f.url })) }
+    : undefined;
+  const extra: Record<string, unknown> = {
+    contractMethod: c.contractMethod,
+    paperContractInfo: paper,
+    statementFees: c.statementFees,
+    title: c.title,
+    caseType: c.caseType,
+    caseStageList: c.caseStageList,
+    signedAt: c.signedAt,
+    contractNumber: c.contractNumber,
+    clientAddressDetail: c.clientAddressDetail,
+    clientPostcode: c.clientPostcode,
+    clientEmail: c.clientEmail,
+    lawyerPhone: c.lawyerPhone,
+  };
+  for (const k of Object.keys(extra)) if (extra[k] === undefined) delete extra[k];
+  return extra;
+}
 
 function logSupabaseError(op: string, error: any) {
   console.error(`[Contract] ${op} 실패:`, error?.message || error);
@@ -72,13 +104,16 @@ function contractToRow(c: ElectronicContract) {
     success_fee: c.successFee || null,
     case_category: c.caseCategory || 'individual_rehab',
     linked_diagnosis_id: c.linkedDiagnosisId || null,
+    extra: contractExtra(c),
     created_at: c.createdAt || new Date().toISOString(),
     updated_at: c.updatedAt || new Date().toISOString(),
   };
 }
 
 function rowToContract(row: any): ElectronicContract {
+  const extra = row.extra && typeof row.extra === 'object' ? row.extra : {};
   return {
+    ...extra,
     id: row.id,
     clientId: row.client_id,
     clientName: row.client_name,
@@ -120,9 +155,19 @@ function rowToContract(row: any): ElectronicContract {
   };
 }
 
+/** 서버 행(electronic_contracts) → 앱 계약서 */
+export function contractFromRow(row: unknown): ElectronicContract {
+  return rowToContract(row);
+}
+
 // ── CRUD ──
 
 export function loadContractsLocal(): ElectronicContract[] {
+  if (!LOCAL_ONLY) {
+    // 예전 빌드가 남긴 기기 사본(실명·연락처 포함)은 지운다
+    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    return [];
+  }
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
@@ -139,11 +184,26 @@ export async function loadContracts(scope?: { clientId?: string; assignedLawyerI
       if (scope?.assignedLawyerId) query = query.eq('assigned_lawyer_id', scope.assignedLawyerId);
       
       const { data, error } = await query.order('created_at', { ascending: false });
-      if (error) logSupabaseError('loadContracts', error);
-      else if (data && data.length > 0) return data.map(rowToContract);
-    } catch (e) { logSupabaseError('loadContracts (exception)', e); }
+      if (error) { logSupabaseError('loadContracts', error); notifyLoadError(); return []; }
+      return (data || []).map(rowToContract);
+    } catch (e) { logSupabaseError('loadContracts (exception)', e); notifyLoadError(); return []; }
   }
   return loadContractsLocal();
+}
+
+let lastLoadErrorAt = 0;
+function notifyLoadError() {
+  if (Date.now() - lastLoadErrorAt < 30_000) return;
+  lastLoadErrorAt = Date.now();
+  toast.error('계약서 목록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.');
+}
+
+/** 의뢰인: 내 계약서 (서버 규칙이 내 계정·내 상담 요청·내 사건 계약만 돌려준다) */
+export async function loadMyContracts(): Promise<ElectronicContract[]> {
+  if (!isSupabaseConfigured) return loadContractsLocal();
+  const { data, error } = await supabase.from('electronic_contracts').select('*').order('created_at', { ascending: false });
+  if (error) { logSupabaseError('loadMyContracts', error); notifyLoadError(); return []; }
+  return (data || []).map(rowToContract);
 }
 
 /**
@@ -186,7 +246,7 @@ export async function loadAdminContractAnchors(): Promise<ElectronicContract[]> 
 }
 
 export async function saveContracts(contracts: ElectronicContract[]): Promise<void> {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts));
+  writeLocalContracts(contracts);
   if (isSupabaseConfigured && contracts.length > 0) {
     try {
       const rows = contracts.map(contractToRow);
@@ -228,6 +288,7 @@ export async function getContract(id: string): Promise<ElectronicContract | unde
     } catch (e) {
       logSupabaseError('getContract (exception)', e);
     }
+    return undefined;
   }
 
   const localContracts = loadContractsLocal();
@@ -268,6 +329,7 @@ export async function getContractForRemoteSign(contractId: string, token: string
     } catch (e) {
       logSupabaseError('getContractForRemoteSign (exception)', e);
     }
+    return undefined;
   }
 
   const localContracts = loadContractsLocal();
@@ -304,11 +366,14 @@ export async function getContractsByClientId(clientId: string, altId?: string, p
       const { data, error } = await query.order('created_at', { ascending: false });
       if (error) {
         logSupabaseError('getContractsByClientId', error);
-      } else if (data && data.length > 0) {
-        return data.map(rowToContract);
+        notifyLoadError();
+        return [];
       }
+      return (data || []).map(rowToContract);
     } catch (e) {
       logSupabaseError('getContractsByClientId (exception)', e);
+      notifyLoadError();
+      return [];
     }
   }
 
@@ -357,11 +422,6 @@ export async function submitRemoteSignStage(params: {
       return { ok: false, error: json?.error || `서버 저장에 실패했습니다. (${res.status})`, code: typeof json?.code === 'string' ? json.code : undefined };
     }
     const contract = rowToContract(json.contract);
-    // 기기 사본도 서버 결과로 갱신
-    const local = loadContractsLocal();
-    const idx = local.findIndex(c => c.id === contract.id);
-    if (idx >= 0) local[idx] = contract; else local.unshift(contract);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(local));
     return { ok: true, contract };
   } catch (e: any) {
     return { ok: false, error: e?.message || '네트워크 오류로 저장하지 못했습니다.' };
@@ -370,12 +430,14 @@ export async function submitRemoteSignStage(params: {
 
 /** @returns 서버(Supabase) 저장 성공 여부 — Supabase 미설정(로컬 전용) 환경은 true */
 export async function saveContract(contract: ElectronicContract): Promise<boolean> {
-  // localStorage
-  const localContracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  const idx = localContracts.findIndex((c: any) => c.id === contract.id);
-  if (idx >= 0) localContracts[idx] = contract;
-  else localContracts.unshift(contract);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(localContracts));
+  // 기기 사본은 서버가 없는 로컬 개발 환경만
+  if (LOCAL_ONLY) {
+    const localContracts = loadContractsLocal();
+    const idx = localContracts.findIndex(c => c.id === contract.id);
+    if (idx >= 0) localContracts[idx] = contract;
+    else localContracts.unshift(contract);
+    writeLocalContracts(localContracts);
+  }
   
   // Supabase
   if (isSupabaseConfigured) {
@@ -405,8 +467,7 @@ export async function saveContract(contract: ElectronicContract): Promise<boolea
 
 /** @returns 서버 삭제 성공 여부 (Supabase 미설정 로컬 전용 환경은 true) */
 export async function deleteContract(id: string): Promise<boolean> {
-  const contracts = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(contracts.filter((c: any) => c.id !== id)));
+  if (LOCAL_ONLY) writeLocalContracts(loadContractsLocal().filter(c => c.id !== id));
   
   if (isSupabaseConfigured) {
     try {
@@ -419,7 +480,8 @@ export async function deleteContract(id: string): Promise<boolean> {
 
 // ── 새 계약 생성 ──
 
-export function createContract(data: {
+/** 저장하지 않고 계약서 초안만 만든다 (문서 양식·서명 토큰 포함) */
+export function buildContractDraft(data: {
   clientId: string;
   clientRefId?: string;
   clientName: string;
@@ -503,7 +565,15 @@ export function createContract(data: {
     updatedAt: now,
   };
 
-  saveContract(contract);
+  return contract;
+}
+
+/** 새 계약서를 만들고 바로 저장한다 (사무소 화면용). 의뢰인 화면은 buildContractDraft + 서버 함수 */
+export function createContract(data: Parameters<typeof buildContractDraft>[0]): ElectronicContract {
+  const contract = buildContractDraft(data);
+  void saveContract(contract).then(ok => {
+    if (!ok) toast.error('계약서를 서버에 저장하지 못했어요. 다시 저장해 주세요.');
+  });
   return contract;
 }
 

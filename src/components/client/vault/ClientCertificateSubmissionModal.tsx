@@ -14,6 +14,7 @@ import {
   createAccessLog,
   saveCertificateVault
 } from '../../../services/vault/certificateVaultService';
+import { isSupabaseConfigured } from '../../../supabaseClient';
 
 interface ClientCertificateSubmissionModalProps {
   clientId: string;
@@ -216,7 +217,9 @@ export default function ClientCertificateSubmissionModal({
       if (mode === 'lawyer') {
         toast.success(`${clientName} 님의 인증서가 안전 금고에 등록되었습니다. 이제 부채증명서 발급 업무에 사용하실 수 있습니다.`);
       } else {
-        toast.success('인증서를 이 기기에 보관했습니다 (법률사무소로 자동 전송되지 않음). 전달 방법은 담당 변호사와 상의해 주세요.', { duration: 6000 });
+        toast.success(isSupabaseConfigured
+          ? '인증서를 보관 PIN으로 암호화해 담당 사무소 금고에 제출했어요. 사무소가 쓸 때는 보관 PIN을 직접 알려 주셔야 해요.'
+          : '인증서를 이 기기에 보관했습니다 (개발 환경).', { duration: 6000 });
       }
       onClose();
     } catch (err: any) {

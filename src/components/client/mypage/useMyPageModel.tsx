@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { useDialog } from '../../common/DialogProvider';
-import { loadCertificateVault } from '../../../services/vault/certificateVaultService';
-import { loadContractsLocal } from '../../../services/contractService';
+import { loadCertificateVault, fetchClientVault } from '../../../services/vault/certificateVaultService';
+import { loadMyContracts } from '../../../services/contractService';
 import { getCrmClientSync } from '../../../services/crmService';
 import { getMyPageNextAction } from './nextAction';
 import type { MyPageSubTab } from './nextAction';
@@ -142,8 +142,15 @@ export function useMyPageModel(props: MyPageViewProps) {
   });
 
   useEffect(() => {
-    const loaded = targetClientId ? loadCertificateVault(targetClientId) : null;
-    setClientVault(loaded);
+    if (!targetClientId) { setClientVault(null); return; }
+    // 원본은 서버 금고 (암호문만). 서버가 없는 로컬 개발 환경은 기기 사본
+    let alive = true;
+    void fetchClientVault(targetClientId).then(r => {
+      if (!alive) return;
+      if (r.ok) setClientVault(r.vault);
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [targetClientId, refreshTick]);
 
   // 모든 상담 요청에 포함된 변호사 제안서 취합
@@ -167,20 +174,21 @@ export function useMyPageModel(props: MyPageViewProps) {
   const profileRef = React.useRef(profile);
   profileRef.current = profile;
 
-  // 체결된 또는 진행 중인 전자수임계약서 조회
+  // 체결된 또는 진행 중인 전자수임계약서 — 서버에서 내 계약만 읽는다 (MY-10)
+  // 이전: 이 기기 사본(loadContractsLocal)에서 상담 요청 ID·전화번호·이름이 같은 계약을 찾아,
+  //       다른 기기에서는 늘 '없음'이고 이름이 같은 다른 계약이 잡힐 수도 있었다.
+  const [myContracts, setMyContracts] = React.useState<ElectronicContract[]>([]);
+  React.useEffect(() => {
+    let cancelled = false;
+    loadMyContracts().then(list => { if (!cancelled) setMyContracts(list); });
+    return () => { cancelled = true; };
+  }, [refreshTick, requests.length]);
   const clientContract = useMemo(() => {
-    try {
-      const contracts = loadContractsLocal();
-      const reqId = activeRequest?.id || requests[0]?.id;
-      return contracts.find((c: ElectronicContract) => 
-        (reqId && (c.clientId === reqId || c.clientRefId === reqId)) ||
-        (profile?.phone && c.clientPhone && c.clientPhone.replace(/[^0-9]/g, '') === profile.phone.replace(/[^0-9]/g, '')) ||
-        (c.clientName && (profile?.name || userAlias) && (c.clientName === profile?.name || c.clientName === userAlias))
-      ) || null;
-    } catch {
-      return null;
-    }
-  }, [activeRequest, requests, activeRequest?.financialProfile, userAlias, refreshTick]);
+    const reqId = activeRequest?.id || requests[0]?.id;
+    if (!reqId) return null;
+    return myContracts.find((c: ElectronicContract) =>
+      c.consultRequestId === reqId || c.clientId === reqId || c.clientRefId === reqId) || null;
+  }, [activeRequest?.id, requests, myContracts]);
 
   // CRM 확장 상세 정보 (13단계 심리 상태, 법원 사건정보, 보정권고 연동)
   const crmExt = useMemo(() => {

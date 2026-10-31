@@ -214,7 +214,23 @@ export async function listTaxInvoices(params: {
   }
 }
 
-/** 세금계산서 PDF 뷰어 URL 조회 */
+/** 사무소: 우리 광고 주문의 세금계산서 보기 주소 (주문 번호만 보냄, 서버가 billing.view 권한 확인) */
+export async function openOfficeTaxInvoice(orderId: string, kind: 'issue' | 'modify' = 'issue'): Promise<{ ok: true; url: string } | { ok: false; message: string }> {
+  try {
+    const res = await fetch(`${API_BASE}/office-pdf`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(await getAuthHeaders()) },
+      body: JSON.stringify({ orderId, kind }),
+    });
+    const json = await res.json().catch(() => null);
+    if (!json?.ok || !json?.data?.url) return { ok: false, message: json?.error || '세금계산서를 열지 못했어요.' };
+    return { ok: true, url: String(json.data.url) };
+  } catch {
+    return { ok: false, message: '네트워크 오류로 세금계산서를 열지 못했어요.' };
+  }
+}
+
+/** 관리자: 세금계산서 PDF 뷰어 URL 조회 */
 export async function getTaxInvoicePdfUrl(itemKey: string): Promise<{
   ok: boolean;
   data?: { url: string };

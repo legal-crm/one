@@ -3,7 +3,7 @@
 // 약정(버전)·회차·납부(추가만)·의뢰인 '입금했어요'. 금액은 원 단위 정수.
 // ============================================================
 import { supabase, isSupabaseConfigured } from '../../supabaseClient';
-import { NOT_CONFIGURED, type RpcResult } from '../office/rpcResult';
+import { NOT_CONFIGURED, toRpcError, type RpcResult } from '../office/rpcResult';
 
 export type InstallmentStatus = 'paid' | 'partial' | 'overdue' | 'scheduled';
 
@@ -334,6 +334,24 @@ export async function saveDepositAccount(officeId: string, caseId: string | null
   });
   if (error) return { ok: false, code: 'save_failed', message: accountMsg(error) };
   return { ok: true, data: null };
+}
+
+/** 체결된 계약서 일정으로 약정 만들기 (FE-3). 체결 때 자동으로 되지만, 사건이 늦게 생겼거나 일정이 안 맞았던 경우 */
+export async function createFeeAgreementFromContract(caseId: string): Promise<RpcResult<{ result: string; message: string }>> {
+  if (!isSupabaseConfigured) return NOT_CONFIGURED;
+  const { data, error } = await supabase.rpc('create_fee_agreement_from_contract', { p_case_id: caseId });
+  if (error) return toRpcError(error);
+  const result = String((data as { result?: string } | null)?.result || '');
+  const message: Record<string, string> = {
+    created: '계약서 일정으로 수납 일정을 만들었어요.',
+    exists: '이미 수납 일정이 있어요. 바꾸려면 일정 바꾸기를 써 주세요.',
+    no_contract: '이 사건에 체결 완료된 계약서가 없어요.',
+    no_schedule: '계약서에 회차 일정이 없어요. 수납 일정을 직접 만들어 주세요.',
+    mismatch: '계약서 회차 합계가 총 수임료와 달라요. 계약서를 확인하거나 일정을 직접 만들어 주세요.',
+    bad_date: '계약서 회차에 날짜가 없는 줄이 있어요. 일정을 직접 만들어 주세요.',
+    no_case: '계약서와 이 사건을 연결하지 못했어요.',
+  };
+  return { ok: true, data: { result, message: message[result] || '계약서 일정을 확인하지 못했어요.' } };
 }
 
 /** 공통 회차 생성기 (FE-4): 착수금 + 균등 분할, 끝전은 마지막 회차. 날짜는 매월 같은 날(말일 보정) */

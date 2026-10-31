@@ -26,6 +26,7 @@ import {
   type FeeInstallmentStatus,
   type FeePayment,
   type InstallmentInput,
+  createFeeAgreementFromContract,
 } from '../../../services/fees/feeService';
 
 interface Props {
@@ -112,6 +113,17 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
     if (!t || !firstDue) return [];
     return buildInstallments({ totalFeeWon: t, downPaymentWon: d, downPaymentOn: downOn, count: c, firstDueOn: firstDue });
   }, [total, down, downOn, count, firstDue]);
+
+  // 체결된 계약서 회차로 약정 만들기 (FE-3)
+  const importFromContract = async () => {
+    if (!caseId || saving) return;
+    setSaving(true);
+    const r = await createFeeAgreementFromContract(caseId);
+    setSaving(false);
+    if (r.ok === false) { toast.error(r.message); return; }
+    if (r.data.result === 'created') { toast.success(r.data.message); void load(); notifyFeeChanged(); }
+    else toast.info(r.data.message);
+  };
 
   const saveAgreement = async () => {
     if (!caseId || saving) return;
@@ -242,7 +254,13 @@ export default function ServerFeePanel({ officeId, consultRequestId, canRecord, 
               {!agreement && !editing && (
                 <div className="text-center py-6 space-y-3 border border-dashed border-slate-300 rounded-xl">
                   <p className="text-sm text-slate-600">수납 일정이 없습니다.{contractTotalFeeWon ? ` 계약서 수임료 ${won(contractTotalFeeWon)}로 시작할 수 있습니다.` : ''}</p>
-                  {canRecord && <button onClick={startEdit} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer"><Plus className="w-4 h-4" />수납 일정 만들기</button>}
+                  {canRecord && (
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <button onClick={importFromContract} disabled={saving} className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl border border-[#1E3A5F] text-[#1E3A5F] bg-white text-sm font-bold whitespace-nowrap active:scale-[0.98] disabled:opacity-50 cursor-pointer">계약서 일정 가져오기</button>
+                      <button onClick={startEdit} className="inline-flex items-center gap-1.5 px-4 min-h-[44px] rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer"><Plus className="w-4 h-4" />수납 일정 만들기</button>
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500">계약서가 체결되면 계약서 회차로 수납 일정이 자동으로 만들어져요(회차 합계가 총 수임료와 같을 때).</p>
                 </div>
               )}
 

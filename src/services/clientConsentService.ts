@@ -1,10 +1,12 @@
 import { supabase, isSupabaseConfigured } from '../supabaseClient';
+import { rpcErrorMessage } from './office/rpcResult';
 
 /* ─────────────────────────────────────────────
-   의뢰인 동의 기록
-   - 로그인: (필수) 서비스 이용약관 · (필수) 개인정보 수집·이용 — 로그인 직전 기기에 보관했다가 세션이 생기면 계정에 저장
-   - 변호사에게 상담 정보 제공(개인정보 제3자 제공): 상담을 요청할 때마다 받는 변호사를 확인하고 동의
-   저장 위치: Supabase 계정 user_metadata.consents (+ 이 기기 사본). 동의 문구가 바뀌면 버전을 올린다.
+   의뢰인 동의 기록 (CT-13·MY-9, 20261031003200)
+   - 로그인: (필수) 서비스 이용약관 · (필수) 개인정보 수집·이용 — 로그인 직전 기기에 보관했다가 세션이 생기면 서버에 기록
+   - 변호사에게 상담 정보 제공: 상담 요청을 보낼 때 서버(client_request_lawyers)가 동의 줄을 함께 남긴다
+   - 원본은 서버 user_consents(추가만, 철회는 한 번). 이전에는 계정 user_metadata에 저장해 본인이 고칠 수 있었다.
+   - 약관 버전은 서버 legal_documents. 새 버전이 '다시 동의 받기'로 게시되면 로그인 뒤 다시 묻는다.
    ───────────────────────────────────────────── */
 
 export const CONSENT_VERSIONS = {
@@ -13,147 +15,107 @@ export const CONSENT_VERSIONS = {
   thirdParty: 'third-party-2026-09-30',
 } as const;
 
-export interface ConsentRecord {
+export type ConsentKind = 'terms' | 'privacy' | 'third_party' | 'lawyer_terms';
+
+export interface ConsentRow {
+  id: string;
+  kind: ConsentKind;
   version: string;
-  at: string;
+  title: string | null;
+  url: string | null;
+  source: string;
+  requestId: string | null;
+  lawyerId: string | null;
+  lawyerName: string | null;
+  seatStatus: string | null;
+  grantedAt: string;
+  withdrawnAt: string | null;
+  withdrawEffect: 'seat_withdrawn' | 'contracted_kept' | 'already_closed' | 'account_request' | null;
 }
 
-export interface ThirdPartyConsentRecord extends ConsentRecord {
-  requestId: string;
-  /** 'selected' = 의뢰인이 고른 변호사, 'open' = 공개 요청(등록·승인된 변호사가 열람) */
-  scope: 'selected' | 'open';
-  lawyerIds: string[];
-}
-
-export interface ClientConsents {
-  terms?: ConsentRecord;
-  privacy?: ConsentRecord;
-  thirdParty?: ThirdPartyConsentRecord[];
+export interface PendingReconsent {
+  kind: 'terms' | 'privacy';
+  version: string;
+  title: string;
+  url: string;
+  summary: string | null;
+  effectiveOn: string;
 }
 
 const PENDING_LOGIN_KEY = 'legal_crm_pending_login_consent';
-const LOCAL_KEY = 'legal_crm_client_consents';
-const THIRD_PARTY_HISTORY_LIMIT = 20;
+const OLD_LOCAL_KEY = 'legal_crm_client_consents';
 
-function readJson<T>(key: string): T | null {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : null;
-  } catch {
-    return null;
-  }
-}
-
-function writeJson(key: string, value: unknown): void {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch {
-    /* 저장 공간 부족 등은 무시 (계정 저장이 기준) */
-  }
-}
-
-function normalize(value: unknown): ClientConsents {
-  if (!value || typeof value !== 'object') return {};
-  const v = value as ClientConsents;
-  return {
-    ...(v.terms?.at ? { terms: v.terms } : {}),
-    ...(v.privacy?.at ? { privacy: v.privacy } : {}),
-    ...(Array.isArray(v.thirdParty) ? { thirdParty: v.thirdParty.filter(r => r && r.at) } : {}),
-  };
-}
-
-/** 계정(user_metadata)과 이 기기 사본을 합친 동의 기록 */
-export async function loadClientConsents(): Promise<ClientConsents> {
-  const local = normalize(readJson(LOCAL_KEY));
-  if (!isSupabaseConfigured) return local;
-  try {
-    const { data } = await supabase.auth.getSession();
-    const remote = normalize(data.session?.user?.user_metadata?.consents);
-    return {
-      terms: remote.terms || local.terms,
-      privacy: remote.privacy || local.privacy,
-      thirdParty: mergeThirdParty(remote.thirdParty, local.thirdParty),
-    };
-  } catch {
-    return local;
-  }
-}
-
-function mergeThirdParty(a: ThirdPartyConsentRecord[] = [], b: ThirdPartyConsentRecord[] = []): ThirdPartyConsentRecord[] {
-  const seen = new Set<string>();
-  return [...a, ...b]
-    .filter(r => {
-      const key = `${r.requestId}|${r.at}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .sort((x, y) => new Date(y.at).getTime() - new Date(x.at).getTime())
-    .slice(0, THIRD_PARTY_HISTORY_LIMIT);
-}
-
-/** 계정에 동의 기록을 합쳐 저장한다. 실패해도 이 기기 사본은 남는다. */
-async function saveConsents(patch: (current: ClientConsents) => ClientConsents): Promise<boolean> {
-  const local = normalize(readJson(LOCAL_KEY));
-  const nextLocal = patch(local);
-  writeJson(LOCAL_KEY, nextLocal);
-  if (!isSupabaseConfigured) return true;
-  try {
-    const { data } = await supabase.auth.getSession();
-    const user = data.session?.user;
-    if (!user) return false;
-    const remote = normalize(user.user_metadata?.consents);
-    const next = patch(remote);
-    const { error } = await supabase.auth.updateUser({ data: { consents: next } });
-    return !error;
-  } catch {
-    return false;
-  }
-}
-
-/** 로그인 버튼을 누르기 직전: 필수 동의를 이 기기에 보관 (OAuth 이동 후 돌아와서 계정에 저장) */
+/** 로그인 버튼을 누르기 직전: 필수 동의를 이 기기에 보관 (OAuth 이동 후 돌아와서 서버에 기록) */
 export function stashLoginConsent(): void {
-  const at = new Date().toISOString();
-  writeJson(PENDING_LOGIN_KEY, {
-    terms: { version: CONSENT_VERSIONS.terms, at },
-    privacy: { version: CONSENT_VERSIONS.privacy, at },
-  } satisfies ClientConsents);
+  try {
+    localStorage.setItem(PENDING_LOGIN_KEY, JSON.stringify({ terms: CONSENT_VERSIONS.terms, privacy: CONSENT_VERSIONS.privacy, at: new Date().toISOString() }));
+  } catch { /* ignore */ }
 }
 
 let committingLoginConsent: Promise<void> | null = null;
 
-/** 로그인 세션이 생긴 뒤: 보관해 둔 필수 동의를 계정에 저장 (여러 번 불려도 한 번만 저장) */
+/** 로그인 세션이 생긴 뒤: 보관해 둔 필수 동의를 서버에 기록 (여러 번 불려도 한 번만) */
 export function commitPendingLoginConsent(): Promise<void> {
   if (committingLoginConsent) return committingLoginConsent;
-  const pending = normalize(readJson(PENDING_LOGIN_KEY));
-  if (!pending.terms && !pending.privacy) return Promise.resolve();
-  committingLoginConsent = saveConsents(current => ({
-    ...current,
-    ...(pending.terms ? { terms: pending.terms } : {}),
-    ...(pending.privacy ? { privacy: pending.privacy } : {}),
-  }))
-    .then(ok => {
-      if (ok) {
-        try { localStorage.removeItem(PENDING_LOGIN_KEY); } catch { /* ignore */ }
-      }
-    })
-    .finally(() => {
-      committingLoginConsent = null;
-    });
+  try { localStorage.removeItem(OLD_LOCAL_KEY); } catch { /* ignore */ }
+  let pending: { terms?: string; privacy?: string } | null = null;
+  try { pending = JSON.parse(localStorage.getItem(PENDING_LOGIN_KEY) || 'null'); } catch { pending = null; }
+  if (!pending || !isSupabaseConfigured) return Promise.resolve();
+  const items = [
+    pending.terms ? { kind: 'terms', version: pending.terms } : null,
+    pending.privacy ? { kind: 'privacy', version: pending.privacy } : null,
+  ].filter(Boolean);
+  committingLoginConsent = (async () => {
+    const { error } = await supabase.rpc('record_my_consents', { p_items: items });
+    if (!error) {
+      try { localStorage.removeItem(PENDING_LOGIN_KEY); } catch { /* ignore */ }
+    } else {
+      console.warn('[consent] record failed', error.message);
+    }
+  })().finally(() => { committingLoginConsent = null; });
   return committingLoginConsent;
 }
 
-/** 변호사에게 상담 정보를 제공하기로 동의한 기록 */
-export function recordThirdPartyConsent(input: { requestId: string; scope: 'selected' | 'open'; lawyerIds: string[] }): Promise<boolean> {
-  const record: ThirdPartyConsentRecord = {
-    version: CONSENT_VERSIONS.thirdParty,
-    at: new Date().toISOString(),
-    requestId: input.requestId,
-    scope: input.scope,
-    lawyerIds: input.lawyerIds,
+/** 내 동의 기록 (최근 순) */
+export async function loadMyConsents(): Promise<{ ok: true; rows: ConsentRow[] } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: true, rows: [] };
+  const { data, error } = await supabase.rpc('my_consents');
+  if (error) return { ok: false, message: '동의 기록을 불러오지 못했어요. 잠시 뒤 다시 열어 주세요.' };
+  return {
+    ok: true,
+    rows: ((data || []) as any[]).map(r => ({
+      id: r.id, kind: r.kind, version: r.version, title: r.title, url: r.url, source: r.source,
+      requestId: r.request_id, lawyerId: r.lawyer_id, lawyerName: r.lawyer_name, seatStatus: r.seat_status,
+      grantedAt: r.granted_at, withdrawnAt: r.withdrawn_at, withdrawEffect: r.withdraw_effect,
+    })),
   };
-  return saveConsents(current => ({
-    ...current,
-    thirdParty: mergeThirdParty([record], current.thirdParty),
-  }));
+}
+
+export const WITHDRAW_EFFECT_TEXT: Record<NonNullable<ConsentRow['withdrawEffect']>, string> = {
+  seat_withdrawn: '그 변호사에게 보낸 상담 요청을 취소했어요. 변호사는 더 이상 내 정리 자료를 볼 수 없어요.',
+  contracted_kept: '수임 계약을 맺은 변호사라 계약에 따라 사건 처리에 필요한 정보는 계속 다뤄요. 계약 해지는 사무소에 문의해 주세요.',
+  already_closed: '이미 끝난 상담 요청이라 더 바뀌는 것은 없어요. 철회 기록만 남겼어요.',
+  account_request: '이용약관·개인정보 동의 철회는 탈퇴로 처리해요. 개인정보 요청으로 접수했어요(10일 안에 처리).',
+};
+
+/** 동의 철회 */
+export async function withdrawConsent(id: string, reason?: string): Promise<{ ok: true; effect: ConsentRow['withdrawEffect'] } | { ok: false; message: string }> {
+  if (!isSupabaseConfigured) return { ok: false, message: '서버에 연결되지 않았어요.' };
+  const { data, error } = await supabase.rpc('withdraw_my_consent', { p_id: id, p_reason: reason || null });
+  if (error) return { ok: false, message: /too many open privacy/i.test(error.message || '') ? '처리 중인 개인정보 요청이 많아요. 처리된 뒤 다시 요청해 주세요.' : rpcErrorMessage(error) };
+  return { ok: true, effect: ((data as any)?.effect ?? null) as ConsentRow['withdrawEffect'] };
+}
+
+/** 다시 동의가 필요한 새 약관 */
+export async function loadPendingReconsent(): Promise<PendingReconsent[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase.rpc('my_pending_reconsent');
+  if (error) return [];
+  return ((data || []) as any[]).map(r => ({ kind: r.kind, version: r.version, title: r.title, url: r.url, summary: r.summary, effectiveOn: r.effective_on }));
+}
+
+export async function acceptReconsent(docs: PendingReconsent[]): Promise<{ ok: boolean; message?: string }> {
+  const { error } = await supabase.rpc('record_my_consents', { p_items: docs.map(d => ({ kind: d.kind, version: d.version, source: 'reconsent' })) });
+  if (error) return { ok: false, message: '동의를 저장하지 못했어요. 다시 눌러 주세요.' };
+  return { ok: true };
 }

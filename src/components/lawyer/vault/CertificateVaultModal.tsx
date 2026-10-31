@@ -135,7 +135,7 @@ export default function CertificateVaultModal({
       };
 
       await onUpdateVault(updatedVault);
-      toast.success('인증서 비밀번호가 복호화되었습니다. 열람 기록이 이 브라우저에 저장되었습니다.');
+      toast.success('인증서 비밀번호를 열었어요. 열람 기록이 서버에 남았어요.');
     } catch (err: any) {
       toast.error(err.message || '비밀번호 복호화 실패');
     } finally {
@@ -207,14 +207,14 @@ export default function CertificateVaultModal({
     toast.success(`[${relayTargetCreditor}] 원격 승인 안내 문구가 복사되었습니다. 통화 또는 카카오톡으로 전달해 주세요.`, { duration: 5000 });
   };
 
-  // 5. 이 브라우저 사본 삭제
+  // 5. 금고 파기 (서버 암호문 삭제)
   const handleExecuteShred = async () => {
     const shredded = shredCertificateVault(vault, actorName, shredReason);
     await onUpdateVault(shredded);
     setShowShredConfirm(false);
     setDecryptedPassword(null);
     setOpenedKeyBase64(null);
-    toast.success('이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 삭제했습니다. 내려받은 파일·다른 기기 사본은 따로 삭제해야 합니다.', { duration: 8000 });
+    toast.success('금고의 인증서 파일과 암호화된 비밀번호를 삭제했어요. 내려받은 파일은 PC에서 따로 삭제해 주세요.', { duration: 8000 });
   };
 
   // 6. 미등록 시 제출 요청 문구 복사
@@ -254,7 +254,7 @@ export default function CertificateVaultModal({
                 ) : (
                   <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 font-semibold flex items-center gap-1">
                     <ShieldAlert className="w-3 h-3" />
-                    이 브라우저에만 보관
+                    PIN 암호문만 보관
                   </span>
                 )}
               </div>
@@ -343,9 +343,9 @@ export default function CertificateVaultModal({
               {isShredded ? (
                 <div className="p-6 bg-rose-950/20 border border-rose-900/30 rounded-2xl text-center space-y-2">
                   <AlertOctagon className="w-10 h-10 text-rose-400 mx-auto" />
-                  <h4 className="text-sm font-bold text-rose-300">이 브라우저의 인증서 사본이 삭제되었습니다</h4>
+                  <h4 className="text-sm font-bold text-rose-300">금고의 인증서가 삭제되었습니다</h4>
                   <p className="text-xs text-rose-400/80">
-                    이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 비웠습니다. 이전에 내려받은 파일이나 다른 기기의 사본은 이 기능으로 삭제되지 않습니다.
+                    금고의 인증서 파일과 암호화된 비밀번호를 비웠습니다. 이전에 내려받은 파일은 이 기능으로 삭제되지 않습니다.
                   </p>
                   <p className="text-xs text-slate-400">
                     삭제 일시: {vault.shreddedAt ? new Date(vault.shreddedAt).toLocaleString('ko-KR') : '-'} | 담당: {vault.shreddedBy || '-'}
@@ -455,7 +455,7 @@ export default function CertificateVaultModal({
                           인증서 비밀번호 보안 열람
                         </h5>
                         <p className="text-xs text-slate-400 mt-0.5">
-                          의뢰인이 정한 보관 PIN으로만 열립니다(앱·서버에 키 없음). 열람 목적이 이 브라우저 기록에 남고, 클립보드 복사 시 30초 후 소거를 시도합니다.
+                          의뢰인이 정한 보관 PIN으로만 열립니다(앱·서버에 키 없음). 열람 목적이 서버 기록에 남고, 클립보드 복사 시 30초 후 소거를 시도합니다.
                         </p>
                       </div>
                     </div>
@@ -733,9 +733,9 @@ export default function CertificateVaultModal({
             <div className="space-y-3">
               <div className="flex items-center justify-between pb-2 border-b border-slate-800">
                 <div>
-                  <h5 className="text-xs font-bold text-slate-200">열람 기록 (이 브라우저)</h5>
+                  <h5 className="text-xs font-bold text-slate-200">열람 기록</h5>
                   <p className="text-xs text-slate-400">
-                    비밀번호 열람, 파일 다운로드, 안내 문구 복사 일시와 목적을 이 브라우저에 기록합니다. 서버에 저장되지 않으며 위변조 방지 기능은 없습니다.
+                    비밀번호 열람, 파일 다운로드, 안내 문구 복사 일시와 목적을 서버가 기록합니다. 화면에서 고칠 수 없고, 의뢰인도 같은 기록을 봅니다.
                   </p>
                 </div>
                 <span className="text-xs font-mono text-slate-400">총 {vault.accessLogs.length}건</span>
@@ -813,7 +813,7 @@ export default function CertificateVaultModal({
                     <strong>2. 금융거래 금지:</strong> 예금 인출, 이체, 대출 실행 등 위임 목적 외의 금융 행위에 사용하지 않습니다. (동의서상 약정이며, 이 앱이 기술적으로 차단하지는 않습니다)
                   </p>
                   <p>
-                    <strong>3. 삭제:</strong> 사건 종결 또는 의뢰인 요청 시 사무소에 보관된 사본(이 브라우저·내려받은 파일 포함)을 삭제합니다.
+                    <strong>3. 삭제:</strong> 사건 종결 또는 의뢰인 요청 시 금고의 암호문과 내려받은 파일을 삭제합니다.
                   </p>
                 </div>
 
@@ -828,9 +828,9 @@ export default function CertificateVaultModal({
                 <div className="flex items-center gap-2">
                   <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0" />
                   <div>
-                    <h5 className="text-xs font-bold text-rose-300">이 브라우저의 인증서 사본 삭제</h5>
+                    <h5 className="text-xs font-bold text-rose-300">금고 인증서 삭제</h5>
                     <p className="text-xs text-rose-400/80 mt-0.5">
-                      이 브라우저에 저장된 인증서 파일과 암호화된 비밀번호를 비웁니다. 내려받은 파일, 다른 기기·브라우저의 사본은 남으므로 따로 삭제해야 합니다.
+                      금고의 인증서 파일과 암호화된 비밀번호를 비웁니다. 내려받은 파일은 남으므로 따로 삭제해야 합니다.
                     </p>
                   </div>
                 </div>
@@ -841,12 +841,12 @@ export default function CertificateVaultModal({
                     className="px-4 py-2 text-xs font-bold text-rose-200 bg-rose-900/50 hover:bg-rose-900 border border-rose-700/60 rounded-xl transition-colors flex items-center gap-1.5"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
-                    이 브라우저 사본 삭제
+                    금고 인증서 삭제
                   </button>
                 ) : (
                   <div className="text-xs text-rose-300 font-semibold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-rose-400" />
-                    이 브라우저의 사본은 이미 삭제되었습니다.
+                    금고의 인증서는 이미 삭제되었습니다.
                   </div>
                 )}
               </div>
@@ -858,7 +858,7 @@ export default function CertificateVaultModal({
         <div className="flex items-center justify-between px-6 py-3.5 border-t border-slate-800 bg-slate-950/50">
           <div className="text-xs text-slate-400 flex items-center gap-1.5">
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            <span>이 브라우저에만 저장 · 인증서 파일 미암호화 · 서버 KMS 전환 전 운영 사용 주의</span>
+            <span>개인키·비밀번호는 의뢰인 보관 PIN 암호문만 서버 보관 · 공개 인증서(signCert.der)는 암호화하지 않음</span>
           </div>
           <button
             onClick={onClose}
@@ -874,10 +874,10 @@ export default function CertificateVaultModal({
             <div className="w-full max-w-md bg-slate-900 border border-rose-700 rounded-2xl p-5 space-y-4 shadow-2xl">
               <div className="flex items-center gap-2.5 text-rose-400 font-bold text-sm">
                 <AlertOctagon className="w-5 h-5" />
-                이 브라우저 사본 삭제 확인
+                금고 인증서 삭제 확인
               </div>
               <p className="text-xs text-slate-300 leading-relaxed">
-                <strong>이 브라우저에 저장된 공동인증서 파일(.der, .key)과 암호화된 비밀번호를 비웁니다.</strong> 이 브라우저에서는 다시 열람할 수 없습니다.
+                <strong>금고의 공동인증서 파일(.der, .key)과 암호화된 비밀번호를 비웁니다.</strong> 다시 열람할 수 없습니다.
                 이미 내려받은 파일, 다른 기기·브라우저의 사본은 삭제되지 않습니다. 계속하시겠습니까?
               </p>
 

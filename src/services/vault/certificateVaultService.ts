@@ -8,12 +8,15 @@
  *   이전: 번들에 내장된 고정 시드(FALLBACK_KEY_SEED)로 비밀번호만 암호화하고 개인키는 평문 저장.
  * - 공개 인증서(signCert.der)는 만료일·발급기관 표시를 위해 암호화하지 않는다(공개 정보).
  * - 짧은 PIN은 기기를 손에 넣은 사람이 대입 공격으로 풀 수 있다 → 6자 이상, 인증서 비밀번호와 다르게 받는다.
- * - 보관 위치는 현재 브라우저(localStorage)뿐. crmService가 Supabase 저장 전 제거하므로 기기 간 공유되지 않음.
- * - 감사 로그는 같은 localStorage 레코드에 있으므로 위변조 방지·영구 보존이 아님.
+ * - 보관 위치: 서버 case_certificate_vaults (20261031003400). 서버는 암호문만 받는다(평문 개인키·PIN 없는 금고 거절).
+ *   의뢰인이 제출하면 그 사건 사무소의 서류 담당 권한자만 열람(열 때마다 사무소 활동 기록). 관리자는 볼 수 없다.
+ * - 접근 기록은 서버가 붙인다(화면이 보낸 기록은 버림). 서버가 없는 로컬 개발 환경만 브라우저에 둔다.
  * - 클립보드 30초 소거는 브라우저 권한/포커스에 따라 실패할 수 있음 (결과를 onZeroized로 전달).
  * - 파기는 이 브라우저의 사본만 비움. 내려받은 파일·다른 기기 사본은 남음.
  */
 
+import { supabase, isSupabaseConfigured } from '../../supabaseClient';
+import { rpcErrorMessage } from '../office/rpcResult';
 import type { 
   CertificateVaultData, 
   CertificateAccessLog, 
@@ -454,6 +457,11 @@ export function recordFinancialRelayGuide(
  * 로컬 스토리지 로드
  */
 export function loadCertificateVault(clientId: string): CertificateVaultData | null {
+  if (isSupabaseConfigured) {
+    // 서버 환경: 원본은 서버. 예전 빌드가 남긴 기기 사본은 지운다
+    try { localStorage.removeItem(`${VAULT_STORAGE_KEY_PREFIX}${clientId}`); } catch { /* ignore */ }
+    return null;
+  }
   try {
     const raw = localStorage.getItem(`${VAULT_STORAGE_KEY_PREFIX}${clientId}`);
     if (!raw) return null;
@@ -484,6 +492,7 @@ export function loadCertificateVault(clientId: string): CertificateVaultData | n
  * 로컬 스토리지 저장
  */
 export function saveCertificateVault(vault: CertificateVaultData): void {
+  if (isSupabaseConfigured) return; // 서버 환경은 submitClientVault / saveOfficeVault
   try {
     localStorage.setItem(`${VAULT_STORAGE_KEY_PREFIX}${vault.clientId}`, JSON.stringify(vault));
   } catch (err) {
@@ -492,3 +501,58 @@ export function saveCertificateVault(vault: CertificateVaultData): void {
 }
 
 // (삭제됨) generateSeedVaultData: 가짜 인증서, 동의 서명, 가상 인물 열람 기록을 만들던 시연용 생성기. 호출처 없이 운영 번들에 포함되어 제거.
+
+// ── 서버 금고 (S 트랙, 20261031003400) ─────────────────────────────────────
+export type VaultResult = { ok: true; vault: CertificateVaultData | null } | { ok: false; message: string };
+
+function vaultError(error: { message?: string; code?: string }): string {
+  const m = error.message || '';
+  if (/plaintext private key|sealed with a PIN/i.test(m)) return '인증서를 보관 PIN으로 암호화하지 못했어요. 다시 등록해 주세요.';
+  if (/case not found/i.test(m)) return '이 사건의 인증서 금고를 찾지 못했어요.';
+  return rpcErrorMessage(error);
+}
+
+function toVault(data: unknown): CertificateVaultData | null {
+  if (!data || typeof data !== 'object') return null;
+  return data as CertificateVaultData;
+}
+
+/** 의뢰인: 내 사건 금고 */
+export async function fetchClientVault(caseKey: string): Promise<VaultResult> {
+  if (!isSupabaseConfigured) return { ok: true, vault: loadCertificateVault(caseKey) };
+  const { data, error } = await supabase.rpc('client_certificate_vault', { p_case_key: caseKey });
+  if (error) return { ok: false, message: vaultError(error) };
+  return { ok: true, vault: toVault(data) };
+}
+
+/** 의뢰인: 암호화한 금고를 사건 사무소에 제출 */
+export async function submitClientVault(caseKey: string, vault: CertificateVaultData): Promise<VaultResult> {
+  if (!isSupabaseConfigured) { saveCertificateVault(vault); return { ok: true, vault }; }
+  const { data, error } = await supabase.rpc('client_save_certificate_vault', { p_case_key: caseKey, p_data: vault });
+  if (error) return { ok: false, message: vaultError(error) };
+  return { ok: true, vault: toVault(data) };
+}
+
+/** 사무소: 사건 금고 열기 (서버가 열람 기록을 남김) */
+export async function fetchOfficeVault(officeId: string, caseKey: string): Promise<VaultResult> {
+  if (!isSupabaseConfigured || !officeId) return { ok: true, vault: loadCertificateVault(caseKey) };
+  const { data, error } = await supabase.rpc('office_certificate_vault', { p_office_id: officeId, p_case_key: caseKey });
+  if (error) return { ok: false, message: vaultError(error) };
+  return { ok: true, vault: toVault(data) };
+}
+
+/** 사무소: 대신 등록하거나 사용 기록 저장 */
+export async function saveOfficeVault(officeId: string, caseKey: string, vault: CertificateVaultData, purpose?: string): Promise<VaultResult> {
+  if (!isSupabaseConfigured || !officeId) { saveCertificateVault(vault); return { ok: true, vault }; }
+  const { data, error } = await supabase.rpc('office_save_certificate_vault', { p_office_id: officeId, p_case_key: caseKey, p_data: vault, p_purpose: purpose || null });
+  if (error) return { ok: false, message: vaultError(error) };
+  return { ok: true, vault: toVault(data) };
+}
+
+/** 파기 (의뢰인은 officeId 없이, 사무소는 officeId와 함께) */
+export async function shredServerVault(caseKey: string, officeId: string | null, reason?: string): Promise<VaultResult> {
+  if (!isSupabaseConfigured) return { ok: true, vault: null };
+  const { data, error } = await supabase.rpc('shred_certificate_vault', { p_case_key: caseKey, p_office_id: officeId, p_reason: reason || null });
+  if (error) return { ok: false, message: vaultError(error) };
+  return { ok: true, vault: toVault(data) };
+}

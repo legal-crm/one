@@ -107,6 +107,13 @@ export default function RehabCompanionView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clientId, userAlias, fallbackKey]);
 
+  // 서버 기록을 다 읽으면(로그인 직후·다른 기기 기록) 다시 그린다
+  useEffect(() => {
+    const onChanged = () => refreshData();
+    window.addEventListener('mykim:companion-changed', onChanged);
+    return () => window.removeEventListener('mykim:companion-changed', onChanged);
+  }, [refreshData]);
+
   useEffect(() => {
     refreshData();
     window.addEventListener('legal_crm_data_updated', refreshData);

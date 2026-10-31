@@ -66,7 +66,9 @@ import { CLIENT_TAB_LABELS, isClientTab, readInitialClientTab, resolveClientNavT
 import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
 import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
 import { getDisplayName as getLawyerDisplayName } from './client/lawyerDirectory';
-import { CONSENT_VERSIONS, commitPendingLoginConsent, recordThirdPartyConsent } from '../services/clientConsentService';
+import { CONSENT_VERSIONS, commitPendingLoginConsent } from '../services/clientConsentService';
+import ReconsentModal from './client/ReconsentModal';
+import { hydrateCompanionRecords } from '../services/companionRecordStore';
 import ThirdPartyConsentModal from './client/ThirdPartyConsentModal';
 const RemedyModal = React.lazy(() => import('./client/RemedyModal'));
 const NewsDetailModal = React.lazy(() => import('./client/NewsDetailModal'));
@@ -792,7 +794,8 @@ export default function ClientRole({
 
     if (pending.scope === 'selected') {
       const { addedLawyerIds } = mergeLawyerRequest(latest.selectedLawyerIds, pending.lawyerIds);
-      await recordThirdPartyConsent({ requestId: latest.id, scope: 'selected', lawyerIds: addedLawyerIds });
+      // 정보 제공 동의 기록은 서버가 요청과 함께 남긴다 (client_request_lawyers → user_consents)
+      void addedLawyerIds;
       const added = await requestLawyersForConsult(latest, pending.lawyerIds, { isNew: pending.isNew });
       if (added > 0) toast.success(`변호사 ${added}명에게 상담 요청을 보냈습니다.`);
       setLawyerSelectionMode(false);
@@ -1045,6 +1048,8 @@ export default function ClientRole({
         touchClientActivity();
         // 로그인 직전에 받은 필수 동의(약관·개인정보)를 계정에 기록 (보관된 동의가 없으면 아무것도 하지 않음)
         void commitPendingLoginConsent();
+        // 회생동행 기록: 서버 원본을 읽고, 로그인 전에 이 기기에 적은 기록은 서버로 옮긴다 (S 트랙)
+        void hydrateCompanionRecords(session.user.id);
         const existingAlias = session.user.user_metadata?.alias as string | undefined;
         const metaAlias = existingAlias || generateAlias();
         setUserAlias(metaAlias);
@@ -2046,6 +2051,11 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, isLoggedIn]);
 
+  // 로그아웃하면 회생동행 메모리 사본을 비운다 (다음 사람이 이 기기에서 보지 않게)
+  useEffect(() => {
+    if (!isLoggedIn) void hydrateCompanionRecords(null);
+  }, [isLoggedIn]);
+
   // 서버 알림 (변호사 메시지·제안서 도착·서류 다시 요청) — 로그인한 의뢰인만
   const serverNotif = useServerNotifications('client', isLoggedIn);
   const clientNotifications: ClientNotification[] = React.useMemo(() => {
@@ -2543,7 +2553,10 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         </React.Suspense>
       )}
 
-      {/* 변호사에게 상담 정보 제공 동의 (상담 요청·공개 요청 직전) */}
+      {/* 새 약관·처리방침에 다시 동의 (관리자가 '다시 동의 받기'로 게시한 경우, CT-13) */}
+      <ReconsentModal isLoggedIn={isLoggedIn} />
+
+      {/* 변호사에게 상담 정보 제공 동의 (상담 요청 직전) */}
       <ThirdPartyConsentModal
         open={!!pendingConsent}
         scope={pendingConsent?.scope || 'selected'}

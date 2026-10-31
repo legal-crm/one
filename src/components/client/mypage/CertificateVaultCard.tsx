@@ -1,15 +1,13 @@
 import { KeyRound, ShieldCheck, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatLocalDate, formatVaultDday, saveCertificateVault, shredCertificateVault } from '../../../services/vault/certificateVaultService';
-import { updateCrmClientExtension } from '../../../services/crmService';
+import { formatLocalDate, formatVaultDday, shredServerVault } from '../../../services/vault/certificateVaultService';
 import { Badge, Button, Card } from '../ui';
 import type { MyPageModel } from './useMyPageModel';
 
 /**
  * 내 사건 탭: 인증서 보관함 카드 (MyPageView에서 분리)
- * - 인증서는 개인키 보호를 위해 이 기기에만 저장되고 법률사무소로 전달되지 않는다(crmService가 서버 전송에서 제외).
- *   사무소가 쓸 수 없는 기능이라 새 등록은 받지 않고(기획서 '인증서 금고: 숨김'), 이미 저장한 인증서가 있을 때만
- *   내용을 확인하고 삭제할 수 있게 보여 준다. 등록 창(ClientCertificateSubmissionModal)은 사무소 전달 기능이 생기면 다시 연결한다.
+ * - 인증서 비밀번호·개인키는 의뢰인이 정한 보관 PIN으로 브라우저에서 암호화해 사건 사무소 금고(서버)에 제출한다.
+ *   서버·관리자는 열 수 없고, 사무소는 의뢰인이 PIN을 알려 줘야 쓸 수 있다. 열람 기록은 서버가 남긴다(20261031003400).
  */
 export default function CertificateVaultCard({ vm }: { vm: MyPageModel }) {
   const { clientVault, dialog, profile, setClientVault, targetClientId, userAlias } = vm;
@@ -74,17 +72,15 @@ export default function CertificateVaultCard({ vm }: { vm: MyPageModel }) {
   const handleShred = async () => {
     const ok = await dialog.confirm({
       title: '인증서 삭제',
-      message: '이 기기에 저장된 인증서 파일과 비밀번호를 삭제합니다. 법률사무소에 이미 전달한 사본은 사무소에 삭제를 요청해 주세요.\n삭제하시겠습니까?',
+      message: '사무소 금고에 제출한 인증서 파일과 암호화한 비밀번호를 삭제합니다. 사무소가 따로 내려받은 사본이 있다면 사무소에 삭제를 요청해 주세요.\n삭제하시겠습니까?',
       confirmText: '삭제',
       variant: 'danger',
     });
     if (!ok) return;
-    const shredded = shredCertificateVault(clientVault, userAlias || profile?.name || '신청인', '의뢰인 본인 직접 폐기 요청');
-    // 기기 보관본 + CRM 확장 데이터 사본을 모두 삭제본으로 덮어씀
-    saveCertificateVault(shredded);
-    await updateCrmClientExtension(targetClientId, { certificateVault: shredded });
-    setClientVault(shredded);
-    toast.success('이 기기에 저장된 인증서 파일과 비밀번호를 삭제했습니다.');
+    const r = await shredServerVault(targetClientId, null, `${userAlias || profile?.name || '의뢰인'} 본인 삭제 요청`);
+    if (r.ok === false) { toast.error(r.message); return; }
+    setClientVault(r.vault);
+    toast.success('제출한 인증서 파일과 비밀번호를 삭제했어요.');
   };
 
   return (
@@ -95,11 +91,11 @@ export default function CertificateVaultCard({ vm }: { vm: MyPageModel }) {
         </span>
         <div className="min-w-0">
           <h3 id="mypage-vault-title" className="flex flex-wrap items-center gap-2 text-base font-bold text-slate-900">
-            이 기기에 저장한 인증서
-            <Badge tone="warning">이 기기에만 저장</Badge>
+            사무소 금고에 제출한 인증서
+            <Badge tone="info">보관 PIN으로 암호화</Badge>
           </h3>
           <p className="mt-1 text-sm leading-relaxed text-slate-600 break-keep">
-            인증서는 이 브라우저에만 저장되어 있고 법률사무소로 전송되지 않았어요. 전달 방법은 담당 사무소와 상의하고, 더 쓰지 않으면 삭제해 주세요.
+            인증서는 보관 PIN으로 암호화해 담당 사무소 금고에 있어요. 마이김변은 열 수 없고, 사무소는 PIN을 알려 주셔야 쓸 수 있어요. 더 쓰지 않으면 삭제해 주세요.
           </p>
         </div>
       </div>
@@ -135,7 +131,7 @@ export default function CertificateVaultCard({ vm }: { vm: MyPageModel }) {
           <p className="flex items-center justify-between gap-2 text-sm font-bold text-slate-700">
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="h-4 w-4 text-emerald-600" aria-hidden="true" />
-              이 기기의 열람 기록
+              열람·사용 기록
             </span>
             <span className="text-xs font-medium text-slate-500">최근 {Math.min(2, clientVault.accessLogs.length)}건</span>
           </p>

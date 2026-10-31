@@ -206,7 +206,7 @@ export default function ContractManagementTab({ lawyerName, lawFirmName, onNavig
       try { await syncContractToCrm(updatedContract.clientId, updatedContract); } catch (e) { console.warn('[Contract] CRM 동기화 실패', e); }
     }
     await refreshContracts();
-    toast.success(`[${target.clientName}] 재촉 문구를 복사했습니다. ${channelLabel}로 직접 보내 주세요.${saved ? '' : ' (이력은 로컬에만 저장됨)'}`);
+    toast.success(`[${target.clientName}] 재촉 문구를 복사했습니다. ${channelLabel}로 직접 보내 주세요.${saved ? '' : ' (보낸 기록은 서버에 저장하지 못했어요)'}`);
     setReminderTargetContract(null);
   };
 

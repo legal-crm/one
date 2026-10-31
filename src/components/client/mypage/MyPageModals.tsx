@@ -2,6 +2,7 @@ import React from 'react';
 import PremiumProposalReportModal from '../../common/PremiumProposalReportModal';
 import { getIncomeExpenseProgress, getPropertyProgress, getStatementProgress } from '../docDrafts';
 import { updateCrmClientExtension } from '../../../services/crmService';
+import { submitClientVault } from '../../../services/vault/certificateVaultService';
 import CreditorMeetingGuideModal from '../companion/CreditorMeetingGuideModal';
 import ClientCertificateSubmissionModal from '../vault/ClientCertificateSubmissionModal';
 import type { MyPageModel } from './useMyPageModel';
@@ -169,9 +170,10 @@ export default function MyPageModals({ vm }: { vm: MyPageModel }) {
           clientPhone={profile?.phone || (activeRequest as any)?.phone || ''}
           existingVault={clientVault || undefined}
           onSaveVault={async (updated) => {
-            setClientVault(updated);
-            await updateCrmClientExtension(targetClientId, { certificateVault: updated });
-            setRefreshTick(c => c + 1);
+            // 암호문만 서버 금고에 제출 (실패하면 창이 오류를 보여 주고 닫히지 않는다)
+            const r = await submitClientVault(targetClientId, updated);
+            if (r.ok === false) throw new Error(r.message);
+            setClientVault(r.vault || updated);
           }}
           onClose={() => setIsCertSubmissionModalOpen(false)}
         />
