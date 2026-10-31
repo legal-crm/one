@@ -46,6 +46,7 @@ import ClientSignShareModal from '../ClientSignShareModal';
 import { HighlightedDocumentViewer } from '../../common/HighlightedDocumentViewer';
 import { useDialog } from '../../common/DialogProvider';
 import ModalPortal from '../../common/ModalPortal';
+import { getSealDataUrl, recordSealUse } from '../../../services/office/sealCache';
 
 interface Stage2ContractRetainerViewProps {
   clientRequest: ConsultRequest;
@@ -675,14 +676,13 @@ ${d.content}
             </div>
             <div style="text-align: right;">
               <p style="margin: 0 0 8px 0;"><strong>수임인 (법률대리인):</strong> ${current.lawFirmName} ${current.lawyerName} (직인)</p>
-              <div style="width: 140px; height: 50px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; margin-left: auto;">
-                (법률사무소 직인)
-              </div>
+              ${getSealDataUrl('office_seal') ? `<div style="width: 140px; height: 64px; display: flex; align-items: center; justify-content: flex-end; margin-left: auto;"><img src="${getSealDataUrl('office_seal')}" alt="법률사무소 직인" style="width: 60px; height: 60px; object-fit: contain;" /></div>` : `<div style="width: 140px; height: 50px; border: 1px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-size: 11px; margin-left: auto;">(법률사무소 직인)</div>`}
             </div>
           </div>
         </div>
       `).join('');
 
+    if (getSealDataUrl('office_seal')) recordSealUse('office_seal', '수임 계약서 인쇄');
     printWindow.document.write(`
       <!DOCTYPE html>
       <html>

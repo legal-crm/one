@@ -3,11 +3,11 @@ import { MessageSquare, Send, Lock, Eye, ChevronDown, ChevronUp, Search, X, Help
 import { ClientQA, QAAnswer, User } from '../../types';
 import { toast } from 'sonner';
 import { answerClientQa } from '../../services/cms/contentService';
-import { DEFAULT_PROHIBITED_EXPRESSIONS, findProhibitedExpressions } from '../../services/proposalCompliance';
+import { QNA_BASE_TERMS, findProhibitedExpressions } from '../../services/proposalCompliance';
 
 // 서버 함수 qna_flagged_terms 와 같은 목록 (20261030000500_cms_server_content.sql)
 const QNA_EXTRA_TERMS = ['전액 탕감', '탕감 보장', '최대 90%', '성공률', '승소율', '전담 변호사', '변호사 배정', '매칭'];
-const QNA_TERMS = [...DEFAULT_PROHIBITED_EXPRESSIONS, ...QNA_EXTRA_TERMS];
+const QNA_TERMS = [...QNA_BASE_TERMS, ...QNA_EXTRA_TERMS];
 
 const ANSWER_MAX_LENGTH = 3000;
 const ANSWER_MIN_LENGTH = 10;

@@ -33,6 +33,10 @@ import RequestWorkflowPanel from './lawyer/RequestWorkflowPanel';
 import RequestTimeline from './lawyer/RequestTimeline';
 import NotificationBell from './lawyer/NotificationBell';
 import ConsultStyleProfile from './lawyer/ConsultStyleProfile';
+import { confirmClientCopy, findProhibitedExpressions, loadOfficeCopyRules } from '../services/proposalCompliance';
+import { decideProposalReview, listPendingProposalReviews, registerSeal, requestProposalReview } from '../services/office/officeSettingsService';
+import OfficeSettingsPanel, { OfficeSealCard } from './lawyer/settings/OfficeSettingsPanel';
+import { loadSealCache } from '../services/office/sealCache';
 import TasksScheduleTab from './lawyer/TasksScheduleTab';
 import StaffManagementTab from './lawyer/StaffManagementTab';
 import LawyerQnAAnswerSection from './lawyer/LawyerQnAAnswerSection';
@@ -181,7 +185,7 @@ export default function LawyerRole({
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts' | 'fee-settlement' | 'requests'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
-  const [settingsCategory, setSettingsCategory] = useState<'profile' | 'branding' | 'consult-style' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
+  const [settingsCategory, setSettingsCategory] = useState<'profile' | 'office' | 'branding' | 'consult-style' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [noticeSearchTerm, setNoticeSearchTerm] = useState<string>('');
@@ -372,6 +376,8 @@ export default function LawyerRole({
     void setDocTemplateOfficeScope(currentOfficeId);
     if (!currentOfficeId) return;
     void loadOfficeProfile(currentOfficeId);
+    void loadOfficeCopyRules(currentOfficeId || null);
+    void loadSealCache(currentOfficeId);
   }, [currentOfficeId]);
 
   // ── 상담 요청이 없는 사건(직접 등록·영업 리드 이관): 서버 사건을 사건 관리 목록에 넣는다 (CM·SL) ──
@@ -1628,18 +1634,21 @@ export default function LawyerRole({
     supervisingLawyerId: string;
     memo: string;
     createdAt: string;
-  }>>(() => {
-    try {
-      const stored = localStorage.getItem('legal_crm_pending_proposals');
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
+  }>>([]);
   const [reviewModalProposal, setReviewModalProposal] = useState<typeof pendingProposals[0] | null>(null);
 
-  // pendingProposals를 localStorage에 영속화 (브라우저 새로고침 시 유지)
+  // 컨펌 대기는 서버 proposal_reviews (RB-6). 이전: 요청한 직원 브라우저(localStorage)에만 있어 변호사 화면에 안 보였다
+  const refreshProposalReviews = useCallback(async () => {
+    if (!currentOfficeId) return;
+    const r = await listPendingProposalReviews(currentOfficeId);
+    if (r.ok) setPendingProposals(r.data);
+  }, [currentOfficeId]);
   useEffect(() => {
-    localStorage.setItem('legal_crm_pending_proposals', JSON.stringify(pendingProposals));
-  }, [pendingProposals]);
+    try { localStorage.removeItem('legal_crm_pending_proposals'); } catch { /* 옛 사본 정리 실패는 무시 */ }
+    void refreshProposalReviews();
+    const t = window.setInterval(() => { if (!document.hidden) void refreshProposalReviews(); }, 60_000);
+    return () => window.clearInterval(t);
+  }, [refreshProposalReviews]);
 
   const staffRole = activeStaffMember?.role || 'OWNER';
   const isLawyerOrOwner = staffRole === 'OWNER' || staffRole === 'LAWYER';
@@ -1674,6 +1683,21 @@ export default function LawyerRole({
       createdAt: new Date().toISOString()
     };
 
+    if (currentOfficeId) {
+      // 서버에 요청을 만들고(검토 변호사에게 알림은 서버가 보냄) 성공하면 창을 닫는다. 실패하면 초안을 그대로 둔다
+      void requestProposalReview(currentOfficeId, reqId, {
+        clientAlias: pending.clientName, proposalData, memo, reviewerLawyerId: supervisingId, requestedByName: pending.staffName,
+      }).then(r => {
+        if (r.ok === false) { toast.error(r.message); return; }
+        toast.success(` 변호사에게 컨펌 요청을 보냈습니다.`);
+        setProposalModalReqId(null);
+        setProposalRehabResult(null);
+        setProposalRehabInput(null);
+        setProposalConsultRequest(null);
+        void refreshProposalReviews();
+      });
+      return false;
+    }
     setPendingProposals(prev => [...prev, pending]);
 
     // 알림 발송
@@ -1732,7 +1756,16 @@ export default function LawyerRole({
     // 제안서를 승인 → 고객에게 실제 발송 (막히면 컨펌 대기 건을 그대로 둔다)
     if (!handleSubmitProposalFromDraft(pending.reqId, proposalData)) return;
 
-    // pending에서 제거
+    // pending에서 제거 (서버 기록은 승인으로)
+    if (currentOfficeId) {
+      const d = await decideProposalReview(pendingId, 'approved');
+      if (d.ok === false) toast.error(`제안서는 발송했지만 검토 기록을 남기지 못했어요: ${d.message}`);
+      setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
+      setReviewModalProposal(null);
+      void refreshProposalReviews();
+      toast.success('제안서를 승인하고 고객에게 발송했습니다.');
+      return;
+    }
     setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
     setReviewModalProposal(null);
 
@@ -1758,6 +1791,15 @@ export default function LawyerRole({
     const pending = pendingProposals.find(p => p.id === pendingId);
     if (!pending) return;
 
+    if (currentOfficeId) {
+      void decideProposalReview(pendingId, 'rejected', reason).then(r => {
+        if (r.ok === false) { toast.error(r.message); return; }
+        setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
+        setReviewModalProposal(null);
+        toast.info('제안서를 반려했습니다. 작성한 직원에게 알렸어요.');
+      });
+      return;
+    }
     setPendingProposals(prev => prev.filter(p => p.id !== pendingId));
     setReviewModalProposal(null);
 
@@ -1862,7 +1904,14 @@ export default function LawyerRole({
    * (이전: 채팅 탭이 이 함수를 거치지 않고 onAddMessage를 직접 호출해 체험 모드 계정도 전송이 실행됨)
    * @returns 전송을 받아들였으면 true (입력창을 비움)
    */
-  const handleSendChat = (reqId: string, text: string): boolean => {
+  const handleSendChat = (reqId: string, text: string): boolean | Promise<boolean> => {
+    // 발송 문구 규칙 (ST-6): 걸린 표현이 있으면 확인 창 → 사유 적고 보내기(기록) / 엄격 모드면 막음
+    if (findProhibitedExpressions(text).length > 0) {
+      return confirmClientCopy(text, 'chat', (o) => dialog.prompt(o), (msg) => toast.error(msg)).then(ok => (ok ? sendChatNow(reqId, text) : false));
+    }
+    return sendChatNow(reqId, text);
+  };
+  const sendChatNow = (reqId: string, text: string): boolean => {
     if (activeLawyer?.approved === false) {
       toast.warning('현재 자격 심사 대기(체험 모드) 상태입니다. 관리자 정식 승인 완료 후 실제 의뢰인 상담 메시지를 전송하실 수 있습니다.');
       return false;
@@ -3277,11 +3326,13 @@ export default function LawyerRole({
             {/* 1단: 5대 스마트 카테고리 탭 */}
             <div className="bg-white rounded-2xl border border-slate-200 p-1.5 flex gap-1.5 overflow-x-auto shadow-xs">
               {[
-                { key: 'profile' as const, label: '👤 프로필 & 브랜딩', defaultSub: 'profile-edit' },
-                { key: 'security' as const, label: '🛡️ 보안 & 기기 관리', defaultSub: 'devices' },
-                { key: 'notifications' as const, label: '🔔 알림 & 보안 연동', defaultSub: 'channels' },
-                { key: 'rules' as const, label: '⚖️ 법률 기준 & 데이터', defaultSub: 'calc-rules' },
-                { key: 'notices' as const, label: '📢 플랫폼 공지', defaultSub: 'notices' },
+                // 내 설정 / 사무소 설정 두 갈래 (ST-1)
+                { key: 'profile' as const, label: '내 프로필·도장', defaultSub: 'profile-edit' },
+                ...(currentOfficeId && canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.view') ? [{ key: 'office' as const, label: '사무소 설정', defaultSub: 'office' }] : []),
+                { key: 'security' as const, label: '보안·기기', defaultSub: 'devices' },
+                { key: 'notifications' as const, label: '알림', defaultSub: 'channels' },
+                { key: 'rules' as const, label: '법률 기준·데이터', defaultSub: 'calc-rules' },
+                { key: 'notices' as const, label: '플랫폼 공지', defaultSub: 'notices' },
               ].map(cat => (
                 <button
                   key={cat.key}
@@ -3315,9 +3366,10 @@ export default function LawyerRole({
             {settingsCategory === 'profile' && (
               <div className="flex items-center gap-2 overflow-x-auto pb-1">
                 {[
-                  { key: 'profile-edit', label: '✏️ 내 프로필 편집' },
-                  { key: 'consult-style', label: '💬 AI 및 상담 스타일 프로필' },
-                  { key: 'seals', label: '🏷️ 직인·도장 & 브랜딩 스튜디오' },
+                  { key: 'profile-edit', label: '내 프로필 편집' },
+                  // '상담 스타일 프로필'은 사무소 설정 > 의뢰인 발송 문구 규칙으로 옮김 (ST-6)
+                  ...(!currentOfficeId ? [{ key: 'consult-style', label: '상담 스타일 (이 기기)' }] : []),
+                  { key: 'seals', label: '내 도장·서명' },
                 ].map(s => (
                   <button
                     key={s.key}
@@ -3413,7 +3465,18 @@ export default function LawyerRole({
               </div>
             )}
 
-            {/* 직인·도장 & 브랜딩 스튜디오 */}
+            {/* 사무소 설정 (ST-1·ST-3·ST-5·ST-6) */}
+            {settingsCategory === 'office' && currentOfficeId && (
+              <OfficeSettingsPanel officeId={currentOfficeId} canEdit={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.edit')} />
+            )}
+
+            {/* 내 도장·서명: 서버 저장(비공개 저장소). 아래 스튜디오로 만든 도장도 저장하면 서버로 올라감 */}
+            {settingsSub === 'seals' && currentOfficeId && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <OfficeSealCard officeId={currentOfficeId} kind="lawyer_seal" canEdit />
+                <OfficeSealCard officeId={currentOfficeId} kind="lawyer_signature" canEdit />
+              </div>
+            )}
             {settingsSub === 'seals' && (
               <div>
                 <SealStudioModal
@@ -3424,6 +3487,17 @@ export default function LawyerRole({
                   initialSealInfo={activeLawyer.sealInfo}
                   onSaveSealInfo={(newInfo) => {
                     setActiveLawyer(prev => ({ ...prev, sealInfo: newInfo }));
+                    // 서버 저장 (ST-5): 스튜디오에서 만든 도장·서명 이미지를 비공개 저장소에 올린다
+                    if (currentOfficeId) {
+                      const jobs: Array<Promise<unknown>> = [];
+                      if (newInfo.lawyerSealUrl?.startsWith('data:image')) jobs.push(registerSeal(currentOfficeId, 'lawyer_seal', newInfo.lawyerSealUrl, '스튜디오 도장'));
+                      if (newInfo.signUrl?.startsWith('data:image')) jobs.push(registerSeal(currentOfficeId, 'lawyer_signature', newInfo.signUrl, '스튜디오 서명'));
+                      void Promise.all(jobs).then(rs => {
+                        const bad = rs.find((r: any) => r && r.ok === false) as any;
+                        if (bad) toast.error(`도장을 서버에 저장하지 못했어요: ${bad.message}`);
+                        else if (rs.length) toast.success('도장·서명을 서버에 저장했어요. 다른 기기에서도 보여요.');
+                      });
+                    }
                   }}
                 />
               </div>

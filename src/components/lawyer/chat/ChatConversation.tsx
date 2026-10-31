@@ -31,7 +31,7 @@ interface ChatConversationProps {
   onOpenCrm: (reqId: string, detailTab?: CrmDetailTab) => void;
   onOpenQuickDock?: (anchor: DOMRect) => void;
   canSend: boolean;
-  onSend: (text: string) => boolean;
+  onSend: (text: string) => boolean | Promise<boolean>;
   /** 전송 실패한 내 메시지 다시 보내기 */
   onRetry?: (messageId: string) => void;
   draft: string;

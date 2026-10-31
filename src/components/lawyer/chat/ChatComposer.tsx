@@ -19,7 +19,7 @@ interface ChatComposerProps {
    */
   lockedReason?: string;
   /** 전송 — 받아들였으면 true (입력창을 비운다) */
-  onSend: (text: string) => boolean;
+  onSend: (text: string) => boolean | Promise<boolean>;
   /** 스레드별 임시 저장된 입력값 */
   initialValue?: string;
   onDraftChange?: (text: string) => void;
@@ -59,7 +59,9 @@ export default function ChatComposer({ reserveCornerSpace = false, canSend: acco
   const send = () => {
     const text = value.trim();
     if (!text || !canSend) return;
-    if (onSend(text)) updateValue('');
+    // 보내기 전 확인 창이 뜨면 Promise로 돌아온다 (발송 문구 규칙, ST-6)
+    const r = onSend(text);
+    if (typeof r === 'boolean') { if (r) updateValue(''); } else void r.then(ok => { if (ok) updateValue(''); });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

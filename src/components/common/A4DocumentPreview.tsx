@@ -3,6 +3,7 @@ import { Printer, ShieldCheck, FileCheck, CheckCircle2 } from 'lucide-react';
 import { HighlightedDocumentViewer } from './HighlightedDocumentViewer';
 import type { ContractDocType } from '../../types';
 import { CONTRACT_DOC_TYPES } from '../../types';
+import { getSealDataUrl } from '../../services/office/sealCache';
 
 interface A4DocumentPreviewProps {
   title: string;
@@ -44,7 +45,10 @@ export const A4DocumentPreview: React.FC<A4DocumentPreviewProps> = ({
   const clientName = contractContext.clientName || '의뢰인';
   const clientPhone = contractContext.clientPhone || '-';
   const clientAddress = contractContext.clientAddress || '기재 생략';
-  const lawFirmName = contractContext.lawFirmName || '법무법인(유한)';
+  // 사무소명이 없으면 빈칸 (이전: '법무법인(유한)' 가짜 기본값)
+  const lawFirmName = contractContext.lawFirmName || '';
+  // 등록된 사무소 직인 (ST-5, 서버 비공개 저장소 → 로그인 때 data URL로 받아 둠). 없으면 '(법률사무소 직인)' 빈칸
+  const officeSealUrl = getSealDataUrl('office_seal');
   const lawyerName = contractContext.lawyerName || '담당변호사';
   const contractDate = contractContext.contractDate || new Date().toISOString().slice(0, 10);
 
@@ -281,7 +285,7 @@ export const A4DocumentPreview: React.FC<A4DocumentPreviewProps> = ({
                 signatureRequired !== 'client'
                   ? `<div class="sign-box" style="text-align: right;">
                       <div><strong>수임인 (을):</strong> ${safeEsc(lawFirmName)} ${safeEsc(lawyerName)} (직인)</div>
-                      <div class="sign-stamp-area" style="color:#ef4444; border-color:#fca5a5; margin-left:auto; width:130px;">(법률사무소 직인)</div>
+                      ${officeSealUrl ? `<div class="sign-stamp-area" style="margin-left:auto; width:130px; border:none;"><img src="${officeSealUrl}" alt="법률사무소 직인" style="width:72px;height:72px;object-fit:contain;" /></div>` : `<div class="sign-stamp-area" style="color:#ef4444; border-color:#fca5a5; margin-left:auto; width:130px;">(법률사무소 직인)</div>`}
                     </div>`
                   : ''
               }

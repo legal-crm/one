@@ -32,7 +32,7 @@ export interface LawyerChatWorkspaceProps {
   activeChatReqId: string;
   onSelectThread: (reqId: string) => void;
   /** 메시지 전송 (승인 확인·활동 로그 포함). 받아들였으면 true */
-  onSendMessage: (reqId: string, text: string) => boolean;
+  onSendMessage: (reqId: string, text: string) => boolean | Promise<boolean>;
   /** 전송 실패한 메시지를 같은 id로 다시 보낸다 (승인 확인·실패 안내 포함) */
   onRetryMessage?: (messageId: string) => Promise<boolean>;
   onConvertToCase: (req: ConsultRequest) => void;

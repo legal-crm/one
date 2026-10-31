@@ -12,7 +12,8 @@ import { ProposalDraftState } from '../../hooks/useProposalDraft';
 import { toast } from 'sonner';
 import PremiumProposalReportModal from '../common/PremiumProposalReportModal';
 import { getCourtStats } from '../../constants/courtStatistics';
-import { findProhibitedExpressions } from '../../services/proposalCompliance';
+import { confirmClientCopy } from '../../services/proposalCompliance';
+import { useDialog } from '../common/DialogProvider';
 
 export interface AIAnalysisData {
   factSummary: {
@@ -454,26 +455,21 @@ const LawyerProposalDraft: React.FC<LawyerProposalDraftProps> = ({
     rehabCalcResult
   });
 
-  // 발송 직전 검증: 금지 광고 표현 차단 (상담 스타일 프로필 + 기본 목록)
-  const tenantKey = consultRequest?.selectedLawyerId || undefined;
-  const validateBeforeSend = (data: ProposalData): boolean => {
+  // 발송 직전 검증 (ST-6): 공통 사전 + 사무소 단어. 기본 권고(사유 적고 그대로 보내기 + 기록), 사무소가 '엄격'이면 막음
+  const dialog = useDialog();
+  const validateBeforeSend = async (data: ProposalData): Promise<boolean> => {
     const text = [
       data.lawyerOpinion,
       ...(data.specialNotes || []),
       data.fees?.feeMemo || '',
       ...(data.clientQnA || []).map(q => q.answer || ''),
     ].join('\n');
-    const hits = findProhibitedExpressions(text, tenantKey);
-    if (hits.length > 0) {
-      toast.error(`금지 표현이 포함되어 발송할 수 없습니다: ${hits.join(', ')}`, { description: '변협 광고규정에 따라 결과 보장·과장 표현을 수정해 주세요.' });
-      return false;
-    }
-    return true;
+    return confirmClientCopy(text, 'proposal', (o) => dialog.prompt(o), (msg) => toast.error(msg));
   };
 
   // 발송/컨펌요청 공통 처리 — 직원은 변호사 컨펌 요청으로만 전달 (이전: 직원도 의뢰인에게 직접 발송됨)
-  const submitProposal = (data: ProposalData) => {
-    if (!validateBeforeSend(data)) return;
+  const submitProposal = async (data: ProposalData) => {
+    if (!(await validateBeforeSend(data))) return;
     if (viewerRole === 'staff') {
       if (!onRequestConfirm) {
         toast.error('변호사 컨펌 요청 경로가 연결되어 있지 않습니다.');
