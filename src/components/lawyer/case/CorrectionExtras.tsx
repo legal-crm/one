@@ -40,8 +40,23 @@ export function CourtCorrectionHint({ events, orders, canManage, onRegister }: {
 }
 
 // ── 통장 거래내역 표 → T2 (CR-11) ──
+const isPdf = (file: File) => /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+
+/** PDF는 글자 조각을 위치로 묶어 표로 만든다. 표를 못 만들면 사유를 담아 실패 */
+async function readPdfTable(buf: ArrayBuffer): Promise<unknown[][]> {
+  const { extractPdfTextItems } = await import('../../../services/corrections/pdfTextExtract');
+  const { pdfItemsToTable } = await import('../../../services/corrections/pdfStatementTable');
+  const { items, truncated } = await extractPdfTextItems(buf);
+  if (items.length === 0) throw new Error('scan');
+  const table = pdfItemsToTable(items);
+  if (!table) throw new Error('noheader');
+  if (truncated) toast.info('앞 60쪽까지만 읽었어요. 나머지는 기간을 나눠 다시 올려 주세요.');
+  return table;
+}
+
 async function readTable(file: File): Promise<unknown[][]> {
   const buf = await file.arrayBuffer();
+  if (isPdf(file)) return readPdfTable(buf);
   if (/\.csv$|\.txt$/i.test(file.name) || file.type === 'text/csv') {
     let text = new TextDecoder('utf-8').decode(buf);
     if (text.includes('\uFFFD')) text = new TextDecoder('euc-kr').decode(buf);
@@ -60,9 +75,9 @@ export function T2ImportButton({ item, onDone }: { item: CorrectionItem; onDone:
   const run = async (file: File) => {
     const th = Number(threshold.replace(/[^0-9]/g, ''));
     if (!th) { toast.error('기준 금액을 적어 주세요.'); return; }
-    if (/\.pdf$/i.test(file.name)) { toast.error('PDF 거래내역은 아직 읽지 못해요. 은행에서 엑셀(또는 CSV)로 내려받아 올려 주세요.'); return; }
-    // 엑셀 읽기 라이브러리(SheetJS 0.18.5) 알려진 취약점 노출을 줄이려고 크기를 제한한다
-    if (file.size > 5 * 1024 * 1024) { toast.error('5MB 이하 파일만 읽을 수 있어요. 기간을 나눠 내려받아 주세요.'); return; }
+    // 엑셀 읽기 라이브러리(SheetJS 0.18.5) 알려진 취약점 노출을 줄이려고 크기를 제한한다. PDF는 10MB까지
+    const limitMb = isPdf(file) ? 10 : 5;
+    if (file.size > limitMb * 1024 * 1024) { toast.error(`${limitMb}MB 이하 파일만 읽을 수 있어요. 기간을 나눠 내려받아 주세요.`); return; }
     setBusy(true);
     try {
       const table = await readTable(file);
@@ -74,8 +89,11 @@ export function T2ImportButton({ item, onDone }: { item: CorrectionItem; onDone:
       if (saved.ok === false) { toast.error(saved.message); return; }
       toast.success(`${r.scanned}건 중 ${r.rows.length}건을 표에 넣었어요. 확인한 뒤 의뢰인에게 요청하면 의뢰인이 사용처를 채워요.`);
       onDone();
-    } catch {
-      toast.error('파일을 읽지 못했어요. 은행에서 받은 엑셀·CSV 파일인지 확인해 주세요.');
+    } catch (err) {
+      const code = err instanceof Error ? err.message : '';
+      if (code === 'scan') toast.error('PDF에서 글자를 찾지 못했어요. 스캔한 그림 PDF는 읽을 수 없어요. 은행에서 엑셀·CSV 또는 글자 PDF로 내려받아 주세요.');
+      else if (code === 'noheader') toast.error('PDF에서 거래일·입금·출금 머리글을 찾지 못했어요. 은행 거래내역 원본 PDF인지 확인하거나 엑셀로 내려받아 주세요.');
+      else toast.error('파일을 읽지 못했어요. 은행에서 받은 엑셀·CSV·PDF 파일인지 확인해 주세요.');
     } finally {
       setBusy(false);
     }
@@ -83,7 +101,7 @@ export function T2ImportButton({ item, onDone }: { item: CorrectionItem; onDone:
   return (
     <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
       <p className="text-xs font-black text-slate-800 flex items-center gap-1.5"><Landmark className="w-3.5 h-3.5" /> 통장 거래내역에서 큰 금액 줄 채우기</p>
-      <p className="text-xs text-slate-500">은행 엑셀·CSV를 이 화면에서만 읽어요(서버·외부 AI로 보내지 않음). 사용처 칸은 비워 두고 의뢰인이 채워요.</p>
+      <p className="text-xs text-slate-500">은행 엑셀·CSV·글자 PDF를 이 화면에서만 읽어요(서버·외부 AI로 보내지 않음). 스캔 PDF는 읽지 못해요. 사용처 칸은 비워 두고 의뢰인이 채워요. 넣은 줄은 원본과 맞는지 꼭 확인해 주세요.</p>
       <div className="flex flex-wrap items-end gap-2">
         <label className="text-xs font-bold text-slate-700 space-y-1">기준 금액(원)
           <input value={threshold} onChange={e => setThreshold(e.target.value)} inputMode="numeric" className="block w-36 min-h-[44px] rounded-xl border border-slate-200 px-3 text-sm" />
@@ -93,7 +111,7 @@ export function T2ImportButton({ item, onDone }: { item: CorrectionItem; onDone:
         </label>
         <label className={`${btn} border border-slate-200 bg-white text-slate-700 hover:bg-slate-100`}>
           {busy ? '읽는 중…' : '거래내역 파일 고르기'}
-          <input type="file" accept=".xlsx,.xls,.csv,.txt" className="sr-only" disabled={busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void run(f); }} />
+          <input type="file" accept=".xlsx,.xls,.csv,.txt,.pdf,application/pdf" className="sr-only" disabled={busy} onChange={e => { const f = e.target.files?.[0]; e.target.value = ''; if (f) void run(f); }} />
         </label>
       </div>
     </div>
