@@ -179,7 +179,6 @@ import type { FeeInstallment, IntakeChannel, CorrectionOrder, DocumentFile, Alim
 import { INTAKE_CHANNEL_CONFIG, DOC_CATEGORY_CONFIG, ALIMTOK_MILESTONE_CONFIG, STATUS_TO_MILESTONE } from '../../types';
 import { triggerAlimtokOnStatusChange, loadFeeNotificationSettings, sendAlimtok, feeAmountWon, feeTotalWon } from '../../services/alimtokService';
 import { loadNotificationSettings } from '../../services/notificationService';
-import { addClientNotification } from '../../services/clientNotificationService';
 import { canUse as canUseOfficePermission } from '../../services/office/officePermissions';
 import CorrectionPanel from './case/CorrectionPanel';
 import { CORRECTIONS_CHANGED_EVENT, loadCorrectionOverview, type CorrectionOverviewRow } from '../../services/corrections/correctionService';

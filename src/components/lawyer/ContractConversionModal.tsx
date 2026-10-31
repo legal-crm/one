@@ -6,7 +6,7 @@ import type { ConsultRequest, Case, Lawyer as LawyerType, ElectronicContract, Fe
 import { createContract, saveContract, calculateCourtCosts } from '../../services/contractService';
 import { sendAlimtok } from '../../services/alimtokService';
 import { saveCrmClient, createDefaultCrmExtension, loadCrmData } from '../../services/crmService';
-import { addClientNotification } from '../../services/clientNotificationService';
+import { notifyCaseClient } from '../../services/notifications/caseClientNotice';
 import ModalPortal from '../common/ModalPortal';
 import { newRemoteSignToken } from '../../utils/secureToken';
 import { localYmd, addMonthsClamped } from '../../utils/localDate';
@@ -259,25 +259,25 @@ function ContractConversionModalInner({
         }
       }
 
-      // 5. 의뢰인 인앱 알림 전송 (클라이언트 포털 실시간 연동)
-      addClientNotification({
-        type: 'status_change',
-        title: contractMethod === 'electronic' ? '사건 수임 전자계약서가 도착했습니다' : '수임계약 체결 완료 안내',
-        body: contractMethod === 'electronic' 
-          ? `${firmPrefix}${activeLawyer.name} 변호사와의 수임 계약서에 모바일 전자서명을 진행해 주세요. (약정 수임료: ${totalFee.toLocaleString()}만 원)`
-          : `${firmPrefix}${activeLawyer.name} 변호사와의 사건 수임 계약이 완료되어 서류 수집 단계로 전환되었습니다.`,
-        emoji: contractMethod === 'electronic' ? '✍️' : '📝',
-        linkTab: 'contracts'
+      // 5. 의뢰인 앱 안 안내 (서버 알림 — 이전엔 변호사 브라우저에만 저장돼 의뢰인에게 가지 않았다)
+      const contractNotice = await notifyCaseClient({
+        caseKey: request.id,
+        kind: 'office_status',
+        title: contractMethod === 'electronic' ? '수임 계약서가 도착했어요' : '수임 계약이 기록됐어요',
+        body: contractMethod === 'electronic'
+          ? `${firmPrefix}${activeLawyer.name} 변호사 계약서예요. 상담방 메시지의 서명 링크에서 내용을 확인하고 서명해 주세요.`
+          : `${firmPrefix}${activeLawyer.name} 변호사와 계약이 기록됐어요. 진행 상황은 '내 사건'에서 볼 수 있어요.`,
       });
+      if (!contractNotice.ok) toast.error(contractNotice.message);
 
       if (sendDocPackage) {
-        addClientNotification({
-          type: 'document_request',
-          title: '사건 진행 필수 서류 15종 안내',
-          body: '원활한 법원 접수를 위해 신분증, 등본, 소득/재산 증빙 등 서류 준비를 시작해 주세요.',
-          emoji: '📂',
-          linkTab: 'documents'
+        const docNotice = await notifyCaseClient({
+          caseKey: request.id,
+          kind: 'office_document',
+          title: '준비할 서류 안내가 왔어요',
+          body: '신분증 사본, 주민등록초본, 소득·재산 자료처럼 접수에 필요한 서류를 준비해 주세요.',
         });
+        if (!docNotice.ok) toast.error(docNotice.message);
       }
 
       // 6. 알림톡 / 문자 자동 전송 (선택 시) — 실제 발송 결과를 확인

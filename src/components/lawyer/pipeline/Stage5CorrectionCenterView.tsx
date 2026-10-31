@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, CrmStatus, DecisionSummaryData } from '../../../types';
-import { addClientNotification } from '../../../services/clientNotificationService';
+import { notifyCaseClient } from '../../../services/notifications/caseClientNotice';
 import { localYmd, parseLocalYmd } from '../../../utils/localDate';
 import { useDialog } from '../../common/DialogProvider';
 import DecisionSummaryCard from './DecisionSummaryCard';
@@ -244,9 +244,9 @@ export default function Stage5CorrectionCenterView({
             repaymentMonths,
             totalDebt: crmExt?.decisionSummary?.totalDebt || Math.round(((crmExt?.repaymentPlan as any)?.totalPrincipal || 0) / 10000),
             totalRepayment: crmExt?.decisionSummary?.totalRepayment || Math.round(((monthlyPayment || 0) * (repaymentMonths || 36)) / 10000),
-            repaymentRate: crmExt?.decisionSummary?.repaymentRate || ((crmExt?.repaymentPlan as any)?.repaymentRatio ? Math.round((crmExt?.repaymentPlan as any).repaymentRatio) : 35),
+            repaymentRate: crmExt?.decisionSummary?.repaymentRate || ((crmExt?.repaymentPlan as any)?.repaymentRatio ? Math.round((crmExt?.repaymentPlan as any).repaymentRatio) : 0),
             totalDischarged: crmExt?.decisionSummary?.totalDischarged || 0,
-            dischargeRate: crmExt?.decisionSummary?.dischargeRate || 65,
+            dischargeRate: crmExt?.decisionSummary?.dischargeRate || 0,
           },
         });
       }
@@ -254,14 +254,17 @@ export default function Stage5CorrectionCenterView({
         await onUpdateStatus('commenced');
       }
 
-      addClientNotification({
-        type: 'status_change',
-        title: `[개시결정] ${clientName}님, 법원 개인회생 개시결정이 인가되었습니다. 가상계좌(${virtualBank} ${virtualAccount})를 확인하세요.`,
-        emoji: '🎉',
-        linkTab: 'diagnosis',
+      toast.success('개시결정을 등록하고 사건 상태를 개시결정으로 바꿨어요.');
+      // 이전 문구 '개시결정이 인가되었습니다'는 틀린 표현(개시결정과 인가결정은 다른 결정)
+      const notice = await notifyCaseClient({
+        caseKey: clientRequest.id,
+        kind: 'office_status',
+        title: '법원 개시결정이 기록됐어요',
+        body: virtualAccount
+          ? `변제금은 법원 가상계좌(${`${virtualBank} ${virtualAccount}`.trim()})로 내요. 첫 납부일은 담당 사무소 안내를 확인해 주세요.`
+          : '다음 일정과 변제금 납부 안내는 담당 사무소가 따로 알려 드려요.',
       });
-
-      toast.success('개시결정이 등록되고 사건 상태가 [개시결정(commenced)]으로 변경되었습니다.');
+      if (!notice.ok) toast.error(notice.message);
       setShowRegisterForm(false);
     } catch (e: any) {
       toast.error(e?.message || '개시결정 등록에 실패했습니다.');

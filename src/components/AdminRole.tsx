@@ -50,7 +50,6 @@ import { notifyAdminAdConfirmed } from '../services/notificationService';
 import { AD_STATUS_LABEL, fetchAdOrders, adminConfirmAdPayment, adminCancelAdOrder, adminSaveAdOrderInvoice, adminRunAdLifecycle, clearLegacyAdOrderCache } from '../services/adOrderService';
 import BillingOverviewDashboard from './admin/BillingOverviewDashboard';
 import AlimtalkControlCenter from './admin/AlimtalkControlCenter';
-import BlockchainContractControlCenter from './admin/BlockchainContractControlCenter';
 import MarketingAutopilotHub from './admin/MarketingAutopilotHub';
 import SeoGeoManager from './admin/SeoGeoManager';
 
@@ -120,7 +119,7 @@ export default function AdminRole({
   const dialog = useDialog();
   // Triple tab state
   const [activeTab, setActiveTab] = useState<'dashboard' | 'clients' | 'lawyers' | 'billing' | 'contents' | 'settings' | 'members' | 'security' | 'marketing' | 'seo_geo'>('dashboard');
-  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'adorders' | 'taxinvoice' | 'alimtalk' | 'blockchain'>('overview');
+  const [billingSubTab, setBillingSubTab] = useState<'overview' | 'adorders' | 'taxinvoice' | 'alimtalk'>('overview');
   const [expandedInvoiceId, setExpandedInvoiceId] = useState<string | null>(null);
   const [adminAdOrders, setAdminAdOrders] = useState<AdOrder[]>([]);
   const [adOrderFilter, setAdOrderFilter] = useState<string>('all');
@@ -1260,14 +1259,9 @@ export default function AdminRole({
             </div>
 
             <div className="flex items-center gap-3">
-              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-sm font-extrabold px-2.5 py-1 rounded-full flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>실시간 운영 모니터링 가동 중</span>
-              </span>
-
               <button 
                 onClick={handleLogout}
-                className="flex items-center gap-1 bg-[#111622] hover:bg-[#161B26] text-slate-500 hover:text-white px-2.5 py-1.5 rounded-[200px] border border-[#1E293B]/60 text-sm transition-colors"
+                className="flex items-center gap-1 bg-[#111622] hover:bg-[#161B26] text-slate-500 hover:text-white px-2.5 py-1.5 rounded-xl border border-[#1E293B]/60 text-sm transition-colors"
               >
                 <LogOut className="w-3 h-3" />
                 <span>로그아웃</span>
@@ -1331,16 +1325,12 @@ export default function AdminRole({
                 <Sparkles className="w-5 h-5 shrink-0" /><span>콘텐츠 제어</span>
               </button>
               <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-xl text-[15px] transition-all cursor-pointer ${activeTab === 'settings' ? 'bg-white/10 text-white font-bold border-l-3 border-indigo-400 shadow-sm' : 'text-slate-300 hover:bg-white/5 hover:text-white border-l-3 border-transparent font-medium'}`}>
-                <Lock className="w-5 h-5 shrink-0" /><span>매칭 정책</span>
+                <Lock className="w-5 h-5 shrink-0" /><span>플랫폼 설정</span>
               </button>
             </nav>
 
-            {/* 사이드바 하단: 모니터링 뱃지 + 로그아웃 + 버전 */}
+            {/* 사이드바 하단: 로그아웃 + 버전 (이전 '실시간 모니터링 가동 중'은 확인 없이 늘 켜진 고정 표시라 삭제) */}
             <div className="px-3.5 py-4 border-t border-slate-800 space-y-2">
-              <div className="flex items-center gap-2 px-3.5 py-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-sm text-emerald-400 font-bold">실시간 모니터링 가동 중</span>
-              </div>
               <button 
                 onClick={handleLogout}
                 className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-[15px] text-slate-300 hover:bg-white/5 hover:text-white transition-all font-bold cursor-pointer"
@@ -1919,8 +1909,8 @@ export default function AdminRole({
                     onChange={(e) => { const [k, d] = e.target.value.split('-') as [typeof lawyerSortKey, 'asc' | 'desc']; setLawyerSortKey(k); setLawyerSortDir(d); setLawyerPage(1); }}
                     className="bg-[#0B0F19] border border-[#1E293B]/80 rounded-xl px-3 py-1.5 text-sm text-slate-300 focus:outline-none focus:ring-1 focus:ring-indigo-500"
                   >
-                    <option value="matches-desc">매칭수 높은순</option>
-                    <option value="matches-asc">매칭수 낮은순</option>
+                    <option value="matches-desc">상담 요청 많은순</option>
+                    <option value="matches-asc">상담 요청 적은순</option>
                     <option value="name-asc">이름 가나다순</option>
                     <option value="name-desc">이름 역순</option>
                     <option value="region-asc">지역순</option>
@@ -1941,7 +1931,7 @@ export default function AdminRole({
                           <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('name')}>대리인 / 소속{sortIcon(lawyerSortKey === 'name', lawyerSortDir)}</th>
                           <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('region')}>지부 / 사업자{sortIcon(lawyerSortKey === 'region', lawyerSortDir)}</th>
                           <th className="p-3 cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('status')}>활동 상태{sortIcon(lawyerSortKey === 'status', lawyerSortDir)}</th>
-                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('matches')}>이달 매칭수{sortIcon(lawyerSortKey === 'matches', lawyerSortDir)}</th>
+                          <th className="p-3 text-right cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => toggleLawyerSort('matches')}>이달 상담 요청{sortIcon(lawyerSortKey === 'matches', lawyerSortDir)}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-[#1E293B]/30">
@@ -2098,7 +2088,7 @@ export default function AdminRole({
                         {/* Fields & Region */}
                         <div className="grid grid-cols-2 gap-2 text-[13px] bg-[#0B0F19] p-3 rounded-xl border border-[#1E293B]/40">
                           <div>• 소속/지부: <strong className="text-slate-200">{selectedLawyer.region}</strong></div>
-                          <div>• 이달 매칭실적: <strong className="text-slate-200">{selectedLawyer.matchedCount}건</strong></div>
+                          <div>• 이달 상담 요청: <strong className="text-slate-200">{selectedLawyer.matchedCount}건</strong></div>
                           <div className="col-span-2 mt-1">• 전문 분야: <strong className="text-indigo-400">{selectedLawyer.fields.join(', ')}</strong></div>
                         </div>
 
@@ -2176,7 +2166,7 @@ export default function AdminRole({
                               <span>변호사 자격 승인 검토 요청</span>
                             </span>
                             <p className="text-sm leading-relaxed text-slate-500">
-                              가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인을 완료하면 대리인은 my김변의 모든 상담 세션 및 실시간 채팅 매칭에 정식으로 참여할 권한을 부여받습니다.
+                              가입 시 제출한 자격 확인서 및 소속 로펌 인증을 심사하십시오. 승인하면 변호사 찾기에 프로필이 공개되고(공개 조건 충족 시), 의뢰인이 직접 고른 상담 요청을 받을 수 있습니다.
                             </p>
 
                             {/* 변호사 등록증 미리보기 */}
@@ -2446,14 +2436,6 @@ export default function AdminRole({
                   }`}
                 >
                   <span>💬 알림톡/문자 발송 관제 (Popbill)</span>
-                </button>
-                <button
-                  onClick={() => setBillingSubTab('blockchain')}
-                  className={`pb-2 border-b-2 transition-all cursor-pointer flex items-center gap-1.5 ${
-                    billingSubTab === 'blockchain' ? 'border-indigo-500 text-indigo-400 font-extrabold' : 'border-transparent hover:text-white'
-                  }`}
-                >
-                  <span>⛓️ 전자계약 블록체인 관제 (Polygon)</span>
                 </button>
               </div>
 
@@ -3293,10 +3275,7 @@ export default function AdminRole({
                 <AlimtalkControlCenter />
               )}
 
-              {/* BLOCKCHAIN CONTRACT INTEGRITY CONTROL CENTER */}
-              {billingSubTab === 'blockchain' && (
-                <BlockchainContractControlCenter />
-              )}
+              {/* (이전: '전자계약 블록체인 관제(Polygon)' 하위 탭 — 10-24 결정으로 블록체인 대신 서버 전자지문만 쓰므로 삭제) */}
 
             </div>
           )}
@@ -3327,7 +3306,7 @@ export default function AdminRole({
                       setFormAuthorId(lawyers[0]?.id || 'lawyer-1');
                       setFormImageUrl('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=600');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 법률 칼럼 등록</span>
@@ -3346,7 +3325,7 @@ export default function AdminRole({
                       setQaLawyerId(lawyers[0]?.id || 'lawyer-1');
                       setQaBadge('추천 답변');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 고민 상담사례 등록</span>
@@ -3367,7 +3346,7 @@ export default function AdminRole({
                       setReviewContent('');
                       setReviewTagsText('');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 해결 성공후기 등록</span>
@@ -3385,7 +3364,7 @@ export default function AdminRole({
                       setBannerColor('rgba(15, 23, 42, 0.93), rgba(30, 27, 75, 0.88)');
                       setBannerImage('https://images.unsplash.com/photo-1589829545856-d10d557cf95f?auto=format&fit=crop&q=80&w=1200');
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 메인 배너 등록</span>
@@ -3401,7 +3380,7 @@ export default function AdminRole({
                       setNoticeContent('');
                       setNoticeIsImportant(false);
                     }}
-                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-[200px] text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
+                    className="bg-indigo-600 hover:bg-indigo-550 text-white font-extrabold px-5 py-3 rounded-xl text-sm transition-colors shadow-md flex items-center justify-center gap-1.5 shrink-0 cursor-pointer animate-fadeIn"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     <span>✍️ 새로운 공지사항 등록</span>
@@ -3607,7 +3586,7 @@ export default function AdminRole({
                             setIsCreateMode(false);
                             setEditingArticle(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isCreateMode ? '✍️ 기사 영구 발행' : '💾 변경 사항 저장'}
                         </button>
@@ -3817,7 +3796,7 @@ export default function AdminRole({
                             setIsQaCreateMode(false);
                             setEditingQa(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -4110,7 +4089,7 @@ export default function AdminRole({
                             setIsReviewCreateMode(false);
                             setEditingReview(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -4160,7 +4139,7 @@ export default function AdminRole({
                             setIsReviewCreateMode(false);
                             setEditingReview(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isReviewCreateMode ? '✍️ 성공후기 게재' : '💾 변경 사항 저장'}
                         </button>
@@ -4338,7 +4317,7 @@ export default function AdminRole({
                             setIsBannerCreateMode(false);
                             setEditingBanner(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -4373,7 +4352,7 @@ export default function AdminRole({
                             setIsBannerCreateMode(false);
                             setEditingBanner(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isBannerCreateMode ? '✍️ 배너 등록' : '💾 변경 사항 저장'}
                         </button>
@@ -4517,7 +4496,7 @@ export default function AdminRole({
                             setIsNoticeCreateMode(false);
                             setEditingNotice(null);
                           }}
-                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-[200px] text-sm transition-colors cursor-pointer"
+                          className="bg-[#161B26] hover:bg-[#202738] text-slate-500 font-extrabold px-5 py-2.5 rounded-xl text-sm transition-colors cursor-pointer"
                         >
                           취소하기
                         </button>
@@ -4550,7 +4529,7 @@ export default function AdminRole({
                             setIsNoticeCreateMode(false);
                             setEditingNotice(null);
                           }}
-                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-[200px] text-sm transition-all shadow-sm cursor-pointer"
+                          className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-6 py-2.5 rounded-xl text-sm transition-all shadow-sm cursor-pointer"
                         >
                           {isNoticeCreateMode ? '✍️ 공지 발행' : '💾 변경 사항 저장'}
                         </button>
@@ -5026,7 +5005,7 @@ export default function AdminRole({
                 <div>
                   <h3 className="font-extrabold text-lg text-white flex items-center gap-2">
                     <Lock className="w-5 h-5 text-indigo-400" />
-                    <span>상담 매칭 및 견적 제한 정책 설정</span>
+                    <span>상담 요청 제한(쿨다운) 설정</span>
                   </h3>
                   <p className="text-sm text-slate-500 mt-1">
                     의뢰인이 상담 신청 후 최대 3명의 변호사로부터 견적/상담을 받을 수 있는 주기 정책을 구성합니다.<br />
@@ -5093,7 +5072,7 @@ export default function AdminRole({
                     <strong className="text-slate-300">정책 변경 시 주의사항</strong>
                     <p>
                       - 정책 변경 시, 의뢰인 포털에서 실시간으로 신규 상담 신청 접수에 대한 시간 검증이 활성화됩니다.<br />
-                      - 이미 등록된 과거 상담 및 활성화된 대화방 매칭 건은 소급 제한되지 않습니다.
+                      - 이미 보낸 상담 요청과 진행 중인 대화방에는 소급 적용되지 않습니다.
                     </p>
                   </div>
                 </div>
@@ -5231,7 +5210,7 @@ export default function AdminRole({
                         );
                         toast.success('기본 환경 설정 및 약관이 저장 및 전역 반영되었습니다');
                       }}
-                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-8 py-3 rounded-[200px] text-sm transition-all shadow-lg flex items-center gap-1.5 cursor-pointer"
+                      className="bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold px-8 py-3 rounded-xl text-sm transition-all shadow-lg flex items-center gap-1.5 cursor-pointer"
                     >
                       <Check className="w-4 h-4" />
                       <span>기본 설정 저장 및 전역 적용</span>
@@ -6118,7 +6097,7 @@ export default function AdminRole({
                               </div>
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 <div className="bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40 text-center">
-                                  <span className="text-slate-500 block">이달 매칭</span>
+                                  <span className="text-slate-500 block">이달 상담 요청</span>
                                   <strong className="text-white text-sm">{linkedLawyer.matchedCount}건</strong>
                                 </div>
                                 <div className="bg-[#0B0F19] p-2 rounded-lg border border-[#1E293B]/40 text-center">
@@ -6198,13 +6177,13 @@ export default function AdminRole({
                           <div className="flex flex-col gap-2">
                             <div className="flex gap-2">
                               {selectedMember.status === 'withdrawn' ? (
-                                <div className="flex-1 bg-[#0F121C] text-slate-600 py-2 rounded-[200px] text-sm font-extrabold text-center border border-slate-800">
+                                <div className="flex-1 bg-[#0F121C] text-slate-600 py-2 rounded-xl text-sm font-extrabold text-center border border-slate-800">
                                   🔒 이미 탈퇴가 완료된 회원 계정입니다.
                                 </div>
                               ) : selectedMember.status === 'pending' ? (
                                 <button 
                                   onClick={() => { setActiveTab('lawyers'); const linked = lawyers.find(l => l.id === selectedMember.id); if (linked) setSelectedLawyerId(linked.id); }}
-                                  className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer border border-amber-500/20"
+                                  className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 text-amber-400 py-2 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-1 cursor-pointer border border-amber-500/20"
                                 >
                                   <ShieldAlert className="w-3.5 h-3.5" />
                                   <span>변호사 심사 탭에서 자격 승인 처리</span>
@@ -6212,7 +6191,7 @@ export default function AdminRole({
                               ) : selectedMember.status === 'dormant' ? (
                                 <button 
                                   onClick={() => handleToggleDormantStatus(selectedMember.id)}
-                                  className="flex-1 bg-emerald-650 hover:bg-emerald-600 text-white py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                  className="flex-1 bg-emerald-650 hover:bg-emerald-600 text-white py-2 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>휴면 해제 (활성화)</span>
@@ -6221,7 +6200,7 @@ export default function AdminRole({
                                 <div className="flex-1 flex flex-col sm:flex-row gap-2 w-full">
                                   <button 
                                     onClick={() => handleToggleMemberStatus(selectedMember.id)}
-                                    className={`flex-1 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                                    className={`flex-1 py-2 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                                       selectedMember.status === 'active'
                                       ? 'bg-[#1E293B]/20 hover:bg-red-950/20 border border-red-500/30 text-red-400'
                                       : 'bg-emerald-650 hover:bg-emerald-600 text-white'
@@ -6242,7 +6221,7 @@ export default function AdminRole({
                                   {selectedMember.status === 'active' && (
                                     <button 
                                       onClick={() => handleToggleDormantStatus(selectedMember.id)}
-                                      className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/30 text-amber-400 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                      className="flex-1 bg-amber-600/10 hover:bg-amber-600/20 border border-amber-500/30 text-amber-400 py-2 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                                     >
                                       <Lock className="w-3.5 h-3.5" />
                                       <span>휴면 계정 수동 전환</span>
@@ -6255,7 +6234,7 @@ export default function AdminRole({
                             {selectedMember.status !== 'withdrawn' && (
                               <button 
                                 onClick={() => handleWithdrawMember(selectedMember.id)}
-                                className="w-full bg-[#1E293B]/10 hover:bg-red-650 text-slate-500 hover:text-white border border-red-500/20 py-2 rounded-[200px] text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                                className="w-full bg-[#1E293B]/10 hover:bg-red-650 text-slate-500 hover:text-white border border-red-500/20 py-2 rounded-xl text-sm font-extrabold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
                                 <span>회원 강제 탈퇴 처리 (Withdraw)</span>

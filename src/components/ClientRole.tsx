@@ -2048,17 +2048,21 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
   // 서버 알림 (변호사 메시지·제안서 도착·서류 다시 요청) — 로그인한 의뢰인만
   const serverNotif = useServerNotifications('client', isLoggedIn);
   const clientNotifications: ClientNotification[] = React.useMemo(() => {
-    const server: ClientNotification[] = serverNotif.items.map(n => ({
-      id: `srv:${n.id}`,
-      // 보정 요청·보완 요청·제출 안내는 '내 사건'(마이페이지) 보정 할 일로
-      type: n.kind === 'lawyer_message' ? 'new_message' : (n.kind === 'document_rejected' || n.linkType === 'case_correction' || n.linkType === 'case_forms') ? 'document_request' : 'status_change',
-      title: n.count > 1 ? `${n.title} ${n.count}건` : n.title,
-      body: n.body || '',
-      createdAt: n.updatedAt,
-      isRead: !!n.readAt,
-      linkTab: (n.kind === 'document_rejected' || n.linkType === 'case_correction' || n.linkType === 'case_forms') ? 'mypage' : 'chat',
-      emoji: n.kind === 'lawyer_message' ? '💬' : n.kind === 'document_rejected' ? '📄' : n.linkType === 'case_correction' || n.linkType === 'case_forms' ? '📝' : '📨',
-    }));
+    const server: ClientNotification[] = serverNotif.items.map(n => {
+      // 보정 요청·보완 요청·제출 안내·사무소 사건 안내는 '내 사건'(마이페이지)으로
+      const isDocTask = n.kind === 'document_rejected' || n.linkType === 'case_correction' || n.linkType === 'case_forms';
+      const isCaseNotice = n.linkType === 'mypage_case' || n.linkType === 'mypage_documents';
+      return {
+        id: `srv:${n.id}`,
+        type: n.kind === 'lawyer_message' ? 'new_message' : isDocTask || n.kind === 'office_document' ? 'document_request' : n.kind === 'office_fee' ? 'fee_reminder' : 'status_change',
+        title: n.count > 1 ? `${n.title} ${n.count}건` : n.title,
+        body: n.body || '',
+        createdAt: n.updatedAt,
+        isRead: !!n.readAt,
+        linkTab: isDocTask || isCaseNotice ? 'mypage' : 'chat',
+        emoji: n.kind === 'lawyer_message' ? '💬' : n.kind === 'document_rejected' ? '📄' : isDocTask ? '📝' : isCaseNotice ? '📋' : '📨',
+      };
+    });
     return [...server, ...localNotifications].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 50);
   }, [serverNotif.items, localNotifications]);
   const unreadCount = localUnreadCount + serverNotif.unreadCount;

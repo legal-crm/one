@@ -18,7 +18,7 @@ import type {
   ElectronicContract, ContractDocument, ContractDocType, FeeInstallment, CourtCosts
 } from '../../../types';
 import { CONTRACT_DOC_TYPES } from '../../../types';
-import { addClientNotification } from '../../../services/clientNotificationService';
+import { notifyCaseClientWithToast } from '../../../services/notifications/caseClientNotice';
 import { 
   getContractsByClientId, createContract, saveContract, 
   calculateCourtCosts 
@@ -629,16 +629,7 @@ export default function Stage2ContractRetainerView({
       return;
     }
     
-    // 알림톡 알림 기록
-    addClientNotification({
-      type: 'document_request',
-      title: `[전자계약서 발송] ${clientRequest.clientName}님께 수임계약서 전자서명 링크가 전송되었습니다.`,
-      body: '카카오 알림톡으로 전송된 전자서명 링크를 열어 본인인증 후 서명을 완료해주세요.',
-      emoji: '✍️',
-      linkTab: 'diagnosis',
-    });
-
-    // 공유 및 발송 모달 열기
+    // 공유 및 발송 모달 열기 (이전: 모달을 열기만 해도 '서명 링크가 전송되었다'는 알림을 변호사 브라우저에 저장했다)
     setIsShareModalOpen(true);
   };
 
@@ -794,13 +785,13 @@ ${d.content}
       }
     }
 
-    addClientNotification({
-      type: 'status_change',
-      title: `[수임계약 체결 완료] ${data.method === 'in_person' ? '방문(대면)' : '우편(등기)'} 방식으로 정식 사건 위임계약이 체결되었습니다.`,
-      emoji: data.method === 'in_person' ? '🏢' : '📮',
-      linkTab: 'diagnosis',
+    toast.success(`${data.method === 'in_person' ? '방문' : '우편'} 계약 체결을 기록했어요.`);
+    await notifyCaseClientWithToast({
+      caseKey: clientRequest.id,
+      kind: 'office_status',
+      title: '수임 계약이 기록됐어요',
+      body: `${data.method === 'in_person' ? '방문' : '우편'}으로 맺은 계약이 기록됐어요. 진행 상황은 '내 사건'에서 볼 수 있어요.`,
     });
-    toast.success(`${data.method === 'in_person' ? '방문 대면' : '우편 등기'} 서면 계약 체결이 완료 처리되었습니다!`);
   };
 
   // ── 6. 서면계약 수동 완료 처리 (2단계 확인 팝업 적용) ──
@@ -858,13 +849,13 @@ ${d.content}
       }
     }
 
-    addClientNotification({
-      type: 'status_change',
-      title: '[수임계약 체결 완료] 정식 사건 위임계약이 체결되어 서류 수합 및 사건 진행을 개시합니다.',
-      emoji: '📝',
-      linkTab: 'diagnosis',
+    toast.success('서면 계약 체결을 기록했어요.');
+    await notifyCaseClientWithToast({
+      caseKey: clientRequest.id,
+      kind: 'office_status',
+      title: '수임 계약이 기록됐어요',
+      body: "서류 준비를 시작해요. 필요한 서류 안내는 '내 사건'에서 확인할 수 있어요.",
     });
-    toast.success('방문/서면 계약 체결이 완료 처리되었습니다. (계약 체결 완료)');
   };
 
   // ── 7. 위자드 저장 핸들러 ──

@@ -21,6 +21,10 @@ const CRM_STORAGE_KEY = 'legal_crm_data';
 // 사건 관리 데이터의 원본은 서버 crm_clients (20261031000100: 사무소 권한 RLS). 이 기기 사본은 화면 캐시다.
 let crmOfficeScope = '';
 /** 로그인한 사무소 ID (저장할 때 office_id로 보낸다. 비어 있으면 서버가 내 사무소로 채운다) */
+/** 로그인한 사무소 ID (서버 사무소가 없으면 빈 문자열) */
+export function getCrmOfficeScope(): string {
+  return crmOfficeScope;
+}
 export function setCrmOfficeScope(officeId: string | undefined | null): void {
   crmOfficeScope = (officeId || '').trim();
 }

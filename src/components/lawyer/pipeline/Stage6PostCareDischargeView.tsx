@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, CrmStatus, DecisionSummaryData } from '../../../types';
-import { addClientNotification } from '../../../services/clientNotificationService';
+import { notifyCaseClient, notifyCaseClientWithToast } from '../../../services/notifications/caseClientNotice';
 import { useDialog } from '../../common/DialogProvider';
 import { localYmd } from '../../../utils/localDate';
 import DecisionSummaryCard from './DecisionSummaryCard';
@@ -134,20 +134,18 @@ export default function Stage6PostCareDischargeView({
     const confirmed = await dialog.confirm({
       title: '법원 가상계좌 납부 안내 발송',
       message: `${clientName} 님에게 아래 내용으로 납부 안내를 발송하시겠습니까?\n\n${messageText}`,
-      confirmText: '알림톡/문자 발송',
+      confirmText: '의뢰인 앱에 안내 보내기',
       cancelText: '취소',
       variant: 'primary',
     });
     if (!confirmed) return;
 
-    addClientNotification({
-      type: 'status_change',
-      title: `[적립금 납부 안내] ${clientName}님, 법원 가상계좌(${virtualAccount})로 당월 변제금(${monthlyPayment.toLocaleString()}원)을 입금해 주세요.`,
-      emoji: '🏦',
-      linkTab: 'diagnosis',
+    await notifyCaseClientWithToast({
+      caseKey: clientRequest.id,
+      kind: 'office_fee',
+      title: '법원 변제금 납부 안내',
+      body: `법원 가상계좌(${virtualAccount})로 이번 달 변제금 ${monthlyPayment.toLocaleString()}원을 내 주세요. 정해진 날짜에 내지 않으면 절차가 폐지될 수 있어요.`,
     });
-
-    toast.success(`${clientName} 님에게 법원 가상계좌 납부 안내가 발송되었습니다.`);
   };
 
   // 채권자집회 안내 발송
@@ -162,20 +160,18 @@ export default function Stage6PostCareDischargeView({
     const confirmed = await dialog.confirm({
       title: '채권자집회 출석 안내 발송',
       message: `${clientName} 님에게 채권자집회 출석 안내를 발송하시겠습니까?\n\n${messageText}`,
-      confirmText: '출석 안내 발송',
+      confirmText: '의뢰인 앱에 안내 보내기',
       cancelText: '취소',
       variant: 'primary',
     });
     if (!confirmed) return;
 
-    addClientNotification({
-      type: 'status_change',
-      title: `[채권자집회 안내] ${clientName}님, 채권자집회(${creditorsMeetingDate})에 신분증을 지참하고 반드시 출석해 주세요.`,
-      emoji: '🏛️',
-      linkTab: 'diagnosis',
+    await notifyCaseClientWithToast({
+      caseKey: clientRequest.id,
+      kind: 'office_schedule',
+      title: '채권자집회 출석 안내',
+      body: `채권자집회(${creditorsMeetingDate})에 신분증을 가지고 직접 출석해 주세요. 출석하지 않으면 절차가 폐지될 수 있어요.`,
     });
-
-    toast.success(`${clientName} 님에게 채권자집회 출석 안내가 발송되었습니다.`);
   };
 
   // 인가결정일 저장 핸들러
@@ -208,7 +204,7 @@ export default function Stage6PostCareDischargeView({
   const handleCompleteDischarge = async () => {
     const confirmed = await dialog.confirm({
       title: `${caseType === 'bankruptcy' ? '파산 면책 확정 및 사건 종결' : '회생 면책결정 확정 및 사건 종결'}`,
-      message: `${clientName} 님의 ${caseType === 'bankruptcy' ? '파산 및 면책' : '개인회생'} 절차가 모두 완결되었습니까?\n\n- 사건 상태를 [면책 완료(discharged)]로 변경하고 오늘 날짜로 면책일자를 기록합니다.\n- 모든 채무에 대한 법적 면책 효력이 발생하며 신용회복 절차가 진행됩니다.`,
+      message: `${clientName} 님의 ${caseType === 'bankruptcy' ? '파산 및 면책' : '개인회생'} 절차가 모두 완결되었습니까?\n\n- 사건 상태를 [면책 완료(discharged)]로 변경하고 오늘 날짜로 면책일자를 기록합니다.\n- 면책되지 않는 채무(비면책채권)가 있는지는 결정문을 기준으로 의뢰인에게 안내해 주세요.`,
       confirmText: '면책 확정 및 사건 종결',
       cancelText: '취소',
       variant: 'primary',
@@ -233,14 +229,14 @@ export default function Stage6PostCareDischargeView({
         await onUpdateStatus('discharged');
       }
 
-      addClientNotification({
-        type: 'status_change',
-        title: `[면책 결정 확정] 축하드립니다! ${clientName}님의 모든 채무가 면책 결정되어 사건이 성공적으로 종결되었습니다.`,
-        emoji: '🎊',
-        linkTab: 'diagnosis',
+      toast.success(`${clientName} 님 사건을 면책 종결로 기록했어요.`);
+      const notice = await notifyCaseClient({
+        caseKey: clientRequest.id,
+        kind: 'office_status',
+        title: '면책결정이 기록됐어요',
+        body: '면책되지 않는 채무가 있는지는 담당 변호사 안내를 확인해 주세요.',
       });
-
-      toast.success(`${clientName} 님의 사건이 성공적으로 면책 종결되었습니다.`);
+      if (!notice.ok) toast.error(notice.message);
     } catch (e: any) {
       toast.error(e?.message || '면책 처리에 실패했습니다.');
     }

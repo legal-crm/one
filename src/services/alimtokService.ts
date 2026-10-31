@@ -3,7 +3,7 @@ import {
   STATUS_TO_MILESTONE, CrmStatus, FeeNotificationSettings, 
   FeeAutoNotificationRule, FeeInstallment 
 } from '../types';
-import { addClientNotification } from './clientNotificationService';
+import { notifyCaseClient } from './notifications/caseClientNotice';
 import { supabase, isSupabaseConfigured, getAuthHeaders } from '../supabaseClient';
 import { localYmd, parseLocalYmd } from '../utils/localDate';
 import { feeAmountWon, feeTotalWon } from '../utils/feeUnits';
@@ -355,17 +355,17 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
   };
   saveAlimtokLog(params.clientId, log);
 
-  // 의뢰인 마이페이지 인앱 알림 동시 적재 (실제 발송된 경우만)
-  if (res.ok) try {
+  // 의뢰인 앱 안 안내 (실제 발송된 경우만, 서버 알림 — 이전엔 변호사 브라우저에만 저장됐다)
+  if (res.ok) {
     const config = ALIMTOK_MILESTONE_CONFIG[params.milestone];
-    addClientNotification({
-      type: 'fee_reminder',
-      title: `[수임료 안내] ${config.label}`,
-      body: `${params.installment.memo || params.installment.round + '차 분납'} (${amountWon.toLocaleString()}원) 안내가 발송되었습니다.`,
-      emoji: config.emoji,
-      linkTab: 'fees',
+    const notice = await notifyCaseClient({
+      caseKey: params.clientId,
+      kind: 'office_fee',
+      title: `수임료 안내: ${config?.label || '납부 안내'}`,
+      body: `${params.installment.memo || params.installment.round + '차 분납'} ${amountWon.toLocaleString()}원 안내를 카카오톡으로 보냈어요.`,
     });
-  } catch { /* ignore */ }
+    if (!notice.ok) console.warn('[fee notice]', notice.message);
+  }
 
   return { ok: res.ok, rendered: res.rendered, error: res.error };
 };

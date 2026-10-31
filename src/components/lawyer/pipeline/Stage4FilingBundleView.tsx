@@ -7,6 +7,7 @@ import {
   Scale, FileSignature, Shield, CheckSquare, Square, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { notifyCaseClientWithToast } from '../../../services/notifications/caseClientNotice';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
 import {
@@ -455,13 +456,18 @@ export default function Stage4FilingBundleView({
     }
   };
 
-  // 의뢰인 제출 동의 알림톡/문자 발송 시뮬레이션
+  // 의뢰인에게 신청서 확인 요청 (서버 앱 안내). 이전: 600ms 기다린 뒤 '알림톡을 발송했습니다'만 띄우고 아무것도 보내지 않았다
   const handleRequestClientConsentNotification = async () => {
     setIsRequestingConsent(true);
     try {
-      await new Promise(r => setTimeout(r, 600));
-      toast.success(`${clientName} 님에게 최종 신청서 초안 확인 및 제출 동의 요청 알림톡을 발송했습니다.`);
-      // 의뢰인 확인 동의 유도
+      const notice = await notifyCaseClientWithToast({
+        caseKey: clientRequest.id,
+        kind: 'office_notice',
+        title: '신청서 확인을 부탁드려요',
+        body: '법원에 내기 전에 신청서 내용을 확인해 주세요. 확인 방법은 담당 사무소가 상담방이나 전화로 안내해 드려요.',
+      });
+      if (!notice.ok) return;
+      // 의뢰인이 확인했는지는 사무소가 직접 확인한 뒤 기록한다
       const confirmed = await dialog.confirm({
         title: '의뢰인 제출 동의 확인',
         message: `${clientName} 님이 신청서 내용을 확인하고 법원 접수에 동의하였습니까?\n\n'동의 완료' 선택 시 제출 동의 상태로 즉시 등록됩니다.`,
@@ -613,7 +619,7 @@ export default function Stage4FilingBundleView({
           className="px-5 py-2.5 bg-[#1E3A5F] hover:bg-[#162A45] text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 press-scale cursor-pointer whitespace-nowrap disabled:opacity-50"
         >
           <Send className="w-4 h-4 text-blue-300" />
-          <span>{isRequestingConsent ? '발송 중...' : '의뢰인 제출 동의 요청'}</span>
+          <span>{isRequestingConsent ? '보내는 중...' : '의뢰인에게 신청서 확인 요청'}</span>
         </button>
       );
     }
@@ -1244,7 +1250,7 @@ export default function Stage4FilingBundleView({
                   className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-lg transition-all flex items-center gap-1 cursor-pointer press-scale disabled:opacity-50"
                 >
                   <Send className="w-3.5 h-3.5 text-blue-600" />
-                  <span>동의 요청 알림톡</span>
+                  <span>확인 요청 보내기</span>
                 </button>
                 <button
                   type="button"

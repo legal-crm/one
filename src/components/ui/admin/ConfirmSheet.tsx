@@ -138,12 +138,12 @@ export function ConfirmSheet({
                 />
                 <span className="flex items-center gap-1.5">
                   <Send className="w-3.5 h-3.5 text-slate-500" />
-                  의뢰인에게 단계 진행 알림톡 발송
+                  의뢰인 앱에 진행 안내 보내기
                 </span>
               </label>
               {notifyClient && notifyPreview && (
                 <div className="pl-6 text-[12px] text-slate-500 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                  <span className="font-bold text-slate-600 block mb-0.5">알림 문구 미리보기:</span>
+                  <span className="font-bold text-slate-600 block mb-0.5">안내 문구 미리보기:</span>
                   {notifyPreview}
                 </div>
               )}

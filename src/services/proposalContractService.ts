@@ -1,6 +1,5 @@
 import type { ConsultProposal, ConsultRequest, ElectronicContract } from '../types';
 import { createContract, saveContract, addAuditLog, loadContractsLocal } from './contractService';
-import { addClientNotification } from './clientNotificationService';
 import type { OfflineContractRequestPayload } from '../components/client/ContractMethodSelectModal';
 
 // ============================================================
@@ -183,13 +182,7 @@ export async function requestOfflineContractFromProposal(params: {
 
   await saveContract(contract);
 
-  // 변호사 알림 등록
-  addClientNotification({
-    type: 'status_change',
-    title: `[${modeLabel} 요청] 의뢰인이 ${modeLabel}을 요청했습니다. (${detailNote})`,
-    emoji: payload.method === 'in_person' ? '🏢' : '📮',
-    linkTab: 'diagnosis',
-  });
-
+  // 사무소에는 호출한 화면(ChatView)이 보내는 상담방 메시지로 알림이 간다 (서버 트리거).
+  // 이전: '변호사 알림'이라며 의뢰인 자기 브라우저 알림함에 저장했다.
   return contract;
 }

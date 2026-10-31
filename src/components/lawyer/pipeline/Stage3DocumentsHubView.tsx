@@ -23,7 +23,7 @@ import BatchDocRequestModal, { type BatchDocItem } from './BatchDocRequestModal'
 import SpeedDocReviewModal, { type ReviewDocItem } from './SpeedDocReviewModal';
 import PublicDocGuideModal from '../documents/PublicDocGuideModal';
 import { sendAlimtok } from '../../../services/alimtokService';
-import { addClientNotification } from '../../../services/clientNotificationService';
+import { notifyCaseClient } from '../../../services/notifications/caseClientNotice';
 import DebtAgencyApplicationModal from '../repayment/DebtAgencyApplicationModal';
 import { loadDebtCertificateOrder, saveDebtCertificateOrder } from '../../../services/repayment/debtCertificateService';
 import type { DebtCertificateOrder } from '../../../services/repayment/repaymentTypes';
@@ -505,12 +505,12 @@ export default function Stage3DocumentsHubView({
     setIsSealKeptInSafe(true);
     setIsDebtDispatched(false);
     toast.success('1차 기본 서류 수령 및 인감 보관이 확인되었습니다.');
-    addClientNotification({
-      type: 'document_request',
-      title: `[1차 서류 수령완료] ${clientRequest.clientName}님, 보내주신 서류가 안전하게 도착했습니다.`,
-      emoji: '📦',
-      linkTab: 'diagnosis',
-    });
+    void notifyCaseClient({
+      caseKey: clientRequest.id,
+      kind: 'office_document',
+      title: '보내 주신 서류를 받았어요',
+      body: '담당 사무소가 1차 서류를 받았어요. 다음에 필요한 서류는 따로 안내해 드려요.',
+    }).then(r => { if (!r.ok) toast.error(r.message); });
   };
 
   // 배송 송장정보 저장
@@ -541,13 +541,13 @@ export default function Stage3DocumentsHubView({
     const nextOrder: DebtCertificateOrder = { ...debtOrder, orderStatus: 'requested', requestedAt: new Date().toISOString() };
     setDebtOrder(nextOrder);
     saveDebtCertificateOrder(nextOrder);
-    toast.success('부채증명서 대행사 발송이 확인되었습니다. (약 7영업일 소요 시작)');
-    addClientNotification({
-      type: 'status_change',
-      title: `[부채증명서 발급 개시] ${clientRequest.clientName}님, 채권사 부채증명서 발급을 정식 개시했습니다.`,
-      emoji: '🏛️',
-      linkTab: 'diagnosis',
-    });
+    toast.success('부채증명서 발급 요청을 보낸 것으로 기록했어요.');
+    void notifyCaseClient({
+      caseKey: clientRequest.id,
+      kind: 'office_document',
+      title: '부채증명서 발급을 요청했어요',
+      body: '채권자에게 부채증명서 발급을 요청했어요. 발급 중에는 카드·계좌 이용이 막힐 수 있어요.',
+    }).then(r => { if (!r.ok) toast.error(r.message); });
   };
 
   // 개별 서류 승인
@@ -583,12 +583,13 @@ export default function Stage3DocumentsHubView({
         ? { ...d, status: 'SUPPLEMENT_NEEDED', supplementReason: reason } 
         : d
     ));
-    addClientNotification({
-      type: 'status_change',
-      title: `[서류 보완요청] ${clientRequest.clientName}님, '${reason}' 사유로 재제출이 필요합니다.`,
-      emoji: '⚠️',
-      linkTab: 'diagnosis',
-    });
+    const docName = docList.find(d => d.id === docId)?.name || '서류';
+    void notifyCaseClient({
+      caseKey: clientRequest.id,
+      kind: 'office_document',
+      title: '서류를 다시 내 주세요',
+      body: `${docName}: ${reason}`.slice(0, 300),
+    }).then(r => { if (!r.ok) toast.error(r.message); });
   };
 
   // 묶음 서류 요청 전송
@@ -619,12 +620,13 @@ export default function Stage3DocumentsHubView({
       : await sendAlimtok(clientRequest.phone, 'document_request', { ...base, documentList: names.map((n, i) => `${i + 1}. ${n}`).join('\n'), deadline });
 
     if (res.ok) {
-      addClientNotification({
-        type: 'status_change',
-        title: `[서류 요청] ${clientRequest.clientName}님, 서류 ${selectedDocIds.length}건 제출 요청이 도착했습니다.`,
-        emoji: '📑',
-        linkTab: 'diagnosis',
+      const notice = await notifyCaseClient({
+        caseKey: clientRequest.id,
+        kind: 'office_document',
+        title: '서류 제출 요청이 왔어요',
+        body: `서류 ${selectedDocIds.length}건을 ${deadline}까지 내 주세요. 목록은 카카오톡 안내에 있어요.`,
       });
+      if (!notice.ok) toast.error(notice.message);
     }
     return { ok: res.ok, error: res.error };
   };

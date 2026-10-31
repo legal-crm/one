@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import type { ConsultRequest, CrmClientExtension, FinancialProfile, User } from '../../../types';
-import { addClientNotification } from '../../../services/clientNotificationService';
 import { useDialog } from '../../common/DialogProvider';
 import { getLivingExpense } from '../../../services/repayment/repaymentConstants2026';
 
@@ -148,25 +147,8 @@ export default function Stage1ConsultationView({
     if (crmExt?.crmStatus === 'requested') {
       onUpdateStatus('consulting');
     }
-    addClientNotification({
-      type: 'status_change',
-      title: `[적격 진단 완료] ${clientRequest.clientName}님의 ${isBankruptcy ? '개인파산' : '개인회생'} 신청 적격성 판정이 완료되었습니다.`,
-      emoji: '⚖️',
-      linkTab: 'diagnosis',
-    });
-    toast.success(`${isBankruptcy ? '개인파산' : '개인회생'} 적격성 검토가 완료되었습니다. [적격 요건 충족]`);
-  };
-
-  // 적격 안내 알림톡 전송
-  const handleSendEligibilityAlimtok = () => {
-    addClientNotification({
-      type: 'status_change',
-      title: `[상담 안내] ${clientRequest.clientName}님, 상담 결과 ${isBankruptcy ? '개인파산·면책' : '개인회생'} 신청 적격 요건을 충족하셨습니다.`,
-      emoji: '📱',
-      linkTab: 'diagnosis',
-    });
-    // 알림톡은 발송하지 않음 — 의뢰인 앱 알림만 등록 (이전: '알림톡이 전송되었습니다')
-    toast.success(`${clientRequest.clientName}님 앱에 적격 판정 안내 알림을 등록했습니다.`);
+    // 사무소 안 검토 기록이라 의뢰인에게 따로 알리지 않는다 (결과 안내는 상담방·제안서로)
+    toast.success(`${isBankruptcy ? '개인파산' : '개인회생'} 신청 요건 검토를 기록했어요.`);
   };
 
   // 현재 선택된 섹션 (기본값: eligibility)
