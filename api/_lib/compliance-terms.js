@@ -77,6 +77,13 @@ export const DECISION_RULES = [
     hint: '출시 범위에서 뺀 기능이나 쓰지 않는 이름입니다. 현재 기능 이름(내 상황 체크하기·제도 이해용 계산기·스텔스 가명)으로 바꾸세요.',
   },
   {
+    id: 'legal-name',
+    severity: 'high',
+    label: '사실과 다른 회사명·직함',
+    source: 'my김변\\s?컴퍼니|\\(주\\)\\s?my김변|주식회사\\s?my김변|대표\\s?이사',
+    hint: "법적 상호는 '몬스터랩'(개인사업자, 대표 진성호)입니다. 브랜드는 '마이김변'이라고 쓰세요(R10).",
+  },
+  {
     id: 'free-legal-consult',
     severity: 'medium',
     label: '무료 법률상담 광고',

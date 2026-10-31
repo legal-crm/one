@@ -31,9 +31,13 @@ DO $$ DECLARE n int; BEGIN
     RAISE EXCEPTION 'FAIL anon insert';
   EXCEPTION WHEN insufficient_privilege THEN NULL;
   END;
-  UPDATE client_qas SET data = '{}' WHERE id = 'test-qa-1';
-  GET DIAGNOSTICS n = ROW_COUNT;
-  IF n <> 0 THEN RAISE EXCEPTION 'FAIL anon update'; END IF;
+  -- 11-01 권한 정리 뒤에는 표 권한부터 막힌다(이전: RLS가 0줄로 걸렀음). 둘 다 '못 고침'이면 통과
+  BEGIN
+    UPDATE client_qas SET data = '{}' WHERE id = 'test-qa-1';
+    GET DIAGNOSTICS n = ROW_COUNT;
+    IF n <> 0 THEN RAISE EXCEPTION 'FAIL anon update'; END IF;
+  EXCEPTION WHEN insufficient_privilege THEN NULL;
+  END;
   RAISE NOTICE 'PASS anon published-only read, no write';
 END $$;
 RESET ROLE;
