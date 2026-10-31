@@ -4,9 +4,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  ChevronDown, ChevronUp, Copy, FileAudio, FileText, Link2, MessageCircle, Phone, PhoneIncoming, PhoneOutgoing, Plus, RefreshCw,
+  ChevronDown, ChevronUp, Copy, FileArchive, FileAudio, FileText, Link2, MessageCircle, Phone, PhoneIncoming, PhoneOutgoing, Plus, RefreshCw,
   ShieldCheck, ShieldAlert, Trash2, Upload, Footprints, StickyNote, Smartphone,
 } from 'lucide-react';
+import { buildEvidenceZip } from '../../../services/comm/evidenceExport';
 import { supabase, isSupabaseConfigured } from '../../../supabaseClient';
 import { useDialog } from '../../common/DialogProvider';
 import { canUse } from '../../../services/office/officePermissions';
@@ -87,7 +88,32 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
 
   const canContact = canUse(permissions, 'client.contact');
   const canRecording = canUse(permissions, 'comm.recording');
+  const canExport = canUse(permissions, 'comm.export');
   const targetKey = target.workspaceKey || `lead:${target.salesLeadId || ''}`;
+
+  // 증빙 내보내기 (CL-10): 기간을 고르면 소통 기록·녹음 원본·지문·대화록을 ZIP 하나로
+  const exportEvidence = async () => {
+    const from = await dialog.prompt({ title: '증빙 내보내기', message: '시작 날짜 (YYYY-MM-DD, 비우면 처음부터)', defaultValue: '', placeholder: '예: 2026-09-01' });
+    if (from === null) return;
+    const to = await dialog.prompt({ title: '증빙 내보내기', message: '끝 날짜 (YYYY-MM-DD, 비우면 오늘까지)', defaultValue: '', placeholder: '예: 2026-10-31' });
+    if (to === null) return;
+    const ok = (s: string) => !s.trim() || /^\d{4}-\d{2}-\d{2}$/.test(s.trim());
+    if (!ok(String(from)) || !ok(String(to))) { toast.error('날짜는 2026-10-31처럼 적어 주세요.'); return; }
+    setBusy(true);
+    try {
+      const r = await buildEvidenceZip(officeId, target, (caseOptions || []).find(o => o.key === target.workspaceKey)?.label || target.workspaceKey || '사건',
+        { from: String(from).trim() || undefined, to: String(to).trim() || undefined });
+      const url = URL.createObjectURL(r.blob);
+      const a = document.createElement('a'); a.href = url; a.download = r.fileName; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 10_000);
+      if (r.mismatched || r.failed) toast.warning(`내려받았어요. 녹음 ${r.recordings}개 중 지문 불일치 ${r.mismatched}개·받지 못함 ${r.failed}개가 있어요. '녹음_지문.txt'를 확인해 주세요.`);
+      else toast.success(`증빙 ZIP을 내려받았어요 (녹음 ${r.recordings}개, 지문 모두 일치). 녹음 내려받기는 열람 기록에 남아요.`);
+    } catch (e: any) {
+      toast.error(e?.message || '증빙을 묶지 못했어요. 잠시 후 다시 시도해 주세요.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // 폼 상태
   const [contactForm, setContactForm] = useState<{ phone: string; relation: ContactRelation; label: string; error: string }>({ phone: '', relation: 'self', label: '', error: '' });
@@ -362,6 +388,9 @@ export default function CaseCommPanel({ officeId, target, permissions, caseOptio
               <button type="button" disabled={busy} onClick={() => pickRecording(null)} className="inline-flex items-center gap-1.5 min-h-10 px-3.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 active:scale-[0.98] whitespace-nowrap"><Upload className="w-4 h-4" aria-hidden="true" />녹음 올리기</button>
             )}
             <button type="button" onClick={() => setShowExportModal(true)} className="inline-flex items-center gap-1.5 min-h-10 px-3.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 active:scale-[0.98] whitespace-nowrap"><FileText className="w-4 h-4" aria-hidden="true" />카톡 대화 백업</button>
+            {canExport && target.workspaceKey && (
+              <button type="button" disabled={busy} onClick={() => void exportEvidence()} className="inline-flex items-center gap-1.5 min-h-10 px-3.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-60 active:scale-[0.98] whitespace-nowrap"><FileArchive className="w-4 h-4" aria-hidden="true" />증빙 내보내기</button>
+            )}
             <button type="button" onClick={() => { void load(); void refreshPendingNotices(); setNoticeReload(n => n + 1); }} aria-label="새로고침" className="ml-auto min-h-10 px-3 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 active:scale-[0.98]"><RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} aria-hidden="true" /></button>
             <input ref={fileRef} type="file" accept="audio/*,.m4a,.amr,.3gp" className="hidden" onChange={e => void onFile(e)} />
           </div>
