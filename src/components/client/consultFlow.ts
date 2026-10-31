@@ -12,7 +12,7 @@ export const LAWYER_REQUEST_LIMIT = 3;
 
 /** 요청을 받은 변호사 화면에만 보이는 안내문 (변호사 화면 필터가 targetLawyerId로 구분한다) */
 export const LAWYER_REQUEST_RECEIVED_NOTICE =
-  '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 사전 진단 리포트를 검토하고 상담을 진행해 주세요.';
+  '의뢰인으로부터 1:1 상담 요청이 접수되었습니다. 의뢰인 정리 자료를 확인하고 상담을 진행해 주세요.';
 
 export interface LawyerRequestMerge {
   /** 병합 후 요청 대상 변호사 (기존 순서 유지, 최대 한도까지) */

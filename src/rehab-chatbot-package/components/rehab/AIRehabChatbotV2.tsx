@@ -214,6 +214,17 @@ interface AIRehabChatbotV2Props {
 }
 
 /** 대화 진행 상황 요약 (부모 화면 표시용) */
+// 빚이 늘어난 사정 (여러 개 선택, I-3)
+const RISK_OPTIONS = [
+    { label: '아니요, 일반 채무예요', value: 'none' },
+    { label: '최근 1년 안에 대출이 많아요', value: 'recent_loan' },
+    { label: '1년 안에 주식·코인 투자 손실이 있어요', value: 'investment' },
+    { label: '1년 안에 도박으로 생긴 채무가 있어요', value: 'gambling' },
+];
+const lossPrompt = (k: 'investment' | 'gambling') => (k === 'investment'
+    ? '1년 안의 주식·코인 투자 손실액은 대략 얼마인가요?\n\n(만원 단위)'
+    : '1년 안의 도박으로 생긴 채무는 대략 얼마인가요?\n\n(만원 단위)');
+
 export interface RehabChatProgressSnapshot {
     step: string;
     /** 0~100 */
@@ -306,6 +317,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     }, [enableFormBlocks, interactiveBlockPreset, interactiveBlockConfig]);
 
     // Intro State
+    // 투자·도박 금액을 차례로 묻는 대기열 (I-3)
+    const lossQueueRef = useRef<Array<'investment' | 'gambling'>>([]);
     const [showIntro, setShowIntro] = useState(!!introConfig?.useIntro && !!introConfig?.mediaUrl);
 
     const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -874,18 +887,20 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 setUserInput(prev => ({ ...prev, age }));
                 goToStep('gender');
                 addBotMessage(
-                    '성별을 선택해 주세요.',
+                    '성별을 알려 주실 수 있나요? (선택 사항이에요)',
                     [
-                        { label: '👨 남성', value: 'male' },
-                        { label: '👩 여성', value: 'female' }
+                        { label: '남성', value: 'male' },
+                        { label: '여성', value: 'female' },
+                        { label: '답하지 않을래요', value: 'skip' }
                     ],
                     'buttons'
                 );
                 break;
 
             case 'gender':
-                const genderValue = value as 'male' | 'female';
-                setUserInput(prev => ({ ...prev, gender: genderValue }));
+                // 답하지 않으면 비워 둔다 (지어낸 기본값 없음, I-3·I-4)
+                const genderValue = value === 'male' || value === 'female' ? value : undefined;
+                setUserInput(prev => ({ ...prev, gender: genderValue as any }));
                 goToStep('employment');
                 addBotMessage(
                     '현재 어떤 형태로 소득을 얻고 계신가요?',
@@ -3201,14 +3216,10 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     setUserInput(prev => ({ ...prev, elderlyParentDependents: 0 }));
                     goToStep('risk');
                     addBotMessage(
-                        '혹시 다음 중 해당하는 항목이 있나요?',
-                        [
-                            { label: '아니요, 일반 채무예요', value: 'none' },
-                            { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
-                            { label: '채무중에 1년 이내에 주식/코인 투자 손실이 있어요.', value: 'investment' },
-                            { label: '채무중에 1년 이내에 도박으로 인한 채무가 있어요', value: 'gambling' }
-                        ],
-                        'buttons'
+                        '혹시 다음 중 해당하는 항목이 있나요?\n(해당하는 항목을 모두 고르고 보내기를 눌러 주세요)',
+                        RISK_OPTIONS,
+                        'buttons',
+                        true
                     );
                 }
                 break;
@@ -3233,32 +3244,27 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
                 goToStep('risk');
                 addBotMessage(
-                    '혹시 다음 중 해당하는 항목이 있나요?',
-                    [
-                        { label: '아니요, 일반 채무예요', value: 'none' },
-                        { label: '최근 1년 내 대출이 많아요', value: 'recent_loan' },
-                        { label: '채무중에 1년 이내에 주식/코인 투자 손실이 있어요.', value: 'investment' },
-                        { label: '채무중에 1년 이내에 도박으로 인한 채무가 있어요', value: 'gambling' }
-                    ],
-                    'buttons'
+                    '혹시 다음 중 해당하는 항목이 있나요?\n(해당하는 항목을 모두 고르고 보내기를 눌러 주세요)',
+                    RISK_OPTIONS,
+                    'buttons',
+                    true
                 );
                 break;
 
             case 'risk': {
-                const riskVal = value as RehabUserInput['riskFactor'];
-                setUserInput(prev => ({ ...prev, riskFactor: riskVal }));
-                
-                if (riskVal === 'investment' || riskVal === 'gambling') {
-                    // 투자/도박인 경우, 공감 멘트 없이 바로 금액 질문으로 이동
+                // 여러 개 고를 수 있다 (I-3). riskFactor는 이전 계산 호환용으로 가장 중요한 하나만 남긴다
+                const picked = (Array.isArray(value) ? value : [value]).filter(v => v !== 'done' && v !== 'none') as string[];
+                const primary = (['investment', 'gambling', 'recent_loan'].find(k => picked.includes(k)) || 'none') as RehabUserInput['riskFactor'];
+                setUserInput(prev => ({ ...prev, riskFactor: primary, riskFactors: picked } as any));
+                lossQueueRef.current = (['investment', 'gambling'] as const).filter(k => picked.includes(k));
+
+                if (lossQueueRef.current.length > 0) {
                     goToStep('speculative_loss_amount');
-                    const promptMsg = riskVal === 'investment'
-                        ? '1년 이내의 주식/코인 투자 손실액은 대략 얼마인가요?\n\n(만원 단위)'
-                        : '1년 이내의 도박으로 인한 채무액은 대략 얼마인가요?\n\n(만원 단위)';
-                    addBotMessage(promptMsg, undefined, 'money');
+                    addBotMessage(lossPrompt(lossQueueRef.current[0]), undefined, 'money');
                 } else {
                     // 일반 채무 또는 최근 대출의 경우, 기존처럼 공감 멘트 후 법적 조치로 이동
                     addBotMessage(
-                        '솔직하게 말씀해주셔서 감사해요. 정확한 상황 파악이 좋은 결과의 첫걸음이에요 ✨',
+                        '알려 주셔서 고마워요. 변호사가 상황을 이해하는 데 도움이 돼요.',
                         undefined,
                         undefined
                     );
@@ -3285,18 +3291,16 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
             case 'speculative_loss_amount': {
                 const amount = (typeof value === 'number' ? value : parseInt(String(value), 10)) * 10000;
-                setUserInput(prev => {
-                    if (prev.riskFactor === 'investment') {
-                        return { ...prev, speculativeLoss: amount };
-                    } else if (prev.riskFactor === 'gambling') {
-                        return { ...prev, gamblingLoss: amount };
-                    }
-                    return prev;
-                });
+                const kind = lossQueueRef.current.shift() || (userInput.riskFactor === 'gambling' ? 'gambling' : 'investment');
+                setUserInput(prev => (kind === 'gambling' ? { ...prev, gamblingLoss: amount } : { ...prev, speculativeLoss: amount }));
+                if (lossQueueRef.current.length > 0) {
+                    addBotMessage(lossPrompt(lossQueueRef.current[0]), undefined, 'money');
+                    break;
+                }
 
                 // 금액 입력이 끝났을 때 공감 멘트 노출
                 addBotMessage(
-                    '솔직하게 말씀해주셔서 감사해요. 정확한 상황 파악이 좋은 결과의 첫걸음이에요 ✨',
+                    '알려 주셔서 고마워요. 변호사가 상황을 이해하는 데 도움이 돼요.',
                     undefined,
                     undefined
                 );
@@ -3326,14 +3330,13 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     // 3년 미만 단축 검토 적용 가능 여부 확인으로 이동
                     goToStep('short_plan_reason');
                     addBotMessage(
-                        '24개월 단기 변제 특례 적용 가능 여부를 확인합니다.\n\n다음 중 해당하는 항목이 있으신가요?',
+                        '다음 중 해당하는 사정이 있나요?\n해당 여부와 변제기간은 변호사가 서류를 보고 판단해요.',
                         [
-                            { label: '🔘 해당 없음', value: 'none' },
-                            { label: '📋 기초생활수급자', value: 'basic_recipient' },
-                            { label: '♿ 장애의 정도가 심한 장애인', value: 'severe_disability' },
-                            { label: '👴 만 70세 이상', value: 'elderly' },
-                            { label: '👨‍👧 한부모 가족', value: 'single_parent' },
-                            { label: '🏠 전세사기 피해자', value: 'rent_fraud' }
+                            { label: '해당 없음', value: 'none' },
+                            { label: '장애의 정도가 심한 장애인', value: 'severe_disability' },
+                            { label: '한부모 가족', value: 'single_parent' },
+                            { label: '전세사기피해자 결정을 받음', value: 'rent_fraud' },
+                            { label: '기초생활 수급 중', value: 'basic_recipient' }
                         ],
                         'buttons'
                     );
@@ -3574,7 +3577,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 title: '변호사에게 전달할 상황 작성',
                 description: '하고 싶은 말씀이나 특별한 상황(최근 채무 독촉 등)을 자유롭게 적어 추가해 주세요.',
                 placeholder: '내용을 적고 추가 버튼을 누르세요.',
-                buttonLabel: '자가진단 완료하고 분석하기',
+                buttonLabel: '정리 마치기',
                 cancelLabel: '건너뛰기',
                 required: false
             },

@@ -1516,9 +1516,9 @@ export default function ClientRole({
     result: RehabCalculationResult,
     input: RehabUserInput
   ): IntakeData => {
-    const age = input.age || 35;
-    const birthYear = 2026 - age;
-    const birthDate = `${birthYear}-01-01`;
+    // 나이를 모르면 생년월일도 비운다 (이전: 나이 35·'YYYY-01-01'을 지어 넣어 변호사 자료에 35세로 보였다, I-4)
+    const age = input.age && input.age > 0 ? input.age : 0;
+    const birthDate = age ? `${new Date().getFullYear() - age}-01-01` : '';
     const gender = input.gender;
 
     let maritalStatus: IntakeData['maritalStatus'] = 'single';
@@ -1707,7 +1707,7 @@ export default function ClientRole({
         date: new Date().toISOString().split('T')[0],
         consultantId: 'client',
         consultantName: input.name || '의뢰인',
-        content: `챗봇 자가진단 실행완료.\n주요 조언:\n${result.aiAdvice ? result.aiAdvice.join('\n') : ''}`
+        content: '내 상황 체크하기 정리를 마쳤어요. 정리 자료는 상담 요청의 의뢰인 정리 자료에서 볼 수 있어요.'
       }
     ];
 
@@ -1754,7 +1754,7 @@ export default function ClientRole({
       housingType: input.housingType,
       housingContractHolder: input.housingContractHolder,
       depositLoan: input.depositLoan,
-      age: input.age || (birthYear ? 2026 - birthYear : 35),
+      age: age,
       specialCondition: input.specialCondition || (input.age && input.age >= 65 ? 'elderly' : (input.specialCondition as any) || 'none'),
       monthlyFixedExpenses: input.monthlyFixedExpenses || ((input.rentCost || 0) + (input.medicalCost || 0) + (input.educationCost || 0) + (input.specialEducationCost || 0)),
       spouseAsset: input.spouseAssets || 0,

@@ -50,6 +50,7 @@ export const INTAKE_FIELDS: FieldDef[] = [
   { group: '채무', key: 'speculativeLoss', label: '투자 손실(1년 안)', kind: 'won' },
   { group: '채무', key: 'gamblingLoss', label: '도박 채무(1년 안)', kind: 'won' },
   { group: '채무', key: 'riskFactor', label: '빚이 늘어난 주된 이유', map: { none: '생활비 등', recent_loan: '최근 대출', investment: '투자', gambling: '도박' } },
+  { group: '채무', key: 'riskFactors', label: '해당하는 사정(여러 개)', kind: 'list', map: { recent_loan: '최근 1년 대출 많음', investment: '1년 안 투자 손실', gambling: '1년 안 도박 채무' } },
   { group: '독촉·법적 조치', key: 'legalActions', label: '받은 조치', kind: 'list', map: { collection_call: '독촉 전화·문자', court_order: '지급명령·소장', seizure: '급여·계좌 압류', property_seizure: '부동산 가압류', credit_drop: '신용 하락 통보', none: '없음' } },
   { group: '사정', key: 'specialCondition', label: '해당하는 사정', map: { none: '없음', basic_recipient: '기초생활 수급', severe_disability: '중증 장애', elderly: '65세 이상', single_parent: '한부모', rent_fraud: '전세사기 피해' } },
   { group: '사정', key: 'age', label: '나이', kind: 'count' },
@@ -73,7 +74,7 @@ export function buildIntakeV2(input: Partial<RehabUserInput> & Record<string, an
     .filter(f => answers[f.key] === null)
     .filter(f => married || (f.key !== 'spouseIncome' && f.key !== 'spouseAssets'))
     .filter(f => !['rentCost', 'deposit', 'depositLoan', 'housingContractHolder'].includes(f.key) || ['rent', 'jeonse'].includes(String(answers.housingType)))
-    .filter(f => !['childSupportPaid', 'childSupportReceived', 'speculativeLoss', 'gamblingLoss', 'creditCardDebt', 'elderlyParentCount', 'medicalCost', 'educationCost', 'age'].includes(f.key))
+    .filter(f => !['childSupportPaid', 'childSupportReceived', 'speculativeLoss', 'gamblingLoss', 'creditCardDebt', 'elderlyParentCount', 'medicalCost', 'educationCost', 'age', 'riskFactors'].includes(f.key))
     .map(f => f.label);
   if (answers.retirementPensionType === 'unknown') needCheck.push('퇴직연금 가입 여부');
   const next: ClientIntakeV2 = { version: 2, answeredAt: new Date().toISOString(), units: 'won', answers, extra, needCheck };
