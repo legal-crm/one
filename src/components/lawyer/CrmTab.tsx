@@ -168,6 +168,7 @@ import { sendAlimtok, feeAmountWon, feeTotalWon, renderTemplate } from '../../se
 import { NOTICE_METHOD_LABEL, deliverClientNotice, describeDelivery, loadClientMessaging, noticeMethodFor } from '../../services/comm/clientNoticeService';
 import { canUse as canUseOfficePermission } from '../../services/office/officePermissions';
 import CorrectionPanel from './case/CorrectionPanel';
+import CaseClientReportsPanel from './case/CaseClientReportsPanel';
 import { CORRECTIONS_CHANGED_EVENT, loadCorrectionOverview, type CorrectionOverviewRow } from '../../services/corrections/correctionService';
 
 interface CrmTabProps {
@@ -1910,6 +1911,8 @@ export default function CrmTab({
             {officeId && (
               <div className="px-4 pt-4">
                 <div id="server-case-record" className="scroll-mt-24" />
+                {/* 의뢰인이 알린 변동 (NF-9) — 알린 일이 있을 때만 보인다 */}
+                <div className="mb-3"><CaseClientReportsPanel key={`ccr-${selectedId}`} caseKey={selectedId} canEdit={currentPermissions.changeStatus} /></div>
               <ServerCaseRecordPanel
                   key={selectedId}
                   officeId={officeId}

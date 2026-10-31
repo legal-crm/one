@@ -207,6 +207,15 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
         })}
       </div>
       <p className="text-xs text-slate-500 mt-1">전화·영상 상담을 고르면 의뢰인이 '비대면 가능'으로 찾을 수 있어요.</p>
+      {/* 이용 정보 (NF-12): 의뢰인이 이 조건으로 거를 수 있어요. 수임료 금액은 받지 않아요(견적 비교 방지) */}
+      <span className={`${labelCls} mt-3`}>이용 정보</span>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="이용 정보">
+        <button type="button" aria-pressed={!!form.feeInstallmentAvailable} onClick={() => updateForm({ feeInstallmentAvailable: !form.feeInstallmentAvailable })}
+          className={`${chipCls} ${form.feeInstallmentAvailable ? chipOnCls : chipOffCls}`}>수임료 분할 납부 가능</button>
+        <button type="button" aria-pressed={!!form.afterHoursConsult} onClick={() => updateForm({ afterHoursConsult: !form.afterHoursConsult })}
+          className={`${chipCls} ${form.afterHoursConsult ? chipOnCls : chipOffCls}`}>평일 저녁·주말 상담 가능</button>
+      </div>
+      <p className="text-xs text-slate-500 mt-1">사실대로만 골라 주세요. 수임료 금액은 프로필에 적지 않아요. 첫 상담 비용은 '초기 상담 비용' 칸에 적어요.</p>
     </div>
   );
   // 소개 글 광고 규정 점검 (막지 않음, 승인된 변호사는 저장하면 운영팀이 다시 확인)

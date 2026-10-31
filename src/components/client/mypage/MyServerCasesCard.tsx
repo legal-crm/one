@@ -18,6 +18,8 @@ import MyDebtCertProgress from './MyDebtCertProgress';
 import MyPlanPaymentsSection from './MyPlanPaymentsSection';
 import MyCaseFormsSection from './MyCaseFormsSection';
 import MyBankruptcySchedule from './MyBankruptcySchedule';
+import MyCaseChangeReport, { MyCreditRecoveryGuide } from './MyCaseChangeReport';
+import MyMeetingPrepCard from './MyMeetingPrepCard';
 import MyCompanionCaseCard from './MyCompanionCaseCard';
 import CaseRegistrationModal from '../companion/CaseRegistrationModal';
 import { listMyCompanionCases, type MyCompanionCaseEntry } from '../../../services/companionService';
@@ -189,6 +191,8 @@ function CaseCard({ c }: { c: MyCaseSummary }) {
       {tab === 'todo' && (
         <div className="mt-3 space-y-3">
           {closed && <p className="text-sm text-slate-600">사건이 끝나 할 일이 없어요.</p>}
+          {/* 채권자집회 준비 카드 (NF-8) — 기일이 잡혔고 아직 지나지 않았을 때 */}
+          {!closed && c.caseType === 'rehab' && c.creditorsMeetingOn && <MyMeetingPrepCard meetingOn={c.creditorsMeetingOn} courtName={c.courtName} />}
           {/* 법원 보정 할 일 (CR-5) · 사무소가 요청한 서식 (H-14) · 서류 요청 */}
           {!closed && <MyCorrectionTodo caseKey={c.workspaceKey} />}
           {!closed && <MyCaseFormsSection caseKey={c.workspaceKey} />}
@@ -207,7 +211,7 @@ function CaseCard({ c }: { c: MyCaseSummary }) {
               return (
                 <li key={label} className="text-center">
                   <span className={`block h-1.5 rounded-full ${done ? 'bg-brand' : now ? 'bg-brand/60' : 'bg-slate-200'}`} />
-                  <span className={`mt-1 block text-[11px] leading-tight ${now ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{label}</span>
+                  <span className={`mt-1 block text-xs leading-tight ${now ? 'font-bold text-slate-900' : 'text-slate-500'}`}>{label}</span>
                 </li>
               );
             })}
@@ -222,6 +226,9 @@ function CaseCard({ c }: { c: MyCaseSummary }) {
           {closed && <p className="text-xs text-slate-600">사건이 끝났어요. 궁금한 점은 담당 사무소에 문의해 주세요.</p>}
           {!closed && <MyDebtCertProgress caseKey={c.workspaceKey} />}
           {c.caseType === 'bankruptcy' && c.groupNo >= 5 && <MyBankruptcySchedule caseId={c.caseId} />}
+          {/* 접수 뒤 변동 알리기 · 면책 뒤 신용 회복 안내 (NF-9) */}
+          {!closed && c.groupNo >= 4 && <MyCaseChangeReport caseKey={c.workspaceKey} />}
+          {(c.closeReason === 'discharged' || !!c.dischargeDecidedOn) && <MyCreditRecoveryGuide />}
         </div>
       )}
 

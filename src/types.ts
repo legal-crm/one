@@ -1284,6 +1284,10 @@ export interface User {
   admittedYear?: number;
   /** 대한변호사협회에 등록한 전문분야 (등록한 경우만). '전문' 표시는 이 칸이 있을 때만 (LD-4) */
   kbaSpecialty?: string;
+  /** 이용 정보 (NF-12): 수임료 분할 납부 가능 여부 — 금액은 적지 않는다(견적 비교 방지) */
+  feeInstallmentAvailable?: boolean;
+  /** 이용 정보 (NF-12): 평일 저녁·주말 상담 가능 여부 */
+  afterHoursConsult?: boolean;
   barAssociation?: string; // 소속 변호사회
   specialties?: string[]; // 주요 업무 키워드 (이전 이름: 상세 전문 분야)
   successRate?: number; // 인가 성공률 (%)

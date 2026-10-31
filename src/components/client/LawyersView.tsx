@@ -76,6 +76,9 @@ export default function LawyersView({
   const [selectedRegion, setSelectedRegion] = useState<LawyerRegion>('전체');
   const [selectedField, setSelectedField] = useState<string>('전체');
   const [remoteOnly, setRemoteOnly] = useState(false);
+  // 이용 정보로 거르기 (NF-12) — 순서는 그대로 무작위, 거르기만
+  const [installmentOnly, setInstallmentOnly] = useState(false);
+  const [afterHoursOnly, setAfterHoursOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [profileLawyer, setProfileLawyer] = useState<User | null>(null);
   // 좋아요는 로그인한 계정에 서버 저장 (이전: 이 기기에만)
@@ -150,9 +153,10 @@ export default function LawyersView({
       const matchesField = selectedField === '전체' || (l.fields || []).includes(selectedField);
       const matchesRemote = !remoteOnly || isRemoteAvailable(l);
       const matchesFav = !showFavoritesOnly || favorites.has(l.id);
-      return matchesSearch && matchesRegion && matchesField && matchesRemote && matchesFav;
+      const matchesUse = (!installmentOnly || !!l.feeInstallmentAvailable) && (!afterHoursOnly || !!l.afterHoursConsult);
+      return matchesSearch && matchesRegion && matchesField && matchesRemote && matchesFav && matchesUse;
     });
-  }, [listable, searchQuery, selectedRegion, selectedField, remoteOnly, showFavoritesOnly, favorites]);
+  }, [listable, searchQuery, selectedRegion, selectedField, remoteOnly, showFavoritesOnly, favorites, installmentOnly, afterHoursOnly]);
 
   // 분야 칩: 공개 변호사 중 한 명이라도 고른 분야만 (아무도 없는 칩을 눌러 빈 화면을 보지 않게)
   const fieldOptions = useMemo(
@@ -161,7 +165,9 @@ export default function LawyersView({
   );
   const remoteCount = useMemo(() => listable.filter(isRemoteAvailable).length, [listable]);
 
-  const hasActiveFilter = !!searchQuery.trim() || selectedRegion !== '전체' || selectedField !== '전체' || remoteOnly || showFavoritesOnly;
+  const installmentCount = useMemo(() => listable.filter(l => l.feeInstallmentAvailable).length, [listable]);
+  const afterHoursCount = useMemo(() => listable.filter(l => l.afterHoursConsult).length, [listable]);
+  const hasActiveFilter = !!searchQuery.trim() || selectedRegion !== '전체' || selectedField !== '전체' || remoteOnly || showFavoritesOnly || installmentOnly || afterHoursOnly;
 
   // ── 광고 등급별 분류 (광고와 일반 등록을 섞지 않고 구역을 나눠 표시) ──
   // 상단 광고(top)는 조건 없이 볼 때 맨 위 광고 구역에 노출한다.
@@ -187,6 +193,8 @@ export default function LawyersView({
     setSelectedRegion('전체');
     setSelectedField('전체');
     setRemoteOnly(false);
+    setInstallmentOnly(false);
+    setAfterHoursOnly(false);
     setShowFavoritesOnly(false);
     setPage(1);
   };
@@ -367,6 +375,20 @@ export default function LawyersView({
             <Video className="w-4 h-4" aria-hidden="true" />
             비대면(전화·영상) 상담 가능{remoteCount > 0 ? ` ${remoteCount}` : ''}
           </button>
+          {/* 이용 정보 거르기 (NF-12, 변호사 입력) */}
+          {([
+            { on: installmentOnly, set: setInstallmentOnly, count: installmentCount, label: '수임료 분할 납부 가능' },
+            { on: afterHoursOnly, set: setAfterHoursOnly, count: afterHoursCount, label: '평일 저녁·주말 상담' },
+          ] as const).map(f => (
+            <button key={f.label} type="button" onClick={() => { f.set(v => !v); setPage(1); }} aria-pressed={f.on}
+              disabled={f.count === 0 && !f.on}
+              className={cn(
+                'min-h-11 inline-flex items-center gap-1.5 px-3.5 rounded-xl border text-sm font-bold whitespace-nowrap transition-colors active:scale-[0.98] disabled:opacity-50',
+                f.on ? 'bg-brand-light border-brand/30 text-brand' : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400',
+              )}>
+              {f.label}{f.count > 0 ? ` ${f.count}` : ''}
+            </button>
+          ))}
           <p className="text-xs text-slate-500 break-keep">방문 상담을 원하면 사무소 지역을, 멀리 있어도 괜찮다면 비대면 가능을 고르세요.</p>
         </div>
       </div>

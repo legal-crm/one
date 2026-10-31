@@ -99,6 +99,8 @@ export default function LawyerProfileModal({
     { label: '경력', icon: Briefcase, list: lawyer.career && lawyer.career.length > 0 ? lawyer.career : undefined },
     { label: '자격', icon: Award, value: lawyer.certYear },
     { label: '대한변협 등록 전문분야', icon: Award, value: lawyer.kbaSpecialty?.trim() ? `${lawyer.kbaSpecialty.trim()} (변호사 입력)` : undefined },
+    // 이용 정보 (NF-12, 변호사 입력)
+    { label: '이용 정보', icon: Wallet, value: [lawyer.feeInstallmentAvailable ? '수임료 분할 납부 가능' : '', lawyer.afterHoursConsult ? '평일 저녁·주말 상담 가능' : ''].filter(Boolean).join(' · ') || undefined },
     { label: '등록번호', icon: BadgeCheck, value: isVerified && lawyer.licenseNumber ? `${lawyer.licenseNumber} (플랫폼 확인)` : undefined },
     { label: '소속 변호사회', icon: Shield, value: lawyer.barAssociation },
     { label: '학력', icon: GraduationCap, value: lawyer.education },
