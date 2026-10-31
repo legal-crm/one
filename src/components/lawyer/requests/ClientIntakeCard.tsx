@@ -7,6 +7,8 @@ const EXTRA_LABEL: Record<string, string> = {
   '1-3': '1~3곳', '4-6': '4~6곳', '7-10': '7~10곳', '11+': '11곳 이상',
   under3m: '3개월 안', '3to6m': '3~6개월', '6to12m': '6개월~1년', over1y: '1년 넘음',
   tax: '세금', health: '건강보험료', pension: '국민연금', salary: '월급', account: '통장', property: '집·부동산', car: '자동차',
+  under1y: '1년 안', '1to3y': '1~3년', over3y: '3년 넘음', yes: '예', no: '아니요',
+  severe_disability: '중증 장애', single_parent: '한부모', rent_fraud_decision: '전세사기피해자 결정', low_wage_2y: '최근 2년 최저임금 수준', no_private_creditor: '개인 채권자 없음',
 };
 
 /**
@@ -24,6 +26,10 @@ export default function ClientIntakeCard({ intake, updatedAt }: { intake?: Clien
     ['연체 시작', x.overdueSince ? (x.overdueSince === 'none' ? '연체 없음' : EXTRA_LABEL[x.overdueSince] || x.overdueSince) : ''],
     ['밀린 공과금', x.arrears?.length ? x.arrears.map(a => EXTRA_LABEL[a] || a).join(', ') : ''],
     ['압류', x.seizure?.length ? x.seizure.map(a => EXTRA_LABEL[a] || a).join(', ') : ''],
+    ['출생연도', x.birthYear || ''],
+    ['일한 기간 · 4대보험', [EXTRA_LABEL[x.tenure || ''], x.socialInsurance ? `4대보험 ${EXTRA_LABEL[x.socialInsurance] || ''}` : ''].filter(Boolean).join(' · ')],
+    ['최근 소득 감소', EXTRA_LABEL[x.incomeDrop || ''] || ''],
+    ['해당 사실 (판정 아님)', x.shortFacts?.length ? x.shortFacts.map(a => EXTRA_LABEL[a] || a).join(', ') : ''],
   ];
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3" aria-label="의뢰인 정리 자료">

@@ -10,9 +10,16 @@ export interface IntakeExtraFacts {
   overdueSince: '' | 'none' | 'under3m' | '3to6m' | '6to12m' | 'over1y' | 'unknown';
   arrears: Array<'tax' | 'health' | 'pension'>;
   seizure: Array<'salary' | 'account' | 'property' | 'car'>;
+  /** 출생연도 (나이는 여기서 계산, 3년 미만 단축 사유 확인용) */
+  birthYear?: string;
+  tenure?: '' | 'under1y' | '1to3y' | 'over3y' | 'unknown';
+  socialInsurance?: '' | 'yes' | 'no' | 'unknown';
+  incomeDrop?: '' | 'no' | 'yes' | 'unknown';
+  /** 단축 사유 관련 사실 (판정 없음, 여러 개) */
+  shortFacts?: Array<'severe_disability' | 'single_parent' | 'rent_fraud_decision' | 'low_wage_2y' | 'no_private_creditor'>;
 }
 
-export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [] };
+export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', shortFacts: [] };
 
 const man = (v?: number) => (v ? `${Math.round(v).toLocaleString('ko-KR')}만 원` : '');
 
@@ -59,8 +66,10 @@ export default function IntakeReviewModal({
   ], [fp]);
   const needCheck = groups.flatMap(g => g.rows.filter(r => !r[1]).map(r => `${g.title} · ${r[0]}`));
 
-  const toggle = <K extends 'arrears' | 'seizure'>(k: K, v: IntakeExtraFacts[K][number]) =>
-    setX(p => ({ ...p, [k]: (p[k] as string[]).includes(v as string) ? (p[k] as string[]).filter(a => a !== v) : [...(p[k] as string[]), v] }));
+  const toggle = (k: 'arrears' | 'seizure' | 'shortFacts', v: string) =>
+    setX(p => { const cur = ((p as any)[k] || []) as string[]; return { ...p, [k]: cur.includes(v) ? cur.filter(a => a !== v) : [...cur, v] }; });
+  const thisYear = new Date().getFullYear();
+  const birthBad = !!x.birthYear && (x.birthYear.length !== 4 || Number(x.birthYear) < thisYear - 100 || Number(x.birthYear) > thisYear - 18);
 
   return (
     <Modal
@@ -76,7 +85,7 @@ export default function IntakeReviewModal({
             <Button variant="ghost" onClick={onRestart}>처음부터 다시 정리</Button>
             <Button variant="ghost" onClick={onLearn}>제도 알아보기</Button>
           </div>
-          <Button onClick={() => onConfirm(x)}>이대로 변호사 찾기</Button>
+          <Button onClick={() => onConfirm(birthBad ? { ...x, birthYear: '' } : x)}>이대로 변호사 찾기</Button>
         </div>
       }
     >
@@ -139,6 +148,39 @@ export default function IntakeReviewModal({
               </select>
             </label>
           </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+            <label className="space-y-1">
+              <span className="font-bold text-slate-700">출생연도</span>
+              <input className={inputClass} inputMode="numeric" value={x.birthYear || ''} onChange={e => setX(p => ({ ...p, birthYear: e.target.value.replace(/\D/g, '').slice(0, 4) }))} placeholder="예: 1985" aria-invalid={birthBad || undefined} />
+              {birthBad && <span className="block text-xs font-bold text-red-600">출생연도 네 자리를 다시 확인해 주세요.</span>}
+            </label>
+            <label className="space-y-1">
+              <span className="font-bold text-slate-700">지금 일한 기간</span>
+              <select className={inputClass} value={x.tenure || ''} onChange={e => setX(p => ({ ...p, tenure: e.target.value as any }))}>
+                <option value="">선택</option><option value="under1y">1년 안</option><option value="1to3y">1~3년</option><option value="over3y">3년 넘음</option><option value="unknown">모르겠어요</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="font-bold text-slate-700">4대보험 가입</span>
+              <select className={inputClass} value={x.socialInsurance || ''} onChange={e => setX(p => ({ ...p, socialInsurance: e.target.value as any }))}>
+                <option value="">선택</option><option value="yes">가입돼 있어요</option><option value="no">안 돼 있어요</option><option value="unknown">모르겠어요</option>
+              </select>
+            </label>
+            <label className="space-y-1">
+              <span className="font-bold text-slate-700">최근 1년 안에 소득이 줄었나요</span>
+              <select className={inputClass} value={x.incomeDrop || ''} onChange={e => setX(p => ({ ...p, incomeDrop: e.target.value as any }))}>
+                <option value="">선택</option><option value="no">아니요</option><option value="yes">줄었어요</option><option value="unknown">모르겠어요</option>
+              </select>
+            </label>
+          </div>
+          <fieldset className="space-y-1">
+            <legend className="text-sm font-bold text-slate-700">해당하는 것 (여러 개, 없으면 비워 두세요)</legend>
+            <div className="flex flex-wrap gap-2">
+              {([['severe_disability', '중증 장애'], ['single_parent', '한부모'], ['rent_fraud_decision', '전세사기피해자 결정을 받음'], ['low_wage_2y', '최근 2년 급여가 최저임금 수준'], ['no_private_creditor', '빌린 곳이 모두 금융회사(개인 빚 없음)']] as const).map(([v, l]) => (
+                <label key={v} className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-slate-300 bg-white text-sm"><input type="checkbox" checked={(x.shortFacts || []).includes(v)} onChange={() => toggle('shortFacts', v)} />{l}</label>
+              ))}
+            </div>
+          </fieldset>
           <fieldset className="space-y-1">
             <legend className="text-sm font-bold text-slate-700">밀린 공과금 (여러 개)</legend>
             <div className="flex flex-wrap gap-2">
@@ -169,6 +211,8 @@ export function extraFactsText(x: IntakeExtraFacts): string {
     '1-3': '1~3곳', '4-6': '4~6곳', '7-10': '7~10곳', '11+': '11곳 이상',
     under3m: '3개월 안', '3to6m': '3~6개월', '6to12m': '6개월~1년', over1y: '1년 넘음',
     tax: '세금', health: '건강보험료', pension: '국민연금', salary: '월급', account: '통장', property: '집·부동산', car: '자동차',
+    under1y: '1년 안', '1to3y': '1~3년', over3y: '3년 넘음', yes: '예', no: '아니요',
+    severe_disability: '중증 장애', single_parent: '한부모', rent_fraud_decision: '전세사기피해자 결정', low_wage_2y: '최근 2년 최저임금 수준 급여', no_private_creditor: '개인 채권자 없음',
   };
   const lines = [
     `• 과거 회생·파산·채무조정: ${L[x.prevHistory] || '없음'}${x.prevHistory !== 'none' && x.prevHistory !== 'unknown' ? ` (${x.prevHistoryYear || '연도 모름'}, ${L[x.prevHistoryResult] || '결과 모름'})` : ''}`,
@@ -176,6 +220,8 @@ export function extraFactsText(x: IntakeExtraFacts): string {
     `• 연체 시작: ${x.overdueSince === 'none' ? '연체 없음' : L[x.overdueSince] || '답 없음'}`,
     `• 밀린 공과금: ${x.arrears.length ? x.arrears.map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
     `• 압류: ${x.seizure.length ? x.seizure.map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
+    `• 출생연도: ${x.birthYear || '답 없음'} · 일한 기간: ${L[x.tenure || ''] || '답 없음'} · 4대보험: ${L[x.socialInsurance || ''] || '답 없음'} · 최근 소득 감소: ${L[x.incomeDrop || ''] || '답 없음'}`,
+    `• 해당 사실(판정 아님): ${(x.shortFacts || []).length ? (x.shortFacts || []).map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
   ];
   return `\n[5. 정리 확인 화면에서 더 답한 내용]\n${lines.join('\n')}`;
 }

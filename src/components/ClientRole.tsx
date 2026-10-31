@@ -2494,6 +2494,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         prevHistory: extra.prevHistory, prevHistoryYear: extra.prevHistoryYear || undefined, prevHistoryResult: extra.prevHistoryResult || undefined,
                         creditorCountBand: extra.creditorCountBand || undefined, overdueSince: extra.overdueSince || undefined,
                         arrearsKinds: extra.arrears, seizureTargets: extra.seizure,
+                        ...(extra.birthYear ? { age: new Date().getFullYear() - Number(extra.birthYear) } : {}),
+                        shortPlanFacts: extra.shortFacts, tenureBand: extra.tenure || undefined, socialInsurance: extra.socialInsurance || undefined, recentIncomeDrop: extra.incomeDrop || undefined,
                       };
                       const prevIntake = pendingNewRequest.intake || null;
                       const intake = pendingChatbotData ? buildIntakeV2(pendingChatbotData.input as any, extra, null) : (prevIntake ? { ...prevIntake, extra } : undefined);
