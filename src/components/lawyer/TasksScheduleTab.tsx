@@ -30,6 +30,7 @@ import {
 } from '../../services/calendarEventService';
 import type { CalendarEvent, EventType, EventVisibility, RecurrenceType, ReminderType } from '../../services/calendarEventService';
 import type { StaffMember } from '../../types';
+import { loadCorrectionOverview, CORRECTIONS_CHANGED_EVENT } from '../../services/corrections/correctionService';
 
 interface TasksScheduleTabProps {
   tenantId: string;
@@ -46,7 +47,13 @@ interface TasksScheduleTabProps {
   activeLawyerId: string;
   staffMembers?: StaffMember[];
   lawyers?: any[];
+  /** 서버 사무소 ID — 있으면 보정 법원 기한·사무소 마감을 달력에 함께 보여 준다 (HM-5, 읽기 전용) */
+  officeId?: string;
+  /** 보정 마감을 누르면 그 사건의 보정 화면을 연다 */
+  onOpenCorrection?: (caseKey: string) => void;
 }
+
+interface CorrectionDue { key: string; caseKey: string; round: number; kind: 'court' | 'office' }
 
 type SubTab = 'tasks' | 'calendar' | 'activity';
 type TaskViewMode = 'list' | 'kanban';
@@ -105,7 +112,7 @@ function dDay(dateStr: string): number {
 export default function TasksScheduleTab({
   tenantId, userId, userName, userRole, hasManageCalendar = false,
   canAssignTasks = false, canManageAllTasks = false, canApproveTasks = false,
-  requests, cases, qas, activeLawyerId,
+  requests, cases, qas, activeLawyerId, officeId, onOpenCorrection,
   staffMembers = [], lawyers = []
 }: TasksScheduleTabProps) {
   const dialog = useDialog();
@@ -618,6 +625,36 @@ export default function TasksScheduleTab({
     return map;
   }, [tasks]);
 
+  // 보정 마감 (서버 correction_orders, 제출 전 회차만) — 일정에 따로 넣지 않아도 달력에 보인다 (HM-5)
+  const [correctionDues, setCorrectionDues] = useState<CorrectionDue[]>([]);
+  useEffect(() => {
+    if (!officeId) return;
+    let alive = true;
+    const loadDues = () => void loadCorrectionOverview(officeId).then(rows => {
+      if (!alive) return;
+      const out: CorrectionDue[] = [];
+      for (const r of rows) {
+        if (r.submittedOn || r.status === 'submitted') continue;
+        if (r.courtDue) out.push({ key: r.courtDue, caseKey: r.caseKey, round: r.round, kind: 'court' });
+        if (r.officeDue && r.officeDue !== r.courtDue) out.push({ key: r.officeDue, caseKey: r.caseKey, round: r.round, kind: 'office' });
+      }
+      setCorrectionDues(out);
+    });
+    loadDues();
+    window.addEventListener(CORRECTIONS_CHANGED_EVENT, loadDues);
+    return () => { alive = false; window.removeEventListener(CORRECTIONS_CHANGED_EVENT, loadDues); };
+  }, [officeId]);
+  const correctionsByDate = useMemo(() => {
+    const map: Record<string, CorrectionDue[]> = {};
+    for (const d of correctionDues) (map[d.key] ||= []).push(d);
+    return map;
+  }, [correctionDues]);
+  const correctionAliasOf = (caseKey: string) => {
+    const r = (requests || []).find((x: any) => x?.id === caseKey);
+    return r?.stealthNickname || r?.clientName || '사건';
+  };
+  const correctionLabel = (d: CorrectionDue) => `${d.kind === 'court' ? '법원 보정기한' : '사무소 보정 마감'} · ${d.round}차 · ${correctionAliasOf(d.caseKey)}`;
+
   const today = new Date();
   const todayKey = toDateKey(today.getFullYear(), today.getMonth(), today.getDate());
   const todayEvents = eventsByDate[todayKey] || [];
@@ -1034,7 +1071,7 @@ export default function TasksScheduleTab({
                 title="민법 제161조 기준 법원 보정기한 계산 및 즉시 등록"
               >
                 <Calculator className="w-3.5 h-3.5 text-amber-600" />
-                <span>⚖️ 불변기한 계산기</span>
+                <span>법원 기한 계산기</span>
               </button>
 
               {/* 회생/파산 템플릿 패키지 등록 버튼 (지시 권한자용) */}
@@ -1856,7 +1893,9 @@ export default function TasksScheduleTab({
                   const dayEvents = eventsByDate[dateKey] || [];
                   const sel = selectedDay === day;
                   const isHoliday = dow === 0 || !!holiday;
+                  const dayCorrections = correctionsByDate[dateKey] || [];
                   const allItems = [
+                    ...dayCorrections.map(c => ({ k: 'c' as const, c })),
                     ...dayEvents.map(e => ({ k: 'e' as const, e })),
                     ...dayTasks.map(t => ({ k: 't' as const, t }))
                   ];
@@ -1885,6 +1924,13 @@ export default function TasksScheduleTab({
                       {allItems.length > 0 && (
                         <div className="space-y-0.5">
                           {allItems.slice(0, 2).map((item, idx) => {
+                            if (item.k === 'c') {
+                              return (
+                                <div key={idx} className={`text-xs font-bold px-1.5 py-0.5 rounded truncate ${item.c.kind === 'court' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-900'}`} title={correctionLabel(item.c)}>
+                                  {item.c.kind === 'court' ? '법원 보정기한' : '보정 마감'} {item.c.round}차
+                                </div>
+                              );
+                            }
                             if (item.k === 'e') {
                               const cfg = EVENT_TYPE_CONFIG[item.e.type];
                               return (
@@ -1933,6 +1979,7 @@ export default function TasksScheduleTab({
                   const dateKey = toDateKey(wd.getFullYear(), wd.getMonth(), wd.getDate());
                   const dayTasks = tasksByDate[dateKey] || [];
                   const dayEvents = eventsByDate[dateKey] || [];
+                  const dayCorrections = correctionsByDate[dateKey] || [];
                   const isHoliday = i === 0 || !!holiday;
 
                   return (
@@ -1949,6 +1996,14 @@ export default function TasksScheduleTab({
                         {holiday && <span className="text-xs font-bold text-red-400 mt-0.5">{holiday}</span>}
                       </div>
                       <div className="space-y-1">
+                        {dayCorrections.map(c => (
+                          <button key={`${c.caseKey}-${c.round}-${c.kind}`} type="button" disabled={!onOpenCorrection}
+                            onClick={() => onOpenCorrection?.(c.caseKey)}
+                            className={`w-full text-left text-xs font-bold p-1.5 rounded-lg ${c.kind === 'court' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-900'} ${onOpenCorrection ? 'cursor-pointer active:scale-[0.98]' : ''}`}>
+                            <div className="truncate">{c.kind === 'court' ? '법원 보정기한' : '사무소 보정 마감'} · {c.round}차</div>
+                            <div className="truncate font-medium">{correctionAliasOf(c.caseKey)}</div>
+                          </button>
+                        ))}
                         {dayEvents.map(e => {
                           const cfg = EVENT_TYPE_CONFIG[e.type];
                           return (
@@ -1966,7 +2021,7 @@ export default function TasksScheduleTab({
                             </div>
                           );
                         })}
-                        {dayEvents.length === 0 && dayTasks.length === 0 && (
+                        {dayEvents.length === 0 && dayTasks.length === 0 && dayCorrections.length === 0 && (
                           <p className="text-xs text-slate-300 text-center pt-4">-</p>
                         )}
                       </div>
@@ -2402,7 +2457,7 @@ export default function TasksScheduleTab({
                 </div>
                 <div>
                   <h3 className="text-base font-black text-slate-900">
-                    법원 불변기한 & 보정명령 계산기
+                    법원 기한 · 보정기간 계산기
                   </h3>
                   <p className="text-xs text-slate-500">
                     민법 제161조에 따라 토/일/공휴일 익일 만료가 자동 적용됩니다.

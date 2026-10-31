@@ -1,7 +1,7 @@
 // ============================================================
 // 오늘의 업무 (서버 기준, HM-2~HM-8)
 // - 업무함 = 서버 office_work_queue (권한 범위 안의 할 일만, 원래 일이 끝나면 저절로 사라짐)
-// - 카드 4개 = 역할별 기본 구성, 숫자는 업무함과 같은 정의
+// - 카드 2~4개 = 사람별 설정(서버 user_preferences, HM-4) → 없으면 역할별 기본 구성, 숫자는 업무함과 같은 정의
 // - 행 동작: 처리(해당 화면) · 미루기 · 넘기기 · 메모
 // - 공지 = 통합어드민 공지(서버), 처음 쓰는 사무소 '시작하기'
 // - 60초마다·창으로 돌아올 때 새로 읽고, 자정이 지나면 날짜를 바꾼다
@@ -10,14 +10,16 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import {
-  AlertTriangle, ArrowUpRight, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, Clock, Hourglass, Inbox,
-  Megaphone, MessageSquareText, RefreshCw, UserRoundCheck, Wallet, X,
+  AlertTriangle, ArrowDown, ArrowUp, ArrowUpRight, CalendarClock, CheckCircle2, ChevronDown, ChevronUp, Clock, Hourglass, Inbox,
+  LayoutGrid, Megaphone, MessageSquareText, RefreshCw, UserRoundCheck, Wallet, X,
 } from 'lucide-react';
 import {
   loadWorkQueue, setWorkOverride, formatDue, snoozeTarget, stageLabel,
   WORK_GROUP_LABEL, WORK_GROUP_ORDER, WORK_CARD_KINDS, type WorkGroup, type WorkItem,
 } from '../../../services/office/workQueueService';
 import { listOfficeMembers, type OfficeMember } from '../../../services/office/officeService';
+import { loadUserPreferences, saveUserPreferences, sanitizeDashboardCards } from '../../../services/office/userPreferencesService';
+import type { PermissionScope } from '../../../services/office/officePermissions';
 import type { Notice } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
 import SetupChecklistCard from './SetupChecklistCard';
@@ -25,14 +27,14 @@ import SampleCaseTour from './SampleCaseTour';
 
 type Role = 'owner' | 'lawyer' | 'consultant' | 'clerk' | 'accounting' | 'custom' | string;
 
-interface CardDef { id: string; label: string; kinds: readonly string[]; groups?: WorkGroup[]; icon: React.ReactNode; tab?: string }
+interface CardDef { id: string; label: string; kinds: readonly string[]; groups?: WorkGroup[]; icon: React.ReactNode; tab?: string; perm?: string }
 
 const CARD: Record<string, CardDef> = {
-  consult: { id: 'consult', label: '응답할 상담 요청', kinds: WORK_CARD_KINDS.consult, icon: <MessageSquareText className="w-4 h-4" />, tab: 'requests' },
+  consult: { id: 'consult', label: '응답할 상담 요청', kinds: WORK_CARD_KINDS.consult, icon: <MessageSquareText className="w-4 h-4" />, tab: 'requests', perm: 'consult.view' },
   deadlines: { id: 'deadlines', label: '7일 안 기한', kinds: WORK_CARD_KINDS.deadlines, groups: ['overdue', 'today', 'tomorrow', 'week'], icon: <CalendarClock className="w-4 h-4" />, tab: 'tasks-schedule' },
   waiting: { id: 'waiting', label: '의뢰인 회신 대기', kinds: WORK_CARD_KINDS.waiting, icon: <Hourglass className="w-4 h-4" /> },
   review: { id: 'review', label: '검토할 일', kinds: WORK_CARD_KINDS.review, icon: <UserRoundCheck className="w-4 h-4" /> },
-  fees: { id: 'fees', label: '오늘·연체 수납', kinds: WORK_CARD_KINDS.fees, icon: <Wallet className="w-4 h-4" />, tab: 'fee-settlement' },
+  fees: { id: 'fees', label: '오늘·연체 수납', kinds: WORK_CARD_KINDS.fees, icon: <Wallet className="w-4 h-4" />, tab: 'fee-settlement', perm: 'fee.view' },
 };
 const ROLE_CARDS: Record<string, string[]> = {
   owner: ['consult', 'deadlines', 'waiting', 'fees'],
@@ -41,6 +43,7 @@ const ROLE_CARDS: Record<string, string[]> = {
   clerk: ['review', 'waiting', 'deadlines', 'fees'],
   accounting: ['fees', 'review', 'deadlines', 'waiting'],
 };
+const CARD_IDS = Object.keys(CARD);
 
 export interface ServerTodayViewProps {
   officeId: string;
@@ -51,9 +54,17 @@ export interface ServerTodayViewProps {
   /** 알림 종과 같은 바로가기 (link_type, link_id) */
   onOpenLink: (linkType: string, linkId: string | null) => void;
   onNewCase: () => void;
+  /** 서버 권한표 (my_office_context). 권한 없는 카드는 숨긴다 (HM-4) */
+  permissions?: Record<string, PermissionScope>;
 }
 
-export default function ServerTodayView({ officeId, officeRole, myMemberId, notices, onNavigateTab, onOpenLink, onNewCase }: ServerTodayViewProps) {
+export default function ServerTodayView({ officeId, officeRole, myMemberId, notices, onNavigateTab, onOpenLink, onNewCase, permissions }: ServerTodayViewProps) {
+  const cardAllowed = (id: string) => {
+    const perm = CARD[id]?.perm;
+    if (!perm || !permissions) return true;
+    return (permissions[perm] || 'none') !== 'none';
+  };
+  const allowedCardIds = CARD_IDS.filter(cardAllowed);
   const dialog = useDialog();
   const [items, setItems] = useState<WorkItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -96,7 +107,46 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
     return list.filter(i => !i.assigneeMemberId || i.assigneeMemberId === myMemberId);
   }, [items, scope, myMemberId]);
 
-  const cardIds = ROLE_CARDS[officeRole] || ROLE_CARDS.lawyer;
+  // 카드 구성: 사람별 설정(서버 user_preferences 'dashboard') → 없으면 역할 기본값 (HM-4)
+  // 권한 없는 카드를 빼고, 빈자리는 볼 수 있는 다른 카드로 채운다 (4개까지)
+  const roleBase = (ROLE_CARDS[officeRole] || ROLE_CARDS.lawyer).filter(cardAllowed);
+  const roleDefault = [...roleBase, ...allowedCardIds.filter(id => !roleBase.includes(id))].slice(0, 4);
+  const [myCards, setMyCards] = useState<string[] | null>(null);
+  const [editingCards, setEditingCards] = useState<string[] | null>(null);
+  const [savingCards, setSavingCards] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    void loadUserPreferences<{ cards?: unknown }>('dashboard').then(r => {
+      if (!alive || r.ok === false) return;
+      setMyCards(sanitizeDashboardCards(r.data?.cards, CARD_IDS));
+    });
+    return () => { alive = false; };
+  }, []);
+  const myAllowedCards = (myCards || []).filter(cardAllowed);
+  const cardIds = myAllowedCards.length >= 2 ? myAllowedCards : roleDefault;
+  const toggleEditCard = (id: string) => setEditingCards(cur => {
+    const list = cur || [];
+    if (list.includes(id)) return list.filter(x => x !== id);
+    return list.length >= 4 ? list : [...list, id];
+  });
+  const moveEditCard = (id: string, dir: -1 | 1) => setEditingCards(cur => {
+    const list = [...(cur || [])];
+    const i = list.indexOf(id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= list.length) return list;
+    [list[i], list[j]] = [list[j], list[i]];
+    return list;
+  });
+  const saveCards = async (next: string[] | null) => {
+    setSavingCards(true);
+    const r = await saveUserPreferences('dashboard', { cards: next });
+    setSavingCards(false);
+    if (r.ok === false) { toast.error(r.message); return; }
+    setMyCards(next);
+    setEditingCards(null);
+    if (filterCard && !(next || roleDefault).includes(filterCard)) setFilterCard(null);
+    toast.success(next ? '내 카드 구성을 저장했어요. 다른 기기에서도 같아요.' : '역할 기본 카드로 되돌렸어요.');
+  };
   const countOf = (c: CardDef) => scoped.filter(i => c.kinds.includes(i.kind) && (!c.groups || c.groups.includes(i.group)))
     .reduce((s, i) => s + (i.count || 1), 0);
 
@@ -168,7 +218,7 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
           <div className="inline-flex rounded-xl border border-slate-200 p-1 bg-slate-50" role="group" aria-label="보기 범위">
             {(['mine', 'all'] as const).map(s => (
               <button key={s} type="button" onClick={() => setScope(s)} aria-pressed={scope === s}
-                className={`min-h-10 px-3 rounded-lg text-sm font-bold whitespace-nowrap ${scope === s ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
+                className={`min-h-11 px-3 rounded-lg text-sm font-bold whitespace-nowrap ${scope === s ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}>
                 {s === 'mine' ? '내 담당' : '권한 안 전체'}
               </button>
             ))}
@@ -193,19 +243,74 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
             <p className="text-sm font-bold text-slate-900">{n.title}</p>
             <p className="text-xs text-slate-600 mt-0.5 line-clamp-2 whitespace-pre-line">{n.content}</p>
           </div>
-          <button type="button" onClick={() => dismissNotice(n.id)} aria-label="공지 닫기" className="min-h-9 min-w-9 rounded-lg text-slate-400 hover:text-slate-700"><X className="w-4 h-4 mx-auto" aria-hidden="true" /></button>
+          <button type="button" onClick={() => dismissNotice(n.id)} aria-label="공지 닫기" className="min-h-11 min-w-11 rounded-lg text-slate-400 hover:text-slate-700"><X className="w-4 h-4 mx-auto" aria-hidden="true" /></button>
         </div>
       ))}
 
-      {/* 카드 4개 */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 카드 구성 바꾸기 (HM-4) */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-slate-500">{myCards ? '내가 고른 카드 구성이에요.' : '내 역할의 기본 카드 구성이에요.'}</p>
+        {editingCards === null && (
+          <button type="button" onClick={() => setEditingCards([...cardIds])}
+            className="min-h-11 px-3 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-700 whitespace-nowrap inline-flex items-center gap-1.5 active:scale-[0.98]">
+            <LayoutGrid className="w-4 h-4" aria-hidden="true" />카드 바꾸기
+          </button>
+        )}
+      </div>
+      {editingCards !== null && (
+        <section className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 space-y-3" aria-labelledby="card-editor-title">
+          <div>
+            <h3 id="card-editor-title" className="text-sm font-black text-slate-900">카드 고르기 (2~4개)</h3>
+            <p className="text-xs text-slate-500 mt-0.5">고른 순서대로 보여요. 화살표로 순서를 바꿀 수 있어요. 설정은 내 계정에만 저장돼요.</p>
+          </div>
+          <ul className="space-y-2">
+            {allowedCardIds.map(id => {
+              const c = CARD[id];
+              const pos = editingCards.indexOf(id);
+              const on = pos >= 0;
+              const full = !on && editingCards.length >= 4;
+              return (
+                <li key={id} className={`flex items-center gap-2 p-2 rounded-xl border ${on ? 'border-brand/40 bg-brand-light' : 'border-slate-200'}`}>
+                  <label className={`flex-1 flex items-center gap-2 min-h-11 text-sm font-bold ${full ? 'text-slate-400' : 'text-slate-800'} cursor-pointer`}>
+                    <input type="checkbox" checked={on} disabled={full} onChange={() => toggleEditCard(id)} className="w-4 h-4 accent-brand" />
+                    <span className="flex items-center gap-1.5">{c.icon}{c.label}</span>
+                    {on && <span className="text-xs font-bold text-brand">{pos + 1}번째</span>}
+                  </label>
+                  {on && (
+                    <span className="flex gap-1">
+                      <button type="button" onClick={() => moveEditCard(id, -1)} disabled={pos === 0} aria-label={`${c.label} 앞으로`}
+                        className="min-h-11 min-w-11 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40"><ArrowUp className="w-4 h-4 mx-auto" aria-hidden="true" /></button>
+                      <button type="button" onClick={() => moveEditCard(id, 1)} disabled={pos === editingCards.length - 1} aria-label={`${c.label} 뒤로`}
+                        className="min-h-11 min-w-11 rounded-lg border border-slate-200 bg-white text-slate-600 disabled:opacity-40"><ArrowDown className="w-4 h-4 mx-auto" aria-hidden="true" /></button>
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          {editingCards.length < 2 && <p className="text-xs font-bold text-rose-600">카드를 2개 이상 골라 주세요.</p>}
+          <div className="flex flex-wrap gap-2 justify-end">
+            {myCards && (
+              <button type="button" onClick={() => void saveCards(null)} disabled={savingCards}
+                className="min-h-11 px-4 rounded-xl border border-slate-300 text-sm font-bold text-slate-700 whitespace-nowrap disabled:opacity-50">역할 기본값으로</button>
+            )}
+            <button type="button" onClick={() => setEditingCards(null)} disabled={savingCards}
+              className="min-h-11 px-4 rounded-xl border border-slate-300 text-sm font-bold text-slate-700 whitespace-nowrap disabled:opacity-50">취소</button>
+            <button type="button" onClick={() => void saveCards(editingCards)} disabled={savingCards || editingCards.length < 2}
+              className="min-h-11 px-4 rounded-xl bg-brand hover:bg-brand-hover text-white text-sm font-bold whitespace-nowrap disabled:opacity-50 active:scale-[0.98]">{savingCards ? '저장 중…' : '저장'}</button>
+          </div>
+        </section>
+      )}
+
+      {/* 카드 */}
+      <div className={`grid grid-cols-2 gap-3 ${cardIds.length === 4 ? 'lg:grid-cols-4' : cardIds.length === 3 ? 'lg:grid-cols-3' : ''}`}>
         {cardIds.map(id => {
           const c = CARD[id];
           const active = filterCard === id;
           const n = items === null ? null : countOf(c);
           return (
             <button key={id} type="button" onClick={() => setFilterCard(active ? null : id)} aria-pressed={active}
-              className={`text-left p-4 rounded-2xl border shadow-sm transition-all active:scale-[0.98] ${active ? 'border-[#1E3A5F] ring-2 ring-[#1E3A5F]/20 bg-blue-50/40' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
+              className={`text-left p-4 rounded-2xl border shadow-sm transition-all active:scale-[0.98] ${active ? 'border-brand ring-2 ring-brand/20 bg-brand-light' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
               <span className="flex items-center justify-between text-xs font-bold text-slate-600">
                 <span className="flex items-center gap-1.5">{c.icon}{c.label}</span>
                 {c.tab && <ArrowUpRight className="w-4 h-4 text-slate-400" aria-hidden="true" />}
@@ -222,9 +327,9 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
       {/* 업무함 */}
       <section className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" aria-labelledby="work-queue-title">
         <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-slate-100">
-          <h3 id="work-queue-title" className="text-base font-black text-slate-900 flex items-center gap-2"><Inbox className="w-5 h-5 text-[#1E3A5F]" aria-hidden="true" />업무함</h3>
+          <h3 id="work-queue-title" className="text-base font-black text-slate-900 flex items-center gap-2"><Inbox className="w-5 h-5 text-brand" aria-hidden="true" />업무함</h3>
           {filterCard && (
-            <button type="button" onClick={() => setFilterCard(null)} className="min-h-10 px-3 rounded-xl text-xs font-bold text-slate-600 border border-slate-200 whitespace-nowrap">거르기 풀기 · {CARD[filterCard].label}</button>
+            <button type="button" onClick={() => setFilterCard(null)} className="min-h-11 px-3 rounded-xl text-xs font-bold text-slate-600 border border-slate-200 whitespace-nowrap">거르기 풀기 · {CARD[filterCard].label}</button>
           )}
         </div>
 
@@ -232,7 +337,7 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
           <div className="p-6 text-center space-y-3">
             <AlertTriangle className="w-6 h-6 text-rose-500 mx-auto" aria-hidden="true" />
             <p className="text-sm text-slate-700">{error}</p>
-            <button type="button" onClick={() => void load()} className="min-h-11 px-4 rounded-xl bg-[#1E3A5F] text-white text-sm font-bold">다시 시도</button>
+            <button type="button" onClick={() => void load()} className="min-h-11 px-4 rounded-xl bg-brand text-white text-sm font-bold">다시 시도</button>
           </div>
         ) : items === null ? (
           <div className="p-5 space-y-3" aria-busy="true">
@@ -245,7 +350,7 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
             <p className="text-xs text-slate-500">새 상담 요청·의뢰인 제출 서류·보정 마감이 생기면 여기에 모여요.</p>
             <div className="flex justify-center gap-2 flex-wrap">
               <button type="button" onClick={() => onNavigateTab('tasks-schedule')} className="min-h-11 px-4 rounded-xl border border-slate-300 text-sm font-bold text-slate-700 whitespace-nowrap">일정 보기</button>
-              <button type="button" onClick={onNewCase} className="min-h-11 px-4 rounded-xl bg-[#1E3A5F] text-white text-sm font-bold whitespace-nowrap">사건 직접 등록</button>
+              <button type="button" onClick={onNewCase} className="min-h-11 px-4 rounded-xl bg-brand text-white text-sm font-bold whitespace-nowrap">사건 직접 등록</button>
             </div>
           </div>
         ) : (
@@ -279,7 +384,7 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
                           </div>
                           <div className="flex items-center gap-1.5 flex-wrap">
                             <button type="button" onClick={() => onOpenLink(item.linkType, item.linkId)}
-                              className="min-h-11 px-4 rounded-xl bg-[#1E3A5F] text-white text-xs font-bold whitespace-nowrap active:scale-[0.98]">처리하기</button>
+                              className="min-h-11 px-4 rounded-xl bg-brand text-white text-xs font-bold whitespace-nowrap active:scale-[0.98]">처리하기</button>
                             <select aria-label="미루기" value="" disabled={busyKey === item.key}
                               onChange={e => { const v = e.target.value as '1h' | 'tomorrow' | '3d'; if (v) void snooze(item, v); }}
                               className="min-h-11 rounded-xl border border-slate-300 bg-white px-2 text-xs font-bold text-slate-700">

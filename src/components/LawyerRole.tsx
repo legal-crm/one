@@ -3154,6 +3154,7 @@ export default function LawyerRole({
             onNavigateTab={(tabId) => setActiveTab(tabId as any)}
             onOpenLink={handleServerLink}
             onNewCase={() => setIsExternalClientModalOpen(true)}
+            permissions={officeCtx.office.permissions}
           />
         )}
         {activeTab === 'dashboard' && !officeCtx.office && (
@@ -3375,6 +3376,8 @@ export default function LawyerRole({
               activeLawyerId={activeLawyer.id}
               staffMembers={staffMembers}
               lawyers={lawyers}
+              officeId={officeCtx.office?.officeId}
+              onOpenCorrection={(caseKey) => openCase(caseKey, 'corrections')}
             />
           </div>
         )}

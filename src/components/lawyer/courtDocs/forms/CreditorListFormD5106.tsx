@@ -1,6 +1,8 @@
 
 import type { CourtFilingMasterData } from '../../../../services/documents/courtFilingEngine';
 import { creditorAnnexNumbers } from '../../../../services/documents/courtFilingEngine';
+import { annexRows, uniqueCreditorCount } from '../../../../services/documents/creditorAnnex';
+import CreditorAnnexPages from './CreditorAnnexPages';
 import { basisWithDate, dotDate, headerBaseDate } from '../../../../services/debt/debtLedgerRules';
 import { F } from './CourtField';
 
@@ -40,6 +42,8 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
   const securedSum = sumCreditors(securedCreditors);
   const unsecuredSum = sumCreditors(unsecuredCreditors);
   const totalSum = sumCreditors(creditors);
+  const uniqueCount = uniqueCreditorCount(creditors);
+  const annex = annexRows(creditors);
 
   return (
     <>
@@ -91,6 +95,8 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
             </tr>
           </tbody>
         </table>
+        <p className="text-[13px] leading-relaxed">채권자 수: {creditors.length}건 · 같은 채권자를 한 번만 센 수: {uniqueCount}명 (이름·주소가 같으면 같은 채권자로 셉니다)</p>
+        <p className="text-[13px] leading-relaxed">채권현재액(이자)은 부채증명서의 합계에서 원금을 뺀 금액입니다.</p>
 
         <div className="text-[13px] mt-4">
           <p>※ 개시 후 이자 등: 아래 각 채권의 개시결정일 이후의 이자·지연손해금 등은 채무자 회생 및 파산에 관한 법률 제581조제2항, 제446조제1항제1,2호의 후순위채권입니다.</p>
@@ -173,6 +179,7 @@ export const CreditorListFormD5106: React.FC<CourtFormProps> = ({ data, isEditab
           </table>
         </div>
       ))}
+      <CreditorAnnexPages annex={annex} />
     </>
   );
 };

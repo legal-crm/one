@@ -7,6 +7,7 @@
 // - 전자소송 채권자 CSV (CP949) 즉시 다운로드
 // ============================================================
 
+import { SECURED_RIGHT_LABEL } from '../../../services/documents/creditorAnnex';
 import React, { useState, useMemo } from 'react';
 import { 
   X, Plus, Trash2, Edit3, Save, FileSpreadsheet, Download, 
@@ -240,6 +241,15 @@ function CreditorManagementModalInner({
       securedMaxAmount: editingCreditor.securedMaxAmount,
       priorSecuredAmount: editingCreditor.priorSecuredAmount,
       unsecuredExpectedShortage: calculatedShortage,
+      securedRightType: editingCreditor.securedRightType,
+      collateralDescription: editingCreditor.collateralDescription?.trim() || undefined,
+      securedRank: editingCreditor.securedRank?.trim() || undefined,
+      disputeLawsuits: (editingCreditor.disputeLawsuits || []).filter(l => l.court || l.caseNumber || l.status),
+      garnishmentDecidedOn: editingCreditor.garnishmentDecidedOn || undefined,
+      garnishmentServedOn: editingCreditor.garnishmentServedOn || undefined,
+      garnisheeName: editingCreditor.garnisheeName?.trim() || undefined,
+      guaranteeAmount: editingCreditor.guaranteeAmount || undefined,
+      guaranteeDate: editingCreditor.guaranteeDate || undefined,
 
       disputeCreditorClaim: editingCreditor.disputeCreditorClaim,
       disputeDebtorClaim: editingCreditor.disputeDebtorClaim,
@@ -854,6 +864,23 @@ function CreditorManagementModalInner({
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                    <div>
+                      <label className="block text-xs text-slate-600 mb-1">담보권 종류</label>
+                      <select value={editingCreditor.securedRightType || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, securedRightType: (e.target.value || undefined) as RepaymentCreditor['securedRightType'] }))} className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs">
+                        <option value="">고르기</option>
+                        {Object.entries(SECURED_RIGHT_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-600 mb-1">순위</label>
+                      <input type="text" maxLength={20} value={editingCreditor.securedRank || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, securedRank: e.target.value }))} placeholder="예: 1순위" className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs text-slate-600 mb-1">목적물 표시</label>
+                      <input type="text" maxLength={200} value={editingCreditor.collateralDescription || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, collateralDescription: e.target.value }))} placeholder="등기부상 소재지·차량번호 등" className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                    </div>
+                  </div>
                   <div className="p-2 bg-white rounded-lg border border-blue-200 text-xs flex justify-between items-center">
                     <span className="text-slate-600">
                       담보물 환가 후 <strong>별제권 행사 등으로 변제받을 수 없는 채권액 (부속서류 1 예정부족액)</strong>:
@@ -893,6 +920,18 @@ function CreditorManagementModalInner({
                             <option value="AFTER">대위변제 완료 (원채권자 사용처 승계)</option>
                           </select>
                         </div>
+                      </>
+                    )}
+                    {editingCreditor.isGuaranteedDebt && (
+                      <>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">보증한 금액</label>
+                        <input type="number" min={0} value={editingCreditor.guaranteeAmount ?? ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, guaranteeAmount: Number(e.target.value) || undefined }))} className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs font-mono" />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-600 mb-1">보증일</label>
+                        <input type="date" value={editingCreditor.guaranteeDate || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, guaranteeDate: e.target.value }))} className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                      </div>
                       </>
                     )}
                     {editingCreditor.isGuaranteedDebt && (
@@ -945,13 +984,32 @@ function CreditorManagementModalInner({
                       />
                     </div>
                   </div>
+                  <div className="space-y-1">
+                    <span className="block text-xs font-bold text-rose-900">관련 소송 (있는 심급만)</span>
+                    {(['1', '2', '3'] as const).map(inst => {
+                      const cur = (editingCreditor.disputeLawsuits || []).find(l => l.instance === inst) || { instance: inst };
+                      const setField = (k: 'court' | 'caseNumber' | 'status', v: string) => setEditingCreditor(prev => {
+                        const list = [...(prev.disputeLawsuits || [])].filter(l => l.instance !== inst);
+                        list.push({ ...cur, [k]: v });
+                        return { ...prev, disputeLawsuits: list.sort((a, b) => a.instance.localeCompare(b.instance)) };
+                      });
+                      return (
+                        <div key={inst} className="grid grid-cols-1 sm:grid-cols-[48px_1fr_1fr_1fr] gap-2 items-center">
+                          <span className="text-xs font-bold text-slate-700">{inst}심</span>
+                          <input type="text" maxLength={40} aria-label={`${inst}심 법원`} value={cur.court || ''} onChange={(e) => setField('court', e.target.value)} placeholder="법원" className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                          <input type="text" maxLength={40} aria-label={`${inst}심 사건번호`} value={cur.caseNumber || ''} onChange={(e) => setField('caseNumber', e.target.value)} placeholder="사건번호" className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                          <input type="text" maxLength={60} aria-label={`${inst}심 진행·결과`} value={cur.status || ''} onChange={(e) => setField('status', e.target.value)} placeholder="진행 중·판결 결과" className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* 4. 전부명령 세부 입력 (부속서류 3) */}
               {editingCreditor.isGarnished && (
                 <div className="p-3 bg-red-50/80 border border-red-200 rounded-xl space-y-2">
-                  <span className="font-bold text-red-900 text-xs block">【부속서류 3】 급여 전부명령 상세</span>
+                  <span className="font-bold text-red-900 text-xs block">【부속서류 3】 전부명령 상세</span>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     <div>
                       <label className="block text-xs text-slate-600 mb-1">전부 청구금액</label>
@@ -971,6 +1029,18 @@ function CreditorManagementModalInner({
                         placeholder="예: 서울중앙지방법원 2024타채12345"
                         className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs"
                       />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-600 mb-1">결정일</label>
+                      <input type="date" value={editingCreditor.garnishmentDecidedOn || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, garnishmentDecidedOn: e.target.value }))} className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-600 mb-1">제3채무자 송달일</label>
+                      <input type="date" value={editingCreditor.garnishmentServedOn || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, garnishmentServedOn: e.target.value }))} className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label className="block text-xs text-slate-600 mb-1">제3채무자 (예: 근무하는 회사)</label>
+                      <input type="text" maxLength={60} value={editingCreditor.garnisheeName || ''} onChange={(e) => setEditingCreditor(prev => ({ ...prev, garnisheeName: e.target.value }))} className="w-full px-2.5 py-1.5 bg-white border border-slate-300 rounded-lg text-xs" />
                     </div>
                   </div>
                 </div>

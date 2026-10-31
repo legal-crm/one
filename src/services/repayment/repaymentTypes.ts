@@ -222,20 +222,35 @@ export interface RepaymentCreditor {
   securedMaxAmount?: number;         // 채권최고액 또는 보증금액
   priorSecuredAmount?: number;       // 선순위 담보최고액
   unsecuredExpectedShortage?: number;// 별제권 행사 등으로 변제받을 수 없는 금액 (부속서류 1 예정부족액)
+  /** DC-14: 담보권 종류 (근저당권·저당권·질권·양도담보·전세권·기타) */
+  securedRightType?: 'mortgage_max' | 'mortgage' | 'pledge' | 'transfer_security' | 'jeonse' | 'other';
+  /** DC-14: 담보 목적물 표시 (예: 서울 ○○구 ○○동 ○번지 ○호 / 차량번호) */
+  collateralDescription?: string;
+  /** DC-14: 담보 순위 (예: 1순위) */
+  securedRank?: string;
 
   // 부속서류 2 (다툼이 있는 채권)
   disputeCreditorClaim?: number;     // 채권자 주장액
   disputeDebtorClaim?: number;       // 신청인 주장액
   disputeReason?: string;            // 다툼 원인 및 내용
+  /** DC-14: 다툼 관련 소송 진행 (1심~3심) */
+  disputeLawsuits?: Array<{ instance: '1' | '2' | '3'; court?: string; caseNumber?: string; status?: string }>;
 
   // 부속서류 3 (전부명령이 있는 채권)
   garnishmentAmount?: number;        // 전부금액
   garnishmentCourtCase?: string;     // 전부명령 법원 및 사건번호
+  /** DC-14: 전부명령 결정일·송달일·제3채무자 */
+  garnishmentDecidedOn?: string;
+  garnishmentServedOn?: string;
+  garnisheeName?: string;
 
   // 부속서류 4 (보증인 또는 주채무자)
   principalDebtorName?: string;      // 주채무자 (신청인이 보증선 경우)
   guarantorName?: string;            // 보증인 / 구상권자 (신청인을 위해 보증선 경우)
   subrogationStatus?: 'BEFORE' | 'AFTER'; // 대위변제 전 vs 대위변제 후
+  /** DC-14: 신청인이 보증한 금액·보증일 (부속서류 4) */
+  guaranteeAmount?: number;
+  guaranteeDate?: string;
 
   // 파산 채권자목록 전자소송 필수 필드
   initialPrincipal?: number;         // 최초 차용 원금
