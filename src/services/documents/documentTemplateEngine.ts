@@ -37,9 +37,9 @@ export function bindDocumentVariables(
   const courtCase = crmExt?.courtCase;
 
   const clientName = client.clientName || profile?.name || '신청인';
-  const courtName = courtCase?.courtName || profile?.selectedCourt || client.court || '서울회생법원';
-  const defaultCaseNo = doc.caseScope === 'BANKRUPTCY' ? '2026하단 50284호' : '2026개회 50284호';
-  const caseNumber = courtCase?.caseNumber || defaultCaseNo;
+  // 법원·사건번호가 없으면 빈칸 (이전: '서울회생법원'·'2026개회/하단 50284호'를 지어 넣음)
+  const courtName = courtCase?.courtName || profile?.selectedCourt || client.court || '';
+  const caseNumber = courtCase?.caseNumber || '';
   const debtorRrn = (profile as any)?.rrn || '';
   const debtorPhone = client.phone || profile?.phone || '';
   const debtorAddress = profile?.address || '';
@@ -148,7 +148,7 @@ export function bindHwpxTemplateHtml(
   let html = rawHtml;
 
   const isBankruptcy = docItem.caseScope === 'BANKRUPTCY' || docItem.title.includes('파산') || docItem.docCode?.startsWith('13');
-  const caseNoDisplay = data.caseNumber || (isBankruptcy ? '2026하단 50284호' : '2026개회 50284호');
+  const caseNoDisplay = data.caseNumber || (isBankruptcy ? '20  하단      호' : '20  개회      호');
   const activePurpose = purposeInput || data.purpose;
   const activeReason = reasonInput || data.reason;
 
@@ -215,7 +215,7 @@ ${evidenceListHtml}
   </div>
   ${data.debtorPhone ? `<div class="text-xs text-slate-500 font-mono">연락처: ${data.debtorPhone}</div>` : ''}
 </div>
-<div class="my-8 text-center font-bold text-xl tracking-widest text-slate-950">${data.courtName || '서울회생법원'} 귀중</div>
+<div class="my-8 text-center font-bold text-xl tracking-widest text-slate-950">${data.courtName || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;법원'} 귀중</div>
 `;
   }
 
@@ -366,7 +366,7 @@ ${evidenceListHtml}`;
   }
 
   // 5-3. 관할법원 (법원 귀중, ○○지방법원 귀중, 귀직)
-  const courtTarget = `${data.courtName || '서울회생법원'} 귀중`;
+  const courtTarget = `${data.courtName || '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;법원'} 귀중`;
   const courtPattern = /<p[^>]*>(?:[가-힣\s]*지방법원|법원|귀직)\s*귀중\s*<\/p>/i;
   if (courtPattern.test(html)) {
     html = html.replace(courtPattern, `<div class="my-6 text-center font-bold text-xl tracking-widest text-slate-950">${courtTarget}</div>`);
@@ -381,7 +381,7 @@ ${evidenceListHtml}`;
     html = html.replace(/개인회생절차/g, '파산절차');
     html = html.replace(/개인회생채권/g, '파산채권');
     html = html.replace(/개인회생 사건/g, '파산 사건');
-    html = html.replace(/20\s+개회/g, '2026 하단');
+    html = html.replace(/20(\s*)개회/g, '20$1하단');
     html = html.replace(/개회/g, '하단');
     html = html.replace(/개인회생/g, '개인파산');
     html = html.replace(/변제계획의\s*수행에\s*큰\s*어려움/g, '파산재단의 공평한 배당에 중대한 침해');

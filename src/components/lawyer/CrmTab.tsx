@@ -133,6 +133,11 @@ function mapSubtabToPipeline(tab: string): {
 }
 
 import { isNewRequestForLawyer, requestTypeLabel } from './requestScope';
+import { isBankruptcyCaseType } from '../../services/cases/caseTypeOf';
+import { setServerCaseType, type BankruptcyDeadline } from '../../services/cases/bankruptcyCaseService';
+import { unansweredCount } from '../../services/court/bankruptcyStatement';
+import BankruptcyProgressPanel from './case/BankruptcyProgressPanel';
+import { findCaseByWorkspaceKey } from '../../services/cases/caseCoreService';
 import DecisionSummaryCard from './pipeline/DecisionSummaryCard';
 import Stage1ConsultationView from './pipeline/Stage1ConsultationView';
 import Stage2ContractRetainerView from './pipeline/Stage2ContractRetainerView';
@@ -1121,6 +1126,15 @@ export default function CrmTab({
       `사건 유형을 [${targetLabel}]으로 전환하였습니다.`
     );
 
+    // 서버 사건 기록이 있으면 서버 유형부터 바꾼다 (BK-1). 접수 뒤에는 서버가 거절 → 화면 값도 바꾸지 않는다
+    if (officeId) {
+      const found = await findCaseByWorkspaceKey(officeId, selectedId);
+      if (found.ok && found.data) {
+        const r = await setServerCaseType(found.data.id, newType === 'bankruptcy' ? 'bankruptcy' : 'rehab');
+        if (r.ok === false) { toast.error(r.message); return; }
+      }
+    }
+
     const updatedActivities = [activity, ...(ext.activities || [])];
 
     const targetDocs = newType === 'bankruptcy' ? DEFAULT_BANKRUPTCY_DOCUMENTS : DEFAULT_REHAB_DOCUMENTS;
@@ -1159,6 +1173,29 @@ export default function CrmTab({
     }
 
     toast.success(`사건 유형이 [${targetLabel}]으로 전환되었습니다.`);
+  };
+
+  /** 파산 법정 기한을 사무소 일정에 넣기 (BK-5) */
+  const addBankruptcyDeadlineToCalendar = async (d: BankruptcyDeadline) => {
+    const client = requests.find(r => r.id === selectedId);
+    const actor = activeStaff || { id: activeLawyer.id, name: activeLawyer.name, role: 'OWNER' as StaffRole };
+    try {
+      await createCalendarEvent(activeLawyer.lawFirmId || activeLawyer.id, {
+        title: `[파산] ${client?.clientName || '사건'} - ${d.label}`,
+        date: d.date,
+        type: 'deadline',
+        visibility: 'personal',
+        recurrence: 'none',
+        reminder: 'none',
+        createdBy: actor.id,
+        createdByName: actor.name,
+        createdByRole: actor.role as string,
+        description: `${d.basis} (법원 안내로 날짜를 다시 확인해 주세요)`,
+      });
+      toast.success(`'${d.label}' ${d.date} 일정을 넣었어요.`);
+    } catch (e: any) {
+      toast.error(e?.message || '일정에 넣지 못했어요.');
+    }
   };
 
   const handleSaveAssignment = async () => {
@@ -2001,7 +2038,7 @@ export default function CrmTab({
         const prevCaseId = currentReqIndex > 0 ? pagedRequests[currentReqIndex - 1]?.id : undefined;
         const nextCaseId = currentReqIndex >= 0 && currentReqIndex < pagedRequests.length - 1 ? pagedRequests[currentReqIndex + 1]?.id : undefined;
 
-        const isBankruptcyCase = selectedExt.caseType === 'bankruptcy' || selectedExt.caseType === 'individual_bankruptcy';
+        const isBankruptcyCase = isBankruptcyCaseType(selectedExt, selectedClient);
         const gates = computePipelineGates(selectedClient, selectedExt);
         const journey = getJourneyState(selectedClient, selectedExt, activeLawyer.id);
         const currentStageDetail = journey.stages[pipelineStage as 1 | 2 | 3 | 4 | 5 | 6] || journey.currentStageDetail;
@@ -2039,13 +2076,13 @@ export default function CrmTab({
           }
           if (pipelineStage === 4) {
             return {
-              label: '다음: 보정·개시 (5단계)',
+              label: isBankruptcyCase ? '다음: 보정·파산선고 (5단계)' : '다음: 보정·개시 (5단계)',
               onClick: () => advancePipelineStage(5),
             };
           }
           if (pipelineStage === 5) {
             return {
-              label: '다음: 변제·면책 (6단계)',
+              label: isBankruptcyCase ? '다음: 면책 (6단계)' : '다음: 변제·면책 (6단계)',
               onClick: () => advancePipelineStage(6),
             };
           }
@@ -2057,6 +2094,22 @@ export default function CrmTab({
 
         // 완료 조건 체크리스트 3~5개
         const stageConditions = (() => {
+          // 파산 사건은 4~6단계 조건이 다르다 (BK-5)
+          if (isBankruptcyCase && pipelineStage >= 4) {
+            if (pipelineStage === 4) return [
+              { id: 'c1', label: '파산 서식 작성·저장', isMet: Boolean(selectedExt.bankruptcyData?.lastSavedAt) },
+              { id: 'c2', label: '진술서 공식 문항 답변', isMet: Boolean(selectedExt.bankruptcyData && unansweredCount(selectedExt.bankruptcyData.statement?.officialAnswers) === 0) },
+              { id: 'c3', label: '법원 접수 및 사건번호 등록', isMet: gates.isFilingCompleted },
+            ];
+            if (pipelineStage === 5) return [
+              { id: 'c1', label: '법원 보정 대응', isMet: !hasOpenCorrection(selectedId, selectedExt) },
+              { id: 'c2', label: '파산선고 등록', isMet: gates.isCommenced },
+            ];
+            return [
+              { id: 'c1', label: '파산선고 등록', isMet: gates.isCommenced },
+              { id: 'c2', label: '면책 결정 등록', isMet: gates.isDischarged },
+            ];
+          }
           switch (pipelineStage) {
             case 1:
               return [
@@ -2103,6 +2156,19 @@ export default function CrmTab({
 
         // 단계별 세부 섹션 탭
         const stageSectionTabs = (() => {
+          if (isBankruptcyCase && pipelineStage === 4) return [
+            { id: 'petition', label: '파산 서식 작성' },
+            { id: 'ancillary', label: '부수 신청' },
+            { id: 'filing', label: '검토·제출' },
+          ];
+          if (isBankruptcyCase && pipelineStage === 5) return [
+            { id: 'court-progress', label: '법원 진행' },
+            { id: 'corrections', label: '보정 센터' },
+            { id: 'bk-declare', label: '예납·선고·관재인' },
+          ];
+          if (isBankruptcyCase && pipelineStage === 6) return [
+            { id: 'bk-discharge', label: '관재인·집회·면책' },
+          ];
           switch (pipelineStage) {
             case 1:
               return [
@@ -2233,6 +2299,7 @@ export default function CrmTab({
                       void updateCrmExt(selectedId, { crmStatus, ...(courtCase ? { courtCase: courtCase as any } : {}) });
                     }
                     setPipelineStage(stageForStatus(crmStatus));
+                    window.dispatchEvent(new Event('mykim:case-record-changed'));
                   }}
                 />
               </div>
@@ -2334,7 +2401,22 @@ export default function CrmTab({
                         onSelectSection={(sec) => setDetailTab(sec as any)}
                       />
                     )}
-                    {pipelineStage === 4 && (
+                    {/* 파산 사건 4단계 '파산 서식 작성' (BK-1·BK-2): 파산 작성 화면 */}
+                    {pipelineStage === 4 && isBankruptcyCase && (detailTab as string) === 'petition' && (
+                      <div className="p-4">
+                        <BankruptcyManagementTab
+                          key={`bk-${selectedId}`}
+                          clientId={selectedId}
+                          clientRequest={selectedClient}
+                          crmExt={selectedExt}
+                          onUpdateCrmExt={async (patch) => { await saveOrThrow(selectedId, patch); }}
+                          activeLawyerName={assignedLawyerName}
+                          onOpenBatchFiling={() => setShowBatchFilingModal(true)}
+                          officeId={officeId}
+                        />
+                      </div>
+                    )}
+                    {pipelineStage === 4 && !(isBankruptcyCase && (detailTab as string) === 'petition') && (
                       <Stage4FilingBundleView
                         clientRequest={selectedClient}
                         crmExt={selectedExt}
@@ -2387,7 +2469,13 @@ export default function CrmTab({
                         onSelectSection={(sec) => setDetailTab(sec as any)}
                       />
                     )}
-                    {pipelineStage === 5 && (
+                    {pipelineStage === 5 && isBankruptcyCase && (detailTab as string) === 'bk-declare' && officeId && (
+                      <div className="p-4">
+                        <BankruptcyProgressPanel officeId={officeId} caseKey={selectedId} section="declare" canEdit={!!currentPermissions.changeStatus}
+                          courtName={selectedExt.courtCase?.courtName} onAddToCalendar={addBankruptcyDeadlineToCalendar} />
+                      </div>
+                    )}
+                    {pipelineStage === 5 && !(isBankruptcyCase && (detailTab as string) === 'bk-declare') && (
                       <Stage5CorrectionCenterView
                         clientRequest={selectedClient}
                         crmExt={selectedExt}
@@ -2423,7 +2511,18 @@ export default function CrmTab({
                         ) : undefined}
                       />
                     )}
-                      {pipelineStage === 6 && (
+                      {/* 파산 사건 6단계: 회생의 가상계좌·인가·변제 화면 대신 파산 진행 기록 (BK-5) */}
+                      {pipelineStage === 6 && isBankruptcyCase && (officeId ? (
+                        <div className="p-4 space-y-4">
+                          <BankruptcyProgressPanel officeId={officeId} caseKey={selectedId} section="discharge" canEdit={!!currentPermissions.changeStatus}
+                            courtName={selectedExt.courtCase?.courtName} onAddToCalendar={addBankruptcyDeadlineToCalendar} />
+                          <BankruptcyProgressPanel officeId={officeId} caseKey={selectedId} section="declare" canEdit={!!currentPermissions.changeStatus}
+                            courtName={selectedExt.courtCase?.courtName} onAddToCalendar={addBankruptcyDeadlineToCalendar} />
+                        </div>
+                      ) : (
+                        <p className="p-6 text-sm text-slate-600">파산 진행 기록은 서버 사무소 연결 후 쓸 수 있어요. 다시 로그인해 주세요.</p>
+                      ))}
+                      {pipelineStage === 6 && !isBankruptcyCase && (
                         <Stage6PostCareDischargeView
                           clientRequest={selectedClient}
                           crmExt={selectedExt}
@@ -2909,7 +3008,7 @@ export default function CrmTab({
           onClose={() => setShowBatchFilingModal(false)}
           clientRequest={selectedClient}
           crmExt={selectedExt}
-          isBankruptcy={(selectedClient.financialProfile?.income || 0) === 0 || (selectedClient.financialProfile?.debtTotal || 0) > 50000}
+          isBankruptcy={isBankruptcyCaseType(selectedExt, selectedClient)}
           onOpenDocHub={() => {
             setShowBatchFilingModal(false);
             setShowDocHubModal(true);

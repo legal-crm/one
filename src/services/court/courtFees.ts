@@ -63,3 +63,19 @@ export function calcCourtFees(input: CourtFeeInput): CourtFeeResult {
   const deliveryFee = deliveryRounds * unit;
   return { deliveryRounds, deliveryFee, stampFee, total: deliveryFee + stampFee };
 }
+
+// ── 파산관재인 보수 예납금 (BK-6, 06 기획서 7-2) ─────────────────
+// 서울회생법원 실무준칙 제361호: 기본 40만 원(2023. 1. 1.부터), 유관기관 경유 전담재판부 30만 원, 사정에 따라 증액(최대 500만 원)·감액.
+// 다른 법원은 공식 기준을 확인하지 못했으므로 기본값을 두지 않는다(사무소가 예납명령 금액을 입력).
+export const BANKRUPTCY_DEPOSIT_SEOUL_KRW = 400000;
+export const BANKRUPTCY_DEPOSIT_SEOUL_AGENCY_KRW = 300000;
+export const BANKRUPTCY_DEPOSIT_MAX_KRW = 5000000;
+
+export function bankruptcyDepositDefault(courtName: string | null | undefined, viaAgency = false): { amountWon: number | null; note: string } {
+  if (/서울회생/.test(courtName || '')) {
+    return viaAgency
+      ? { amountWon: BANKRUPTCY_DEPOSIT_SEOUL_AGENCY_KRW, note: '서울회생법원 유관기관 경유 전담재판부 기준 (실무준칙 제361호)' }
+      : { amountWon: BANKRUPTCY_DEPOSIT_SEOUL_KRW, note: '서울회생법원 기본 예납금 (실무준칙 제361호, 사정에 따라 증액·감액)' };
+  }
+  return { amountWon: null, note: '이 법원의 예납금 기준은 확인되지 않았어요. 예납명령 금액을 입력해 주세요.' };
+}

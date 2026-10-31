@@ -23,6 +23,9 @@ import type {
 } from '../../../types/bankruptcyTypes';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import PrintableBankruptcyPetitionModal from './PrintableBankruptcyPetitionModal';
+import { BANKRUPTCY_OFFICIAL_QUESTIONS, bankruptcyCreditorsFromRepayment, questionPeriodText, unansweredCount } from '../../../services/court/bankruptcyStatement';
+import { findCaseByWorkspaceKey } from '../../../services/cases/caseCoreService';
+import { saveBankruptcyDetails } from '../../../services/cases/bankruptcyCaseService';
 
 interface BankruptcyManagementTabProps {
   clientId: string;
@@ -31,6 +34,8 @@ interface BankruptcyManagementTabProps {
   onUpdateCrmExt: (updates: Partial<CrmClientExtension>) => Promise<void>;
   activeLawyerName?: string;
   onOpenBatchFiling?: () => void;
+  /** 서버 사무소 ID — 지급불능 시점 서버 기록·글자 PDF 저장에 쓴다 */
+  officeId?: string;
 }
 
 export default function BankruptcyManagementTab({
@@ -39,7 +44,8 @@ export default function BankruptcyManagementTab({
   crmExt,
   onUpdateCrmExt,
   activeLawyerName = '',
-  onOpenBatchFiling
+  onOpenBatchFiling,
+  officeId
 }: BankruptcyManagementTabProps) {
   const clientName = clientRequest.clientName || '신청인';
   const courtName = crmExt.courtCase?.courtName || clientRequest.court || '';
@@ -55,13 +61,14 @@ export default function BankruptcyManagementTab({
 
   // 1. 파산신청서 상태
   const [petition, setPetition] = useState<BankruptcyPetition>(() => {
-    if (savedBk?.petition) return savedBk.petition;
+    // 옛 저장분의 주민번호는 화면에 올리지 않는다 (L8)
+    if (savedBk?.petition) return { ...savedBk.petition, debtorRrn: undefined };
     return {
       id: `pet-${clientId}`,
       clientId,
       debtorName: clientName,
       // 신청서 기본값은 비워두고 변호사가 입력 (이전: 가짜 주민번호·주소·등록기준지·송달장소, 이자 15% 가정, 재산 500만 원 가정)
-      debtorRrn: '',
+      insolventOn: '',
       debtorAddress: '',
       registeredDomicile: '',
       serviceAddress: '',
@@ -123,6 +130,9 @@ export default function BankruptcyManagementTab({
   // 3. 채권자목록 & 소송/가압류 이력
   const [creditors, setCreditors] = useState<BankruptcyCreditorItem[]>(() => {
     if (savedBk?.creditors && savedBk.creditors.length > 0) return savedBk.creditors;
+    // 회생 채권자목록(부채증명서 반영분)이 있으면 이어받고, 파산에만 필요한 칸은 '확인 필요'로 표시 (BK-1)
+    const fromPlan = crmExt.repaymentPlan?.creditors || [];
+    if (fromPlan.length > 0) return bankruptcyCreditorsFromRepayment(fromPlan);
     // 채권자는 부채증명서·의뢰인 입력으로 등록 (이전: 가짜 신한카드 지급명령·국민은행 압류 사건번호·마포세무서 체납 생성)
     return [];
   });
@@ -300,9 +310,18 @@ export default function BankruptcyManagementTab({
   const handleSaveData = async () => {
     setIsSaving(true);
     try {
+      // 주민번호는 저장하지 않는다 (L8)
       await onUpdateCrmExt({
-        bankruptcyData: { ...fullCaseData, lastSavedAt: new Date().toISOString() }
+        bankruptcyData: { ...fullCaseData, petition: { ...fullCaseData.petition, debtorRrn: undefined }, lastSavedAt: new Date().toISOString() }
       });
+      // 지급불능 시점은 서버 파산 진행 기록에도 (진행 화면·기한 계산이 같은 값을 쓰게)
+      if (officeId && petition.insolventOn) {
+        const found = await findCaseByWorkspaceKey(officeId, clientId);
+        if (found.ok && found.data && found.data.caseType === 'bankruptcy') {
+          const r = await saveBankruptcyDetails(found.data.id, { insolventOn: petition.insolventOn });
+          if (r.ok === false) toast.error(r.message);
+        }
+      }
       // (이전: saveBankruptcyCase를 clientId 없이 호출해 이 기기의 다른 의뢰인 파산동행 기록을 덮어쓸 수 있었음 → 제거)
       toast.success('개인파산·면책 신청 자료를 사건 정보에 저장했습니다.');
     } catch (err) {
@@ -553,6 +572,17 @@ export default function BankruptcyManagementTab({
 
           <div className="space-y-3 text-xs">
             <div>
+              <label htmlFor="bk-insolvent-on" className="text-slate-700 font-bold block mb-1">지급불능 시점 (필수)</label>
+              <input
+                id="bk-insolvent-on"
+                type="date"
+                value={petition.insolventOn || ''}
+                onChange={(e) => setPetition({ ...petition, insolventOn: e.target.value })}
+                className="w-full sm:w-60 bg-slate-50 border border-slate-200 rounded-xl p-2.5 font-medium"
+              />
+              <p className="text-xs text-slate-500 mt-1">빚을 갚을 수 없게 된 때. 진술서의 처분재산(1년 전부터)·차용·일부 변제 질문 기간이 이 날짜로 정해져요.</p>
+            </div>
+            <div>
               <label className="text-slate-700 font-bold block mb-1">지급불능에 이르게 된 주된 원인</label>
               <select 
                 value={petition.insolvencyCause}
@@ -617,6 +647,45 @@ export default function BankruptcyManagementTab({
             <p className="text-xs text-slate-500 mt-0.5">
               해당 사항이 있을 경우 파산관재인의 심문 대상이 되므로 사전 방어 논리를 소명해야 합니다.
             </p>
+          </div>
+
+          {/* 공식 추가 진술사항 11문항 (실무준칙 제407호 양식, BK-4) */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <h5 className="font-bold text-sm text-slate-900">진술서 공식 문항 ({BANKRUPTCY_OFFICIAL_QUESTIONS.length}개)</h5>
+              <span className={`text-xs font-bold px-2 py-0.5 rounded-lg border ${unansweredCount(statement.officialAnswers) ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>
+                {unansweredCount(statement.officialAnswers) ? `답하지 않은 문항 ${unansweredCount(statement.officialAnswers)}개` : '모든 문항에 답함'}
+              </span>
+            </div>
+            <ol className="space-y-2">
+              {BANKRUPTCY_OFFICIAL_QUESTIONS.map((q, i) => {
+                const a = statement.officialAnswers?.[q.id] || { answer: '' as const, detail: '' };
+                const setA = (patch: Partial<typeof a>) => setStatement(prev => ({
+                  ...prev,
+                  officialAnswers: { ...(prev.officialAnswers || {}), [q.id]: { ...a, ...patch } },
+                }));
+                const period = questionPeriodText(q, petition.insolventOn, petition.filingDate);
+                return (
+                  <li key={q.id} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 space-y-2 text-xs">
+                    <p className="font-bold text-slate-900">{i + 1}. {q.text}</p>
+                    {period && <p className="text-slate-500">기간: {period}</p>}
+                    <div className="flex gap-2" role="radiogroup" aria-label={`${i + 1}번 답`}>
+                      {(['no', 'yes'] as const).map(v => (
+                        <button key={v} type="button" role="radio" aria-checked={a.answer === v} onClick={() => setA({ answer: v })}
+                          className={`min-h-[36px] px-3 rounded-xl border font-bold active:scale-[0.98] ${a.answer === v ? 'bg-purple-600 text-white border-purple-600' : 'bg-white text-slate-700 border-slate-200'}`}>
+                          {v === 'no' ? '없음' : '있음'}
+                        </button>
+                      ))}
+                    </div>
+                    {(a.answer === 'yes' || q.id === 'q05_insolvency') && (
+                      <textarea rows={2} value={a.detail} placeholder={q.detailHint} onChange={e => setA({ detail: e.target.value.slice(0, 2000) })}
+                        className="w-full bg-white border border-slate-200 rounded-xl p-2.5" aria-label={`${i + 1}번 내용`} />
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+            <p className="text-xs text-slate-500">아래 8개 점검 항목은 변호사 검토 메모예요. 법원에 내는 진술서에는 위 공식 문항 답이 들어가요.</p>
           </div>
 
           {/* 과거 이력 3종 체크 */}
@@ -878,6 +947,72 @@ export default function BankruptcyManagementTab({
                     />
                   </div>
                 </div>
+
+                {/* ── 전자소송 파산 CSV 필수 칸 (BK-3) ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <div>
+                    <label className="text-slate-500 block mb-0.5">발생원인 번호</label>
+                    <select
+                      value={c.causeCode || ''}
+                      onChange={(e) => {
+                        const val = (e.target.value || undefined) as BankruptcyCreditorItem['causeCode'];
+                        setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, causeCode: val } : item));
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-1.5 font-bold"
+                    >
+                      <option value="">원인에서 정함</option>
+                      <option value="1">① 금원차용</option>
+                      <option value="2">② 물품구입</option>
+                      <option value="3">③ 보증</option>
+                      <option value="4">④ 기타</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-slate-500 block mb-0.5">최초 채권액(원) *</label>
+                    <input
+                      type="number"
+                      value={c.initialPrincipal ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value ? Number(e.target.value) : undefined;
+                        setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, initialPrincipal: val } : item));
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-1.5 font-mono"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-500 block mb-0.5">사용처 *</label>
+                    <input
+                      type="text"
+                      value={c.debtUsage || ''}
+                      placeholder="예: 생활비 / 보증이면 피보증인 이름"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, debtUsage: val } : item));
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-1.5"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-slate-500 block mb-0.5">가지번호 (보증 구상)</label>
+                    <input
+                      type="text"
+                      value={c.displayNumber || ''}
+                      placeholder="예: 3-1"
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/[^0-9-]/g, '').slice(0, 6);
+                        setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, displayNumber: val || undefined } : item));
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-lg p-1.5 font-mono"
+                    />
+                  </div>
+                </div>
+                {c.needsReview && (
+                  <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                    <span className="text-amber-900">회생 채권자목록에서 가져왔어요. 발생원인·최초 채권액·사용처를 확인해 주세요.</span>
+                    <button type="button" onClick={() => setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, needsReview: false } : item))}
+                      className="min-h-[32px] px-2.5 rounded-lg bg-white border border-amber-300 text-amber-900 font-bold whitespace-nowrap">확인함</button>
+                  </div>
+                )}
 
                 {/* ── 법원 송달주소 및 대표자 정보 ── */}
                 <div className="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
@@ -1816,6 +1951,9 @@ export default function BankruptcyManagementTab({
           isOpen={showPrintModal}
           onClose={() => setShowPrintModal(false)}
           data={fullCaseData}
+        officeId={officeId}
+        caseKey={clientId}
+        onSavedToCase={(file) => { void onUpdateCrmExt({ uploadedFiles: [...(crmExt.uploadedFiles || []), file] }).catch(() => toast.error('사건 자료함 목록을 갱신하지 못했어요. 새로고침하면 서류 자료함에서 보여요.')); window.dispatchEvent(new CustomEvent('mykim:case-files-changed', { detail: { caseKey: clientId } })); }}
         />
       )}
     </div>

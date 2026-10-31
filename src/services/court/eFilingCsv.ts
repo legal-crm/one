@@ -89,6 +89,8 @@ export function buildRehabCreditorCsv(creditors: RepaymentCreditor[]): CsvResult
 
 /** 파산 발생원인 번호 (①금전차용 ②물품구입 ③보증 ④기타) */
 export function bankruptcyCauseCode(c: RepaymentCreditor): string {
+  // 직접 고른 값이 먼저 (BK-3). 없을 때만 글자로 짐작
+  if (c.bankruptcyCause) return ({ '1': '①', '2': '②', '3': '③', '4': '④' } as const)[c.bankruptcyCause];
   const t = `${c.debtCauseDetail || ''} ${c.claimCause || ''}`;
   if (c.isGuaranteedDebt || /보증/.test(t)) return '③';
   if (/카드|구입|할부|물품/.test(t) || /카드/.test(c.name || '')) return '②';

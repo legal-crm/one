@@ -8,7 +8,10 @@ export interface BankruptcyPetition {
   id: string;
   clientId: string;
   debtorName: string;
-  debtorRrn: string;
+  /** 주민등록번호는 저장하지 않는다(L8). 옛 저장분 호환용, 저장 때 지운다 */
+  debtorRrn?: string;
+  /** 지급불능 시점 (처분재산 1년·차용·편파변제 질문 기간의 기준, BK-4) */
+  insolventOn?: string;
   debtorAddress: string;
   registeredDomicile?: string;  // 등록기준지 (가족관계증명서 기준)
   serviceAddress?: string;      // 송달장소 (대리인 사무소 등)
@@ -74,6 +77,9 @@ export interface BankruptcyStatement {
   };
 
   screeningNotes: Record<string, string>; // 항목별 방어 논리 및 소명 메모
+
+  /** 공식 추가 진술사항 문항 답 (서울회생법원 실무준칙 제407호 양식, BK-4) */
+  officialAnswers?: Record<string, { answer: 'yes' | 'no' | ''; detail: string }>;
   
   // 과거 법적 이력 체크
   pastDischargeHistory?: {
@@ -117,6 +123,15 @@ export interface BankruptcyCreditorItem {
   serviceAddress?: string;         // 법원 우편물 송달장소
   representative?: string;         // 대표자
   bizNumber?: string;              // 법인/사업자/주민번호
+
+  // 전자소송 파산 CSV 필수 칸 (BK-3·BK-4)
+  initialPrincipal?: number;       // 최초 채권액
+  debtUsage?: string;              // 사용처 (보증채무는 피보증인명)
+  causeCode?: '1' | '2' | '3' | '4'; // 발생원인 ①금원차용 ②물품구입 ③보증 ④기타
+  displayNumber?: string;          // 가지번호 (예: 3-1 = 3번 채무 보증으로 인한 구상채무)
+  /** 회생 채권자목록에서 가져와 확인이 필요한 줄 (BK-1) */
+  needsReview?: boolean;
+  sourceCreditorId?: string;
 }
 
 // 4. 파산관재인 5대 심층 조사재산 (리걸플로 핵심 벤치마킹)

@@ -1,22 +1,49 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { X, Printer, Download, Scale, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import type { BankruptcyFullCaseData } from '../../../types/bankruptcyTypes';
 import ModalPortal from '../../common/ModalPortal';
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import { localYmd } from '../../../utils/localDate';
+import { BANKRUPTCY_OFFICIAL_QUESTIONS } from '../../../services/court/bankruptcyStatement';
+import { saveHtmlPdfToCase, wrapDomHtml } from '../../../services/court/casePdfSave';
+import { courtPdfFileName } from '../../../services/court/courtPdfService';
+import type { DocumentFile } from '../../../types';
 
 interface PrintableBankruptcyPetitionModalProps {
   isOpen: boolean;
   onClose: () => void;
   data: BankruptcyFullCaseData;
+  /** 있으면 '글자 PDF로 사건 서류함에 저장'을 쓴다 (BK-2·H-7) */
+  officeId?: string;
+  caseKey?: string;
+  onSavedToCase?: (file: DocumentFile) => void;
 }
 
 function PrintableBankruptcyPetitionModalInner({
   isOpen,
   onClose,
-  data
+  data,
+  officeId,
+  caseKey,
+  onSavedToCase
 }: PrintableBankruptcyPetitionModalProps) {
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [pdfBusy, setPdfBusy] = useState(false);
+  const handleSavePdf = async () => {
+    if (!officeId || !caseKey || !bodyRef.current) return;
+    setPdfBusy(true);
+    const title = '개인파산 및 면책 신청서류';
+    const r = await saveHtmlPdfToCase({
+      html: wrapDomHtml(bodyRef.current.innerHTML, title), title, officeId, caseKey,
+      fileName: courtPdfFileName(data.petition.debtorName, 'bankruptcy', activeSection === 'all' ? '파산및면책신청서류' : title),
+      actorName: data.petition.attorneyName, note: '파산 서식 묶음',
+    });
+    setPdfBusy(false);
+    if (r.ok === false) { toast.error(r.message); return; }
+    toast.success('글자 PDF를 사건 서류함에 저장했어요. 전자소송 묶음에서 쓸 수 있어요.');
+    onSavedToCase?.(r.file);
+  };
 
   const [activeSection, setActiveSection] = useState<'all' | 'petition' | 'statement' | 'creditors' | 'assets' | 'living' | 'docs' | 'power'>('all');
 
@@ -61,7 +88,7 @@ function PrintableBankruptcyPetitionModalInner({
             </span>
             <div>
               <h3 className="font-extrabold text-sm text-white">
-                개인파산 및 면책 신청서류 초안 (7종)
+                개인파산 및 면책 신청서류 (7종)
               </h3>
               <p className="text-xs text-slate-400">
                 신청인: {p.debtorName} · 관할: {p.courtName || '미지정'} · 빈칸·사실관계 확인 후 사용
@@ -82,8 +109,19 @@ function PrintableBankruptcyPetitionModalInner({
               className="px-4 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer press-scale whitespace-nowrap"
             >
               <Download className="w-3.5 h-3.5" />
-              <span>PDF 저장</span>
+              <span>인쇄 창에서 PDF</span>
             </button>
+            {officeId && caseKey && (
+              <button
+                type="button"
+                onClick={() => void handleSavePdf()}
+                disabled={pdfBusy}
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm cursor-pointer press-scale whitespace-nowrap disabled:opacity-50"
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>{pdfBusy ? 'PDF 만드는 중…' : '글자 PDF로 사건 서류함에 저장'}</span>
+              </button>
+            )}
             <button
               onClick={onClose}
               className="text-slate-400 hover:text-white p-1 rounded-lg ml-2 cursor-pointer"
@@ -120,7 +158,7 @@ function PrintableBankruptcyPetitionModalInner({
         </div>
 
         {/* 법원 정식 문서 본문 (A4 규격) */}
-        <div className="p-8 sm:p-12 overflow-y-auto bg-white text-slate-900 font-serif leading-relaxed text-sm flex-1 print:p-0 print:overflow-visible space-y-12">
+        <div ref={bodyRef} className="p-8 sm:p-12 overflow-y-auto bg-white text-slate-900 font-serif leading-relaxed text-sm flex-1 print:p-0 print:overflow-visible space-y-12">
           
           {/* ══════════ 1. 표지 및 파산·면책 동시신청서 ══════════ */}
           {(activeSection === 'all' || activeSection === 'petition') && (
@@ -138,7 +176,7 @@ function PrintableBankruptcyPetitionModalInner({
               <div className="space-y-2 text-sm font-sans border-b border-slate-200 pb-6">
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">신 &nbsp; 청 &nbsp; 인 :</span>
-                  <span className="font-bold">{p.debtorName} (주민번호: {p.debtorRrn || BLANK})</span>
+                  <span className="font-bold">{p.debtorName} (주민등록번호: {BLANK})</span>
                 </div>
                 <div className="flex">
                   <span className="w-28 font-bold text-slate-700">등록기준지 :</span>
@@ -237,45 +275,32 @@ function PrintableBankruptcyPetitionModalInner({
                 </div>
               </div>
 
-              {/* 8대 면책불허가사유 점검표 */}
+              {/* 공식 추가 진술사항 (실무준칙 제407호 문항). 이전: 변호사 내부 점검 8항목을 법원 제출 진술서에 '해당/해당없음'으로 인쇄 */}
               <div className="space-y-2">
-                <h4 className="font-bold text-sm text-slate-900">3. 면책불허가 관련 사정 점검 (채무자회생법 제564조 제1항 참고)</h4>
+                <h4 className="font-bold text-sm text-slate-900">3. 추가 진술사항</h4>
+                {p.insolventOn && <p className="text-xs">지급불능 시점: {p.insolventOn}</p>}
                 <table className="w-full text-xs border border-slate-300">
                   <thead className="bg-slate-100 font-bold">
                     <tr>
-                      <th className="border border-slate-300 p-2 text-left">점검 항목</th>
-                      <th className="border border-slate-300 p-2 w-24 text-center">해당 여부</th>
-                      <th className="border border-slate-300 p-2 text-left">비고 및 소명</th>
+                      <th className="border border-slate-300 p-2 text-left">문항</th>
+                      <th className="border border-slate-300 p-2 w-16 text-center">답</th>
+                      <th className="border border-slate-300 p-2 text-left">내용</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { key: 'gamblingOrSpeculation', label: '1. 도박·사행행위 또는 과다한 낭비' },
-                      { key: 'fraudulentLoan', label: '2. 허위 소득·재직 자료로 차용' },
-                      { key: 'preferentialPayment', label: '3. 특정 채권자에게만 변제' },
-                      { key: 'concealmentOfAssets', label: '4. 재산 은닉·명의이전·헐값 처분' },
-                      { key: 'falseCreditorList', label: '5. 채권자목록 누락·허위 기재' },
-                      { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산)/5년(회생) 이내 면책' },
-                      { key: 'falseReportToTrustee', label: '7. 관재인·법원에 대한 허위 설명·자료 거부' },
-                      { key: 'creditTransactionBeforeFiling', label: '8. 신청 직전 신용카드·대출 이용' },
-                    ].map(item => {
-                      const isChecked = (s.disallowanceScreening as any)[item.key];
+                    {BANKRUPTCY_OFFICIAL_QUESTIONS.map((q, i) => {
+                      const a = s.officialAnswers?.[q.id];
                       return (
-                        <tr key={item.key}>
-                          <td className="border border-slate-300 p-2">{item.label}</td>
-                          <td className="border border-slate-300 p-2 text-center font-bold">
-                            {isChecked ? <span className="text-rose-600">해당</span> : <span className="text-emerald-700">해당없음</span>}
-                          </td>
-                          <td className="border border-slate-300 p-2 text-slate-500">
-                            {isChecked ? '소명 필요 (진술서 기재)' : '-'}
-                          </td>
+                        <tr key={q.id}>
+                          <td className="border border-slate-300 p-2">{i + 1}. {q.text}</td>
+                          <td className="border border-slate-300 p-2 text-center font-bold">{a?.answer === 'yes' ? '있음' : a?.answer === 'no' ? '없음' : BLANK}</td>
+                          <td className="border border-slate-300 p-2 whitespace-pre-wrap">{a?.detail || ''}</td>
                         </tr>
                       );
                     })}
                   </tbody>
                 </table>
-              </div>
-            </div>
+              </div>            </div>
           )}
 
           {/* ══════════ 3. 파산 채권자목록 & 소송/가압류 이력 ══════════ */}
@@ -702,7 +727,7 @@ function PrintableBankruptcyPetitionModalInner({
                 </div>
                 <div className="flex">
                   <span className="w-24 font-bold text-slate-700">위 &nbsp; 임 &nbsp; 인 :</span>
-                  <span>{p.debtorName} (주민등록번호: {p.debtorRrn || BLANK})</span>
+                  <span>{p.debtorName} (주민등록번호: {BLANK})</span>
                 </div>
                 <div className="flex">
                   <span className="w-24 font-bold text-slate-700">수 &nbsp; 임 &nbsp; 인 :</span>

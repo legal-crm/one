@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { isBankruptcyCaseType } from '../../../services/cases/caseTypeOf';
 import { 
   UserCheck, CheckCircle2, AlertTriangle, ShieldCheck, 
   Sparkles, ArrowRight, Scale, Calculator, Phone, FileText,
@@ -81,7 +82,8 @@ export default function Stage1ConsultationView({
     !hasRecentDischarge,
   ].filter(Boolean).length;
 
-  const isBankruptcy = crmExt?.caseType === 'bankruptcy' || crmExt?.caseType === 'individual_bankruptcy' || income === 0 || !isAvailableIncomeSufficient;
+  const isBankruptcy = isBankruptcyCaseType(crmExt, clientRequest);
+  // 사건 유형은 저장된 값 하나로만 정한다 (BK-1). 이전: 소득 0원이거나 가용소득이 부족하면 파산으로 짐작해 안내 문구까지 바꿨다
 
   // 제안서 발송 상태 및 계약 상태 확인
   const proposals = clientRequest.proposals || [];
@@ -810,7 +812,7 @@ export default function Stage1ConsultationView({
                 isAvailableIncomeSufficient ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-purple-50 text-purple-700 border-purple-200'
               }`}>
                 <span className={`w-1.5 h-1.5 rounded-full ${isAvailableIncomeSufficient ? 'bg-emerald-500' : 'bg-purple-500'}`} />
-                {isAvailableIncomeSufficient ? '적격 (회생 수행가능)' : '부족 (파산 권장)'}
+                {isAvailableIncomeSufficient ? '적격 (회생 수행가능)' : '부족 (파산 검토 필요)'}
               </span>
             </div>
 

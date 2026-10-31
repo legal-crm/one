@@ -28,6 +28,7 @@ import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import type { RepaymentCreditor } from '../../../services/repayment/repaymentTypes';
 import { convertDebtItemsToRepaymentCreditors } from '../../../services/repayment/debtCertificateService';
 import { matchCreditorPreset } from '../../../services/court/creditorAddressDirectory';
+import { bankruptcyCreditorsForCsv } from '../../../services/court/bankruptcyStatement';
 
 interface BatchFilingPackagingModalProps {
   isOpen: boolean;
@@ -57,6 +58,10 @@ function BatchFilingPackagingModalInner({
 
   // 채권자 목록 추출 (변제계획안 ➔ 부채증명서 발급목록 ➔ 상담 채권자 순으로 fallback)
   const creditors: RepaymentCreditor[] = useMemo(() => {
+    // 파산 사건은 파산 채권자목록(발생원인·최초 채권액·사용처 포함)이 먼저 (BK-3)
+    if (isBankruptcy && crmExt.bankruptcyData?.creditors && crmExt.bankruptcyData.creditors.length > 0) {
+      return bankruptcyCreditorsForCsv(crmExt.bankruptcyData.creditors);
+    }
     if (crmExt.repaymentPlan?.creditors && crmExt.repaymentPlan.creditors.length > 0) {
       return crmExt.repaymentPlan.creditors;
     }
@@ -91,7 +96,7 @@ function BatchFilingPackagingModalInner({
         borrowedDate: '',
       };
     });
-  }, [crmExt.repaymentPlan, crmExt.debtCertificateOrders, clientRequest]);
+  }, [isBankruptcy, crmExt.bankruptcyData, crmExt.repaymentPlan, crmExt.debtCertificateOrders, clientRequest]);
 
   // 실제 법원 인지액 및 송달료 자동 계산 (실서류 4종 전수분석 반영)
   // 인지대·송달료 공통 산식 (이전: 32,000원 고정·전자소송 감액 미반영, 표기 단가 5,500원)

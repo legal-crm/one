@@ -14,6 +14,7 @@ import MyCorrectionTodo from './MyCorrectionTodo';
 import MyDebtCertProgress from './MyDebtCertProgress';
 import MyPlanPaymentsSection from './MyPlanPaymentsSection';
 import MyCaseFormsSection from './MyCaseFormsSection';
+import MyBankruptcySchedule from './MyBankruptcySchedule';
 
 const CASE_TYPE_LABEL = { rehab: '개인회생', bankruptcy: '개인파산·면책' } as const;
 const GROUP_LABELS = ['상담', '계약', '서류 준비', '신청·접수', '법원 심사', '변제·면책'];
@@ -112,6 +113,8 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
             {c.stage !== 'closed' && <MyDebtCertProgress caseKey={c.workspaceKey} />}
             {/* 법원 변제금 회차 (CM-8): 개시결정 뒤 사무소가 회차표를 만들면 보인다 */}
             {c.stage !== 'closed' && c.caseType === 'rehab' && c.groupNo >= 5 && <MyPlanPaymentsSection caseId={c.caseId} />}
+            {/* 파산 진행 일정 (BK-5) */}
+            {c.caseType === 'bankruptcy' && c.groupNo >= 5 && <MyBankruptcySchedule caseId={c.caseId} />}
             <MyCaseFeeSection caseId={c.caseId} />
             {/* 상담 요청에서 시작한 사건은 아래 '필수 서류 제출' 카드에서 받는다 */}
             {!c.hasConsultRequest && c.stage !== 'closed' && <MyCaseDocsSection caseKey={c.workspaceKey} />}

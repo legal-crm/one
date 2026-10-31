@@ -263,6 +263,8 @@ export interface RepaymentCreditor {
   isEstimated?: boolean;
   /** 인격 구분 (전자소송 CSV) */
   personType?: 'natural' | 'corporation' | 'unincorporated' | 'state' | 'local_gov';
+  /** 파산 채권자목록 발생원인 번호 (①금원차용 ②물품구입 ③보증 ④기타) — 비우면 글자로 짐작 */
+  bankruptcyCause?: '1' | '2' | '3' | '4';
 }
 
 // ══════════════════════════════════════════════════════════════════

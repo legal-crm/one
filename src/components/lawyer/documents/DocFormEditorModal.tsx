@@ -298,7 +298,7 @@ function DocFormEditorModalInner({
       source: 'office', clientKey: clientRequest.id, officeId,
       file: {
         id: '', name, category: 'court_filing', uploadedAt: new Date().toISOString(), uploadedBy: activeLawyerName || '사무소',
-        mimeType: 'application/pdf', dataUrl, uploadSource: 'office', reviewStatus: 'approved', notes: `서식 ${docItem.docCode}`,
+        mimeType: 'application/pdf', dataUrl, uploadSource: 'lawyer', reviewStatus: 'approved', notes: `서식 ${docItem.docCode}`,
       } as any,
     });
     setPdfBusy(false);
