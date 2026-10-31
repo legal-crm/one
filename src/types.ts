@@ -979,7 +979,7 @@ export interface CrmClientExtension {
   alimtokLogs?: AlimtokLog[];
   // ── 변제금 납부 모니터링 ──
   repaymentSchedule?: RepaymentEntry[];
-  // ── 케이스 관리 확장 (LeadMaster 이식) ──
+  // ── 케이스 관리 확장 ──
   isStarred?: boolean;           // 즐겨찾기
   deletedAt?: string;            // 소프트 삭제 일시 (ISO)
   dropOffReason?: DropOffReason; // 이탈 사유 카테고리
@@ -1027,7 +1027,7 @@ export interface CrmClientExtension {
   certificateVault?: CertificateVaultData;
   // ── 대법원 전산양식 D5101 개인회생절차 개시신청서 본안 편집 데이터 ──
   petitionInfo?: CourtPetitionData;
-  // ── LeadMaster CRM 이식: 통화 녹취 & 구글 드라이브 & 실시간 소통 로그 ──
+  // ── (옛 필드, 쓰지 않음) 통화 기록·녹음은 서버 client_comm_logs·call_recordings ──
   recordings?: import('./types/leadTypes').RecordingItem[];
   aiSummary?: string;
   communicationLogs?: import('./types/leadTypes').CommunicationLog[];

@@ -1,8 +1,6 @@
 import { DEPOSIT_EXEMPTION_KRW, EXEMPT_INSURANCE_REFUND_LIMIT } from './services/repayment/repaymentConstants2026';
 import { AppSettings, CourtRegionMapItem, RegionKey, DepositRule, YearlyPolicy, CourtConfig, HousingCostRule, PermissionConfig, StatusConfig } from './types';
 
-export const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbx_YOUR_SCRIPT_ID_HERE/exec'; 
-export const USE_MOCK_DATA = true;
 
 const generateYearlyPolicies = (): Record<number, YearlyPolicy> => {
     const policies: Record<number, YearlyPolicy> = {};

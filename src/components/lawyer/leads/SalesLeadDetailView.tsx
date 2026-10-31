@@ -23,11 +23,9 @@ import { loadPartners, loadInboundPaths, loadSecondaryStatuses } from '../../../
 import { sendQuickSmsOrCopy } from '../../../services/communicationService';
 import { localYmd, addDaysYmd } from '../../../utils/localDate';
 import CaseBriefingBanner from './CaseBriefingBanner';
-import { CaseDetailAiSummary } from './CaseDetailAiSummary';
-import { CaseCallsSmsTab } from './CaseCallsSmsTab';
+import CaseCommPanel from '../case/CaseCommPanel';
 import { CaseSummaryTab } from './CaseSummaryTab';
 import { CaseSettlementTab } from './CaseSettlementTab';
-import { GoogleDriveSettingsModal } from './GoogleDriveSettingsModal';
 
 interface SalesLeadDetailViewProps {
   lead: SalesLead;
@@ -38,6 +36,9 @@ interface SalesLeadDetailViewProps {
   onUpdateLead: (updated: SalesLead) => void;
   onPromoteToClient: (lead: SalesLead) => void;
   onNavigateToCrm?: (clientId: string) => void;
+  /** 서버 사무소 (소통 기록) */
+  officeId?: string;
+  officePermissions?: Record<string, string> | null;
 }
 
 const HISTORY_TYPES = ['없음', '개인회생', '개인파산', '신용회복'];
@@ -53,13 +54,14 @@ export default function SalesLeadDetailView({
   onUpdateLead,
   onPromoteToClient,
   onNavigateToCrm,
+  officeId,
+  officePermissions,
 }: SalesLeadDetailViewProps) {
   const [currentLead, setCurrentLead] = useState<SalesLead>(lead);
   const [activeTab, setActiveTab] = useState<'info' | 'timeline' | 'summary' | 'fee' | 'calls'>('info');
-  const [dockTab, setDockTab] = useState<'reminders' | 'ai_summary'>('reminders');
+  const [dockTab, setDockTab] = useState<'reminders'>('reminders');
   const [copiedPhone, setCopiedPhone] = useState(false);
   const [isSavedPulsing, setIsSavedPulsing] = useState(false);
-  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
 
   // 파트너, 인입경로, 2차 상태
   const partners = useMemo(() => loadPartners(), []);
@@ -427,16 +429,6 @@ export default function SalesLeadDetailView({
               </select>
             </div>
 
-            {/* Google Drive 녹음 업로드 연동 설정 */}
-            <button
-              type="button"
-              onClick={() => setIsDriveModalOpen(true)}
-              className="p-2 bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 rounded-xl transition-all cursor-pointer border border-slate-200 hover:border-blue-300 press-scale active:scale-[0.98]"
-              title="Google Drive 녹음 업로드 설정"
-            >
-              <Cloud size={16} />
-            </button>
-
             {/* 고객 관리로 이전 CTA */}
             {currentLead.status === 'converted' ? (
               <button
@@ -465,14 +457,14 @@ export default function SalesLeadDetailView({
       {/* ── 2. Top Executive Dark Case Briefing Banner (4 Monotone Charcoal Panels) ── */}
       <CaseBriefingBanner data={briefingData} defaultExpanded={true} />
 
-      {/* ── 3. Sub-Tab Switcher (LeadMaster 100% 매칭 5개 탭) ── */}
+      {/* ── 3. Sub-Tab Switcher (5개 탭) ── */}
       <div className="flex border-b border-slate-200 bg-white px-4 rounded-t-2xl overflow-x-auto shadow-2xs">
         {[
           { id: 'info', label: '정보 수정' },
           { id: 'timeline', label: '타임라인' },
           { id: 'summary', label: '요약문' },
           { id: 'fee', label: '수임료/정산' },
-          { id: 'calls', label: '통화 및 문자' },
+          { id: 'calls', label: '소통 기록' },
         ].map(tab => (
           <button
             key={tab.id}
@@ -1360,32 +1352,9 @@ export default function SalesLeadDetailView({
                   </span>
                 )}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setDockTab('ai_summary')}
-                className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                  dockTab === 'ai_summary'
-                    ? 'bg-white text-purple-900 shadow-xs'
-                    : 'text-slate-600 hover:text-purple-700'
-                }`}
-              >
-                <Sparkles size={13} className={dockTab === 'ai_summary' ? 'text-purple-600' : 'text-slate-400'} />
-                <span>AI 요약 & 대화록</span>
-                {currentLead.aiSummary && (
-                  <span className="w-2 h-2 rounded-full bg-purple-600"></span>
-                )}
-              </button>
             </div>
 
-            {dockTab === 'ai_summary' ? (
-              <CaseDetailAiSummary
-                lead={currentLead}
-                onUpdateLead={persistLead}
-                activeLawyerEmail={activeLawyer.email}
-                activeLawyerName={activeLawyer.name}
-              />
-            ) : (
+            {(
               /* 리마인더 & 상담 이력 카드 */
               <div className="bg-white rounded-3xl border border-slate-200 p-4 md:p-5 shadow-xs space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -1682,20 +1651,13 @@ export default function SalesLeadDetailView({
       {/* ── 8. Sub-Tab 5: 통화 및 문자 실시간 타임라인 & 문자 발송 ── */}
       {activeTab === 'calls' && (
         <div className="bg-white rounded-3xl border border-slate-200 p-4 md:p-6 shadow-xs">
-          <CaseCallsSmsTab
-            lead={currentLead}
-            onUpdateLead={persistLead}
-          />
+          {officeId ? (
+            <CaseCommPanel officeId={officeId} target={{ salesLeadId: currentLead.id }} permissions={officePermissions} defaultOpen />
+          ) : (
+            <p className="text-sm text-slate-600">서버 사무소에 연결된 뒤 통화·문자 기록을 볼 수 있어요.</p>
+          )}
         </div>
       )}
-
-      {/* Google Drive 녹음 업로드 계정 연동 모달 */}
-      <GoogleDriveSettingsModal
-        isOpen={isDriveModalOpen}
-        onClose={() => setIsDriveModalOpen(false)}
-        activeLawyerEmail={activeLawyer.email}
-        activeLawyerName={activeLawyer.name}
-      />
 
     </div>
   );

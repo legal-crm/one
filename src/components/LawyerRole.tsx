@@ -48,6 +48,7 @@ import { acceptOfficeInvite, peekOfficeInvite, loadMyOfficeContexts } from '../s
 import { OFFICE_ROLE_LABELS, canUse as canUseOfficePermission, scopeOf as officeScopeOf } from '../services/office/officePermissions';
 import AdBillingTab from './lawyer/billing/AdBillingTab';
 import ServerNotificationSettings from './lawyer/settings/ServerNotificationSettings';
+import OfficePhonePanel from './lawyer/settings/OfficePhonePanel';
 import ProfileListingNotice from './lawyer/settings/ProfileListingNotice';
 import ReviewStateBanner from './lawyer/settings/ReviewStateBanner';
 import { loadOfficeProfile } from '../services/lawyer/officeProfile';
@@ -185,7 +186,7 @@ export default function LawyerRole({
   // Lawyer sub navigation inside legal CRM
   const [activeTab, setActiveTab] = useState<'dashboard' | 'chat' | 'cases' | 'billing' | 'client-crm' | 'sales-leads' | 'case-copilot' | 'staff-management' | 'settings' | 'qna-answer' | 'tasks-schedule' | 'inquiry-to-admin' | 'contracts' | 'fee-settlement' | 'requests'>('dashboard');
   const [billingSub, setBillingSub] = useState<'status' | 'products' | 'orders' | 'business'>('status');
-  const [settingsCategory, setSettingsCategory] = useState<'profile' | 'office' | 'branding' | 'consult-style' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
+  const [settingsCategory, setSettingsCategory] = useState<'profile' | 'office' | 'phone' | 'branding' | 'consult-style' | 'notifications' | 'rules' | 'notices' | 'security'>('profile');
   const [settingsSub, setSettingsSub] = useState<string>('profile-edit');
   const [selectedNoticeId, setSelectedNoticeId] = useState<string | null>(null);
   const [noticeSearchTerm, setNoticeSearchTerm] = useState<string>('');
@@ -1975,6 +1976,11 @@ export default function LawyerRole({
     );
   };
   const ownRequests = requests.filter(isOwnRequest);
+  // 소통 기록을 연결할 사건 목록 (작업 공간 키 → 화면 이름)
+  const commCaseOptions = workspaceRequests
+    .filter(r => isOwnRequest(r) || r.id.startsWith('case-'))
+    .slice(0, 300)
+    .map(r => ({ key: r.id, label: getDisplayClientName(r) || '의뢰인' }));
   // 영업 리드 저장소를 로그인 사무소(변호사) 단위로 분리 — 아래 사이드바 배지·영업관리 탭이 이 범위를 사용
   setSalesLeadScope(officeCtx.office?.officeId || (legacyPermissionFallback ? (activeLawyer.lawFirmId || activeLawyer.id) : ''));
   const ownRequestIds = new Set(ownRequests.map(r => r.id));
@@ -3138,6 +3144,7 @@ export default function LawyerRole({
             onNavigateToCrm={(clientId) => openCase(clientId, 'info')}
             officeId={officeCtx.office?.officeId}
             canAssignLeads={!!officeCtx.office && canUseOfficePermission(officeCtx.office.permissions, 'sales.manage')}
+            officePermissions={officeCtx.office?.permissions}
           />
         )}
 
@@ -3329,6 +3336,7 @@ export default function LawyerRole({
                 // 내 설정 / 사무소 설정 두 갈래 (ST-1)
                 { key: 'profile' as const, label: '내 프로필·도장', defaultSub: 'profile-edit' },
                 ...(currentOfficeId && canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.view') ? [{ key: 'office' as const, label: '사무소 설정', defaultSub: 'office' }] : []),
+                ...(currentOfficeId ? [{ key: 'phone' as const, label: '업무폰', defaultSub: 'phone' }] : []),
                 { key: 'security' as const, label: '보안·기기', defaultSub: 'devices' },
                 { key: 'notifications' as const, label: '알림', defaultSub: 'channels' },
                 { key: 'rules' as const, label: '법률 기준·데이터', defaultSub: 'calc-rules' },
@@ -3466,6 +3474,16 @@ export default function LawyerRole({
             )}
 
             {/* 사무소 설정 (ST-1·ST-3·ST-5·ST-6) */}
+            {/* 업무폰 연결·정책·등록 요청함·문구함 (CL-3·AP·KT) */}
+            {settingsCategory === 'phone' && currentOfficeId && (
+              <OfficePhonePanel
+                officeId={currentOfficeId}
+                canManageDevices={canUseOfficePermission(officeCtx.office?.permissions, 'office.staff')}
+                canEditPolicy={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.edit')}
+                caseOptions={commCaseOptions}
+              />
+            )}
+
             {settingsCategory === 'office' && currentOfficeId && (
               <OfficeSettingsPanel officeId={currentOfficeId} canEdit={canUseOfficePermission(officeCtx.office?.permissions, 'office.settings.edit')} />
             )}

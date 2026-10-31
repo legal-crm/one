@@ -42,8 +42,6 @@ import CaseBriefingBanner from './CaseBriefingBanner';
 import CrmSettingsModal from './CrmSettingsModal';
 import { extractBriefingFromClient } from '../../services/leadService';
 import { ClientCaseSummarySubTab } from './ClientCaseSummarySubTab';
-import { ClientCallsSmsSubTab } from './ClientCallsSmsSubTab';
-import { GoogleDriveSettingsModal } from './leads/GoogleDriveSettingsModal';
 import ClientContractSubTab from './ClientContractSubTab';
 import TaskTicketTab from './TaskTicketTab';
 import InternalThreadTab from './InternalThreadTab';
@@ -76,6 +74,7 @@ import { CaseWorkspaceHeader, JourneyRail, StageHeader, ContextPanel, CaseTimeli
 import ServerCaseRecordPanel from './case/ServerCaseRecordPanel';
 import ServerFeePanel from './case/ServerFeePanel';
 import ServerCaseFilesPanel from './case/ServerCaseFilesPanel';
+import CaseCommPanel from './case/CaseCommPanel';
 import { listCases, loadStageDefinitions, stageDef, workspaceKeyForCase } from '../../services/cases/caseCoreService';
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
@@ -145,7 +144,6 @@ import Stage3DocumentsHubView from './pipeline/Stage3DocumentsHubView';
 import Stage4FilingBundleView from './pipeline/Stage4FilingBundleView';
 import Stage5CorrectionCenterView from './pipeline/Stage5CorrectionCenterView';
 import Stage6PostCareDischargeView from './pipeline/Stage6PostCareDischargeView';
-import ClientCommunicationSidePanel from './pipeline/ClientCommunicationSidePanel';
 import { getContractsByClientId } from '../../services/contractService';
 import { validateUploadFile } from '../../utils/fileSecurity';
 import { localYmd } from '../../utils/localDate';
@@ -358,7 +356,6 @@ export default function CrmTab({
 
   // ── 활동 탭 ──
   const [detailTab, setDetailTab] = useState<'info' | 'summary' | 'notes' | 'timeline' | 'calls' | 'tasks' | 'thread' | 'fees' | 'contracts' | 'documents' | 'debt-certs' | 'statement' | 'repayment' | 'bankruptcy' | 'corrections' | 'court' | 'vault'>(initialDetailTab || 'info');
-  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
   // ── 6단계 수임 여정 파이프라인 상태 ──
   const [pipelineStage, setPipelineStage] = useState<PipelineStage>(1);
   const [showTimelineModal, setShowTimelineModal] = useState(false);
@@ -441,7 +438,7 @@ export default function CrmTab({
     channel: 'alimtok' | 'sms';
   } | null>(null);
 
-  // ── 케이스 관리 확장 (LeadMaster 이식) ──
+  // ── 케이스 관리 확장 ──
   const [isNewCaseModalOpen, setIsNewCaseModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -1696,7 +1693,7 @@ export default function CrmTab({
     return `${days}일 전`;
   };
 
-  // ── 케이스 관리 핸들러 (LeadMaster 이식) ──
+  // ── 케이스 관리 핸들러 ──
 
   /** 신규 케이스 등록 핸들러 */
   const handleNewCaseRegister = useCallback((data: NewCaseData) => {
@@ -2327,6 +2324,17 @@ export default function CrmTab({
                   clientKey={selectedId}
                   canManage={!!currentPermissions.editClientInfo || !!isOfficeLawyer}
                   viewerName={activeStaff?.name || activeLawyer.name}
+                />
+              </div>
+            )}
+            {officeId && (
+              <div className="px-4 pt-3">
+                <CaseCommPanel
+                  key={`comm-${selectedId}`}
+                  officeId={officeId}
+                  target={{ workspaceKey: selectedId }}
+                  permissions={officePermissionMap}
+                  caseOptions={listScopeRequests.slice(0, 300).map(r => ({ key: r.id, label: getDisplayClientName(r) || '의뢰인' }))}
                 />
               </div>
             )}
@@ -3219,14 +3227,6 @@ export default function CrmTab({
           }}
         />
       )}
-
-      {/* ── 13. 구글 드라이브 녹취 연동 설정 모달 ── */}
-      <GoogleDriveSettingsModal
-        isOpen={isDriveModalOpen}
-        onClose={() => setIsDriveModalOpen(false)}
-        activeLawyerEmail={activeLawyer.email}
-        activeLawyerName={activeLawyer.name}
-      />
 
       {/* ── 14. 고객 자가진단('내 상황 체크하기') 11개 영역 전수 상세 팝업 ── */}
       {showIntakeDetailModal && selectedClient && (

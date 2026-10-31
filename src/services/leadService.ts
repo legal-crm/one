@@ -532,7 +532,7 @@ export async function convertLeadToClient(
   newExt.assignedStaffId = options?.assignedStaffId;
   newExt.preInfo = lead.specialMemo;
 
-  // LeadMaster 전용 필드 계승
+  // 영업 리드 필드 이어받기
   newExt.secondaryStatus = '상담접수완료';
   newExt.loanMonthlyPay = lead.loanMonthlyPay;
   newExt.creditCardUse = lead.creditCardUse;
@@ -767,7 +767,7 @@ export function checkLeadPhoneDuplicate(
   return { isDuplicate: false };
 }
 
-// ── 브리핑 텍스트 생성기 (LeadMaster 100% 호환) ──
+// ── 브리핑 텍스트 생성기 ──
 
 export function extractBriefingData(lead: SalesLead): CustomerBriefingData {
   return {
@@ -860,7 +860,7 @@ export const formatKoreanMoney = (value: number | undefined | null): string => {
   return '0원';
 };
 
-// ── 18개 항목 기본 요약문 템플릿 (LeadMaster 100% 호환) ──
+// ── 기본 요약문 템플릿 ──
 export const DEFAULT_SUMMARY_TEMPLATE = `* 담당자 : {{managerName}}
 * 고객이름 : {{customerName}}
 * 연락처 : {{phone}}

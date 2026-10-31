@@ -49,6 +49,8 @@ interface SalesLeadsTabProps {
   officeId?: string;
   /** 리드 배정 권한 (sales.manage) */
   canAssignLeads?: boolean;
+  /** 서버 사무소 권한표 (소통 기록) */
+  officePermissions?: Record<string, string> | null;
 }
 
 // 기획서 4.7 5대 상태 탭 + 전체
@@ -63,6 +65,7 @@ export default function SalesLeadsTab({
   onNavigateToCrm,
   officeId,
   canAssignLeads = false,
+  officePermissions,
 }: SalesLeadsTabProps) {
   const dialog = useDialog();
   const [leads, setLeads] = useState<SalesLead[]>(() => loadSalesLeads());
@@ -239,6 +242,8 @@ export default function SalesLeadsTab({
           }}
           onPromoteToClient={(l) => setConversionTargetLead(l)}
           onNavigateToCrm={onNavigateToCrm}
+          officeId={officeId}
+          officePermissions={officePermissions}
         />
 
         <LeadConversionModal
