@@ -12,6 +12,7 @@ import AccountsPanel from './admin/AccountsPanel';
 import ConsultMonitorPanel from './admin/ConsultMonitorPanel';
 import PrivacyRequestsPanel from './admin/PrivacyRequestsPanel';
 import LegalDocumentsPanel from './admin/LegalDocumentsPanel';
+import PlatformFeaturesPanel from './admin/PlatformFeaturesPanel';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -2291,19 +2292,19 @@ export default function AdminRole({
                         <div className="p-4 bg-[#0B0F19] rounded-xl border border-[#1E293B]/40 space-y-3">
                           <span className="text-[13px] font-bold text-violet-400 block flex items-center gap-1.5">
                             <Microscope className="w-3.5 h-3.5" />
-                            <span>🤖 AI 유료 기능 관리</span>
+                            <span>사건 검토 이용 예외</span>
                           </span>
 
                           {/* AI 사건 분석 토글 */}
                           <div className="flex items-center justify-between p-3 bg-[#111622] rounded-xl border border-[#1E293B]/60">
                             <div className="space-y-0.5">
-                              <div className="text-sm font-bold text-slate-200">AI 사건 분석</div>
+                              <div className="text-sm font-bold text-slate-200">사건 검토 이용 (정액·광고 혜택 예외)</div>
                               <div className="text-xs text-slate-500">
                                 {selectedLawyer.aiCaseAnalysisEnabled
                                   ? `활성화: ${selectedLawyer.aiCaseAnalysisActivatedAt ? new Date(selectedLawyer.aiCaseAnalysisActivatedAt).toLocaleDateString('ko-KR') : '-'}`
                                   : selectedLawyer.aiCaseAnalysisDeactivatedAt
                                     ? `비활성화: ${new Date(selectedLawyer.aiCaseAnalysisDeactivatedAt).toLocaleDateString('ko-KR')}`
-                                    : '미가입 상태'}
+                                    : '예외 없음'}
                               </div>
                             </div>
                             <button
@@ -2311,8 +2312,8 @@ export default function AdminRole({
                                 const isEnabled = selectedLawyer.aiCaseAnalysisEnabled;
                                 const action = isEnabled ? '비활성화' : '활성화';
                                 const confirmed = await dialog.confirm({
-                                  title: `AI 사건 분석 기능 ${action}`,
-                                  message: `${selectedLawyer.name} 변호사의 AI 사건 분석 기능을 ${action}하시겠습니까?`,
+                                  title: `사건 검토 예외 ${action}`,
+                                  message: `${selectedLawyer.name} 변호사에게 사건 검토 이용 예외를 ${action}하시겠습니까? 과금 모드가 '무료'이면 모든 사무소가 쓸 수 있어 이 설정은 '광고 혜택'·'정액 이용' 모드에서만 효과가 있어요.`,
                                   confirmText: action,
                                   variant: isEnabled ? 'warning' : 'primary'
                                 });
@@ -5002,6 +5003,7 @@ export default function AdminRole({
           {/* TAB 5: 플랫폼 설정 */}
           {activeTab === 'settings' && (
             <div className="space-y-6 animate-fadeIn">
+              {isSupabaseConfigured && <PlatformFeaturesPanel />}
               {isSupabaseConfigured && <LegalDocumentsPanel />}
               <div className="bg-[#111622] p-6 md:p-8 rounded-2xl border border-[#1E293B]/60 text-left space-y-6">
                 <div>

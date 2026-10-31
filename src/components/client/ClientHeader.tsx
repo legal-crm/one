@@ -8,6 +8,7 @@ import BrandLogo, { BRAND_TAGLINE } from './BrandLogo';
 import { Button, Modal } from './ui';
 import { cn } from '../../utils/cn';
 import { CLIENT_TAB_LABELS, clientTabHref, handleSpaLinkClick, isMyCaseTab, type ClientTab } from './clientTabs';
+import { usePlatformFeatures } from '../../services/platform/featureConfigService';
 
 /* ─────────────────────────────────────────────
    고객 사이트 헤더
@@ -265,6 +266,8 @@ export default function ClientHeader({
   onMarkAllNotificationsRead,
 }: ClientHeaderProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  // 통합어드민 '기능 표시' — 계산기는 재구성·외부 검토 전 숨김 (CT-15)
+  const { features } = usePlatformFeatures();
 
   const primaryNav: { tab: ClientTab; onClick: () => void; dot?: boolean }[] = [
     { tab: 'request', onClick: onStartCheck },
@@ -288,8 +291,8 @@ export default function ClientHeader({
       items: [
         { tab: 'guide', icon: BookOpen },
         { tab: 'reviews', icon: Star },
-        { tab: 'calculator', icon: Calculator },
-        { tab: 'companion', icon: HeartHandshake },
+        ...(features.calculatorVisible ? [{ tab: 'calculator' as ClientTab, icon: Calculator }] : []),
+        ...(features.companionVisible ? [{ tab: 'companion' as ClientTab, icon: HeartHandshake }] : []),
         ...(showLegalNews ? [{ tab: 'news' as ClientTab, icon: Newspaper }] : []),
       ],
     },

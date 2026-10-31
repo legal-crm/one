@@ -65,6 +65,7 @@ import { remedyData, renderRemedyIcon, SOLUTION_LABELS } from './client/remedyDa
 import { CLIENT_TAB_LABELS, isClientTab, isMyCaseTab, myCaseHubSectionOf, readInitialClientTab, resolveClientNavTarget, type ClientTab, type MyCaseHubSection, type MyPageSection } from './client/clientTabs';
 import MyCaseHubHeader from './client/mycase/MyCaseHubHeader';
 import { consumeReturnPath } from '../services/auth/returnPath';
+import { usePlatformFeatures } from '../services/platform/featureConfigService';
 import MyInfoView from './client/mypage/MyInfoView';
 import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
 import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
@@ -361,6 +362,8 @@ export default function ClientRole({
   // 같은 영역을 다시 골라도 반영되게 하는 요청 번호, 지금 보이는 영역('내 사건' 머리글 표시용)
   const [mypageSubTabReq, setMypageSubTabReq] = useState(0);
   const [mypageShownSection, setMypageShownSection] = useState<MyPageSection>('diagnosis');
+  // 통합어드민 '기능 표시' (CT-15)
+  const platformFeatures = usePlatformFeatures();
 
   // '내 사건' 카드의 '담당 변호사와 대화' → 그 사건의 상담방 (MY-Q3)
   useEffect(() => {
@@ -2219,7 +2222,19 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             )}
 
             {/* TAB: 변제금 계산기 */}
-            {activeTab === 'calculator' && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); handleStartDiagnosisClick(); }} />)}
+            {/* 제도 이해용 계산기 재구성(B-7)과 외부 변호사 검토 전에는 통합어드민 '기능 표시'에서 숨김 (CK-Q1) */}
+            {activeTab === 'calculator' && !platformFeatures.features.calculatorVisible && (
+              <div className="mx-auto max-w-3xl rounded-2xl border border-slate-200 bg-white">
+                <h1 className="sr-only">변제금 계산기</h1>
+                <EmptyState
+                  icon={<Lock className="w-6 h-6" />}
+                  title="변제금 계산기는 준비 중이에요"
+                  description="제도 기준을 쉽게 볼 수 있도록 다시 만들고 있어요. 내 상황은 '내 상황 체크하기'로 정리한 뒤 변호사에게 상담을 요청해 확인하세요."
+                  action={<Button onClick={handleStartDiagnosisClick}>내 상황 체크하기</Button>}
+                />
+              </div>
+            )}
+            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); handleStartDiagnosisClick(); }} />)}
 
 
             {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}

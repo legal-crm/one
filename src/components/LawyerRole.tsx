@@ -29,6 +29,7 @@ const FeeSettlementTab = React.lazy(() => import('./lawyer/FeeSettlementTab'));
 import { ConsultRequestManagementView } from './lawyer/requests';
 import CaseReviewCopilot from './lawyer/CaseReviewCopilot';
 import AICaseAnalysisLocked from './lawyer/AICaseAnalysisLocked';
+import { caseReviewAccess, usePlatformFeatures } from '../services/platform/featureConfigService';
 import ClientOriginalInfo from './lawyer/ClientOriginalInfo';
 import RequestWorkflowPanel from './lawyer/RequestWorkflowPanel';
 import RequestTimeline from './lawyer/RequestTimeline';
@@ -370,6 +371,9 @@ export default function LawyerRole({
     || (import.meta.env.DEV && sessionStorage.getItem(DEV_LAWYER_SESSION_KEY) !== null);
   const officeCtx = useOfficeContext(isLoggedIn && !legacyPermissionFallback);
   const permissionCtx = usePermissions(activeStaffMember, officeCtx.office, legacyPermissionFallback);
+  // 사건 검토 이용 조건 (통합어드민 부가 기능 과금 모드, 기본 무료 — CT-15·LA-Q1)
+  const platformFeatures = usePlatformFeatures();
+  const caseReview = caseReviewAccess(platformFeatures, activeLawyer);
   // 사무소 정보(법원 서식·계약서·안내문 대리인 기본값)는 서버 사업자 정보에서 한 번 읽어 둔다
   const currentOfficeId = officeCtx.office?.officeId;
   setCrmOfficeScope(currentOfficeId);
@@ -2640,9 +2644,18 @@ export default function LawyerRole({
     if (linkType === 'case_forms') { if (linkId) openCase(linkId, 'documents'); else openCase(); return; }
     if (linkType === 'schedule' || linkType === 'tasks' || linkType === 'task') { setActiveTab('tasks-schedule'); return; }
     if (linkType === 'office_phone') { setActiveTab('settings'); setSettingsCategory('phone' as any); setSettingsSub('phone' as any); return; }
+    // '시작하기' 점검표 바로가기 (HM-7)
+    if (linkType === 'setup') {
+      if (linkId === 'profile') { setActiveTab('settings'); setSettingsCategory('profile'); setSettingsSub('profile-edit'); return; }
+      if (linkId === 'office_settings') { setActiveTab('settings'); setSettingsCategory('office' as any); return; }
+      if (linkId === 'notifications') { setActiveTab('settings'); setSettingsCategory('notifications'); return; }
+      if (linkId === 'office_phone') { setActiveTab('settings'); setSettingsCategory('phone' as any); setSettingsSub('phone' as any); return; }
+      if (linkId === 'fees') { setActiveTab('fee-settlement'); return; }
+      if (linkId === 'staff') { setActiveTab('staff-management'); return; }
+    }
     if (linkType === 'ads') { setActiveTab('billing'); return; }
     if (linkType === 'sales_lead') { setActiveTab('sales-leads'); return; }
-    if (linkType === 'work_queue') { setActiveTab('dashboard'); return; }
+    if (linkType === 'work_queue' || linkType === 'notice') { setActiveTab('dashboard'); return; }
     if (linkType === 'proposal_review') {
       const pending = pendingProposals.find(p => p.id === linkId);
       if (pending) {
@@ -2829,13 +2842,14 @@ export default function LawyerRole({
                         badge: chatBadgeCount > 0 ? { count: chatBadgeCount, variant: 'normal' as const } : null,
                       },
                       {
+                        // 이름에서 'AI'를 뺐다(규칙 계산, CV-Q2). 이용 조건은 통합어드민 '부가 기능 과금 모드'(기본 무료, CT-15)
                         id: 'case-copilot',
-                        label: 'AI 사건 분석',
-                        icon: activeLawyer.aiCaseAnalysisEnabled ? Microscope : Lock,
-                        badge: !activeLawyer.aiCaseAnalysisEnabled
-                          ? { count: 0, label: '유료', variant: 'normal' as const }
-                          : (newRequestsForMe.length > 0 ? { count: newRequestsForMe.length, variant: 'normal' as const } : null),
-                        isLocked: !activeLawyer.aiCaseAnalysisEnabled,
+                        label: '사건 검토',
+                        icon: caseReview.open ? Microscope : Lock,
+                        badge: !caseReview.open
+                          ? { count: 0, label: '이용 조건', variant: 'normal' as const }
+                          : null,
+                        isLocked: !caseReview.open,
                       },
                     ],
                   },
@@ -3212,7 +3226,7 @@ export default function LawyerRole({
             onSendProposal={(proposalData) => handleSubmitProposalFromDraft(proposalModalReqId, proposalData)}
             onRequestConfirm={(proposalData, memo) => handleRequestProposalConfirm(proposalModalReqId, proposalData, memo)}
             aiAnalysis={undefined}
-            isAIPremiumEnabled={!!activeLawyer.aiCaseAnalysisEnabled}
+            isAIPremiumEnabled={caseReview.open}
             lawyerInfo={{
               name: activeLawyer.name,
               firmName: activeLawyer.firmName,
@@ -3236,8 +3250,11 @@ export default function LawyerRole({
         )}
 
         {/* TAB: CASE REVIEW COPILOT (사건검토 코파일럿) */}
+        {activeTab === 'case-copilot' && caseReview.reason && caseReview.open && (
+          <p role="status" className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">{caseReview.reason}</p>
+        )}
         {activeTab === 'case-copilot' && (
-          activeLawyer.aiCaseAnalysisEnabled ? (
+          caseReview.open ? (
             <CaseReviewCopilot
               consultRequests={requests.filter(isRelevantRequest)}
               tenantId={firmTenantId}
@@ -3249,6 +3266,7 @@ export default function LawyerRole({
             />
           ) : (
             <AICaseAnalysisLocked
+              reason={caseReview.reason}
               onContactAdmin={() => setActiveTab('inquiry-to-admin')}
             />
           )

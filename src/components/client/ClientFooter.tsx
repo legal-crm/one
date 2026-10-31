@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ChevronDown, ShieldCheck } from 'lucide-react';
 import { PlatformConfig } from '../../types';
 import BrandLogo, { BRAND_TAGLINE } from './BrandLogo';
 import { cn } from '../../utils/cn';
 import { CLIENT_TAB_LABELS, MOBILE_GNB_SPACER, clientTabHref, handleSpaLinkClick, type ClientTab } from './clientTabs';
+import { usePlatformFeatures } from '../../services/platform/featureConfigService';
+import { loadSocialChannels } from '../../services/marketing/seoAdminService';
 
 interface ClientFooterProps {
   platformConfig: PlatformConfig;
@@ -14,6 +16,8 @@ interface ClientFooterProps {
 }
 
 interface SocialChannel {
+  /** 통합어드민 'SNS 채널·유입' 채널 id */
+  channelId: string;
   name: string;
   href: string;
   label: string;
@@ -23,8 +27,9 @@ interface SocialChannel {
 
 const SOCIAL_CHANNELS: SocialChannel[] = [
   {
+    channelId: 'youtube',
     name: '유튜브',
-    href: 'https://www.youtube.com/channel/UCJr9fGI1Tr8eoQd3U0ASaHg',
+    href: '',
     label: 'my김변 공식 유튜브 채널 (새 창에서 열림)',
     hoverColor: 'hover:text-red-400 hover:border-red-500/40 hover:bg-red-500/10',
     icon: ({ className }) => (
@@ -34,8 +39,9 @@ const SOCIAL_CHANNELS: SocialChannel[] = [
     ),
   },
   {
+    channelId: 'instagram',
     name: '인스타그램',
-    href: 'https://www.instagram.com/my_kim999/',
+    href: '',
     label: 'my김변 공식 인스타그램 (새 창에서 열림)',
     hoverColor: 'hover:text-pink-400 hover:border-pink-500/40 hover:bg-pink-500/10',
     icon: ({ className }) => (
@@ -47,8 +53,9 @@ const SOCIAL_CHANNELS: SocialChannel[] = [
     ),
   },
   {
+    channelId: 'tiktok',
     name: '틱톡',
-    href: 'https://www.tiktok.com/@mykim9992',
+    href: '',
     label: 'my김변 공식 틱톡 채널 (새 창에서 열림)',
     hoverColor: 'hover:text-cyan-300 hover:border-cyan-500/40 hover:bg-cyan-500/10',
     icon: ({ className }) => (
@@ -58,8 +65,9 @@ const SOCIAL_CHANNELS: SocialChannel[] = [
     ),
   },
   {
+    channelId: 'threads',
     name: '스레드',
-    href: 'https://www.threads.net/@my_kim999',
+    href: '',
     label: 'my김변 공식 스레드 (새 창에서 열림)',
     hoverColor: 'hover:text-slate-100 hover:border-slate-400/40 hover:bg-white/10',
     icon: ({ className }) => (
@@ -74,13 +82,27 @@ const linkClass = 'inline-flex items-center min-h-11 text-sm font-medium text-sl
 
 export default function ClientFooter({ platformConfig, onNavigate, onStartCheck, reserveBottomNav = true }: ClientFooterProps) {
   const [infoOpen, setInfoOpen] = useState(false);
+  const { features } = usePlatformFeatures();
+  // 공식 채널은 통합어드민 'SNS 채널·유입'에서 '운영 중'으로 표시한 것만 (이전: 개설 전 주소가 코드에 고정)
+  const [liveChannels, setLiveChannels] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    void loadSocialChannels().then(r => {
+      if (cancelled || !r.ok) return;
+      setLiveChannels(Object.fromEntries(r.data.filter(c => c.active && /^https:\/\//.test(c.url)).map(c => [c.channel, c.url])));
+    });
+    return () => { cancelled = true; };
+  }, []);
+  const socialChannels = SOCIAL_CHANNELS
+    .filter(ch => liveChannels[ch.channelId])
+    .map(ch => ({ ...ch, href: liveChannels[ch.channelId] }));
   // 앱 기능은 앱 안에서 이동하고, 안내 문서(서비스 소개·FAQ·가이드)는 정적 페이지로 연다
   const appLinks: { tab: ClientTab; onClick: () => void }[] = [
     { tab: 'request', onClick: onStartCheck },
     { tab: 'lawyers', onClick: () => onNavigate('lawyers') },
     { tab: 'qna', onClick: () => onNavigate('qna') },
     { tab: 'reviews', onClick: () => onNavigate('reviews') },
-    { tab: 'calculator', onClick: () => onNavigate('calculator') },
+    ...(features.calculatorVisible ? [{ tab: 'calculator' as ClientTab, onClick: () => onNavigate('calculator') }] : []),
     { tab: 'guide', onClick: () => onNavigate('guide') },
   ];
   const supportLinks: { tab: ClientTab; onClick: () => void }[] = [
@@ -105,11 +127,12 @@ export default function ClientFooter({ platformConfig, onNavigate, onStartCheck,
               <span>상담정보는 가명으로 처리되며, 변호사가 사건 내용을 파악하고 답변하기 위한 목적으로만 사용됩니다.</span>
             </p>
 
-            {/* 공식 SNS 채널 바로가기 */}
+            {/* 공식 SNS 채널 바로가기 (운영 중 채널이 없으면 칸 자체를 숨긴다) */}
+            {socialChannels.length > 0 && (
             <div className="pt-1">
               <span className="block text-xs font-semibold text-slate-300 mb-2.5">공식 채널</span>
               <div className="flex items-center gap-2">
-                {SOCIAL_CHANNELS.map((ch) => {
+                {socialChannels.map((ch) => {
                   const Icon = ch.icon;
                   return (
                     <a
@@ -130,6 +153,7 @@ export default function ClientFooter({ platformConfig, onNavigate, onStartCheck,
                 })}
               </div>
             </div>
+            )}
           </div>
 
           {/* 모바일: 2열(서비스 | 알아보기·고객지원), sm 이상: 3열 */}

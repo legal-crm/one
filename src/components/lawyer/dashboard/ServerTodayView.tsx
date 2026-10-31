@@ -20,6 +20,7 @@ import {
 import { listOfficeMembers, type OfficeMember } from '../../../services/office/officeService';
 import type { Notice } from '../../../types';
 import { useDialog } from '../../common/DialogProvider';
+import SetupChecklistCard from './SetupChecklistCard';
 
 type Role = 'owner' | 'lawyer' | 'consultant' | 'clerk' | 'accounting' | 'custom' | string;
 
@@ -177,6 +178,9 @@ export default function ServerTodayView({ officeId, officeRole, myMemberId, noti
           </button>
         </div>
       </div>
+
+      {/* 처음 쓰는 사무소 '시작하기' (HM-7, 대표만) */}
+      {officeRole === 'owner' && <SetupChecklistCard officeId={officeId} onOpen={(key) => onOpenLink('setup', key)} />}
 
       {/* 공지 (통합어드민) */}
       {recentNotices.filter(n => !hiddenNotices.includes(n.id)).map(n => (
