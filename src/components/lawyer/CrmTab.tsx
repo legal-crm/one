@@ -77,7 +77,7 @@ import { listCases, loadStageDefinitions, stageDef, workspaceKeyForCase } from '
 import type { StaffPermissions } from '../../types';
 import { getOfficeProfile } from '../../services/lawyer/officeProfile';
 import CertificateVaultCard from './vault/CertificateVaultCard';
-import LegalFlowThirteenStepper from './pipeline/LegalFlowThirteenStepper';
+import ServerStageStepper from './case/ServerStageStepper';
 import { thirteenStageAfterStatusChange } from './pipeline/journeyStage';
 import { syncDockFromCase, clearDockCaseContext, registerDockCaseHandlers, type DockApplyData } from './quickdock/dockShared';
 import { createTask, createTaskBatch } from '../../services/taskTicketService';
@@ -2109,7 +2109,8 @@ export default function CrmTab({
                         activeSection={detailTab as any}
                         onSelectSection={(sec) => setDetailTab(sec as any)}
                         activeLawyerName={assignedLawyerName}
-                        serverCorrectionSlot={officeId ? (
+                        serverStageSlot={officeId ? <ServerStageStepper officeId={officeId} caseKey={selectedId} /> : undefined}
+                    serverCorrectionSlot={officeId ? (
                           <CorrectionPanel
                             key={`corr-${selectedId}`}
                             officeId={officeId}

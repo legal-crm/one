@@ -31,6 +31,8 @@ interface Stage5CorrectionCenterViewProps {
   activeLawyerName?: string;
   /** 서버 보정 대응 화면 (CorrectionPanel). 주어지면 '보정 센터' 섹션을 이것으로 바꾼다 */
   serverCorrectionSlot?: React.ReactNode;
+  /** 서버 사건 단계표 (CM-2). 주어지면 옛 13단계 표 대신 */
+  serverStageSlot?: React.ReactNode;
 }
 
 export default function Stage5CorrectionCenterView({
@@ -44,6 +46,7 @@ export default function Stage5CorrectionCenterView({
   onUpdateCrmExt,
   activeLawyerName = '담당 변호사',
   serverCorrectionSlot,
+  serverStageSlot,
 }: Stage5CorrectionCenterViewProps) {
   const dialog = useDialog();
 
@@ -508,18 +511,18 @@ export default function Stage5CorrectionCenterView({
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="font-bold text-sm text-slate-900 flex items-center gap-2">
                 <Landmark className="w-4 h-4 text-[#1E3A5F]" />
-                <span>법원 13단계 세부 절차 타임라인</span>
+                <span>{serverStageSlot ? '사건 단계' : '법원 13단계 세부 절차 타임라인'}</span>
               </h3>
-              <span className="text-xs text-slate-500">결정 등록을 통해 절차가 실시간 갱신됩니다.</span>
+              <span className="text-xs text-slate-500">{serverStageSlot ? '사건 기록(결정·기일 등록)에 따라 바뀌어요.' : '결정 등록을 통해 절차가 실시간 갱신됩니다.'}</span>
             </div>
 
-            <LegalFlowThirteenStepper
+            {serverStageSlot || <LegalFlowThirteenStepper
               currentStageId={currentThirteenStage}
               isBankruptcy={isBk}
               isDismissedRevoked={!!crmExt?.isDismissedRevoked}
               readOnly={true}
               onSelectStage={() => {}}
-            />
+            />}
           </div>
 
           {/* 사건 및 기일 현황 그리드 */}
