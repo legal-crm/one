@@ -6,6 +6,8 @@ import type { MainBanner } from '../../../types';
 
 interface HeroSectionProps {
   onStartCheck: () => void;
+  /** 홈 빠른 계산기 섹션이 있을 때만 보조 링크 (1-G) */
+  showCalcLink?: boolean;
   onBrowseLawyers: () => void;
   /** 통합어드민이 게시한 브랜드 배너 (CT-5) */
   banners?: MainBanner[];
@@ -20,7 +22,7 @@ const PROMISES = [
   { icon: ShieldCheck, title: '암호화 전송·저장', desc: '상담 데이터는 SSL/TLS로 전송되고 암호화된 서버에 저장됩니다.' },
 ];
 
-export default function HeroSection({ onStartCheck, onBrowseLawyers, banners = [], onOpenLawyerProfile }: HeroSectionProps) {
+export default function HeroSection({ onStartCheck, onBrowseLawyers, banners = [], onOpenLawyerProfile, showCalcLink = false }: HeroSectionProps) {
   const promise = (
         <aside className="lg:col-span-5 rounded-2xl border border-slate-200 bg-white shadow-sm px-5 sm:px-6" aria-labelledby="landing-promise-title">
           <div className="flex items-center justify-between gap-3 py-4 border-b border-slate-100">
@@ -76,6 +78,16 @@ export default function HeroSection({ onStartCheck, onBrowseLawyers, banners = [
               변호사 먼저 둘러보기
             </Button>
           </div>
+
+          {showCalcLink && (
+            <a
+              href="#quick-calculator"
+              onClick={(e) => { e.preventDefault(); document.getElementById('quick-calculator')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+              className="mt-3 inline-flex min-h-11 items-center text-sm font-bold text-brand underline underline-offset-4 hover:text-brand-hover"
+            >
+              1분 변제금 계산해 보기 ↓
+            </a>
+          )}
 
           <p className="mt-5 text-sm text-slate-600 leading-relaxed flex items-start gap-1.5 max-w-xl break-keep">
             <ShieldCheck className="w-4 h-4 mt-0.5 shrink-0 text-brand" aria-hidden="true" />

@@ -41,6 +41,7 @@ import { usePageMeta, TAB_META } from '../hooks/usePageMeta';
 
 const ReviewsView = React.lazy(() => import('./client/ReviewsView'));
 const CalculatorView = React.lazy(() => import('./client/CalculatorView'));
+import type { PublicCalcInput } from '../services/repayment/publicCalculator';
 const QnAView = React.lazy(() => import('./client/QnAView'));
 const ChatView = React.lazy(() => import('./client/ChatView'));
 const NewsView = React.lazy(() => import('./client/NewsView'));
@@ -1228,6 +1229,10 @@ export default function ClientRole({
   const [initialQnACategory, setInitialQnACategory] = useState<string | null>(null);
   const [chatbotAnnouncement, setChatbotAnnouncement] = useState<string | null>(null);
   const [activeSolutionType, setActiveSolutionType] = useState<SolutionType | null>(null);
+  // 홈 빠른 계산기 → 전체 계산기로 넘기는 입력값 (브라우저 메모리에만, B-7·1-G)
+  const [calcSeed, setCalcSeedState] = useState<Partial<PublicCalcInput> | null>(null);
+  const [calcSeedKey, setCalcSeedKey] = useState(0);
+  const setCalcSeed = (seed: Partial<PublicCalcInput>) => { setCalcSeedState(seed); setCalcSeedKey(k => k + 1); };
   const [entryCategory, setEntryCategory] = useState<{ type: 'debt_type' | 'solution' | 'general'; id: string; label: string } | null>(null);
 
   // Reviews page state
@@ -2203,6 +2208,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             }}
             onOpenLawyerProfile={handleOpenLawyerProfile}
             onOpenInquiry={() => setShowInquiryPopup(true)}
+            calculatorVisible={platformFeatures.features.calculatorVisible}
+            onOpenCalculator={(seed) => { setCalcSeed(seed); setActiveTab('calculator'); window.scrollTo({ top: 0 }); }}
           />
         )}
 
@@ -2238,7 +2245,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 />
               </div>
             )}
-            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView onNavigateToRequest={(data) => { setIncome(data.income); setDebtTotal(data.debtTotal); setDependents(data.dependents); if(data.title) setTitle(data.title); if(data.content) setContent(data.content); if(data.requestType) setRequestType(data.requestType); setRequestStep(data.step); handleStartDiagnosisClick(); }} />)}
+            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView key={calcSeedKey} initial={calcSeed || undefined} onStartCheck={handleStartDiagnosisClick} onFindLawyer={() => setActiveTab('lawyers')} />)}
 
 
             {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}

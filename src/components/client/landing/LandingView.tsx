@@ -9,6 +9,9 @@ import CasesSection from './CasesSection';
 import LegalNewsSection from './LegalNewsSection';
 import FaqSection from './FaqSection';
 import FinalCtaSection from './FinalCtaSection';
+// 계산 엔진이 커서 계산기를 켰을 때만 불러온다
+const QuickCalcSection = React.lazy(() => import('./QuickCalcSection'));
+import type { PublicCalcInput } from '../../../services/repayment/publicCalculator';
 
 /**
  * 고객 사이트 홈(랜딩) — 11개 섹션을 7개로 정리 (docs/mykim_client_ui_upgrade_plan.md 2-1)
@@ -36,6 +39,9 @@ export interface LandingViewProps {
   onOpenInquiry: () => void;
   /** 통합어드민이 게시한 브랜드 배너 (CT-5) */
   banners?: MainBanner[];
+  /** 통합어드민 '기능 표시'에서 계산기를 켰을 때만 홈 빠른 계산기 (1-G) */
+  calculatorVisible?: boolean;
+  onOpenCalculator?: (seed: Partial<PublicCalcInput>) => void;
 }
 
 export default function LandingView(props: LandingViewProps) {
@@ -43,14 +49,19 @@ export default function LandingView(props: LandingViewProps) {
     qas, reviews, newsArticles, showLegalNews, remedies, maxLawyerSelections,
     onStartCheck, onBrowseLawyers, onSelectRemedy, onSelectSolution, onConsultFromQa,
     onViewAllQna, onViewAllReviews, onViewAllNews, onOpenArticle, onOpenLawyerProfile, onOpenInquiry,
-    banners = [],
+    banners = [], calculatorVisible = false, onOpenCalculator,
   } = props;
 
   return (
     <div className="text-left">
-      <HeroSection onStartCheck={onStartCheck} onBrowseLawyers={onBrowseLawyers} banners={banners} onOpenLawyerProfile={onOpenLawyerProfile} />
+      <HeroSection onStartCheck={onStartCheck} onBrowseLawyers={onBrowseLawyers} banners={banners} onOpenLawyerProfile={onOpenLawyerProfile} showCalcLink={calculatorVisible && !!onOpenCalculator} />
       <ServiceGuideSection maxLawyerSelections={maxLawyerSelections} onStartCheck={onStartCheck} onBrowseLawyers={onBrowseLawyers} />
       <TrustFactsBar maxLawyerSelections={maxLawyerSelections} />
+      {calculatorVisible && onOpenCalculator && (
+        <React.Suspense fallback={<div className="h-96 bg-white border-t border-slate-100" aria-hidden="true" />}>
+          <QuickCalcSection onOpenFull={onOpenCalculator} onStartCheck={onStartCheck} />
+        </React.Suspense>
+      )}
       <SituationSection remedies={remedies} onSelectRemedy={onSelectRemedy} onSelectSolution={onSelectSolution} />
       <CasesSection qas={qas} reviews={reviews} onConsultFromQa={onConsultFromQa} onViewAllQna={onViewAllQna} onViewAllReviews={onViewAllReviews} />
       {showLegalNews && <LegalNewsSection articles={newsArticles} onOpenArticle={onOpenArticle} onViewAll={onViewAllNews} />}

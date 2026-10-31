@@ -1,212 +1,162 @@
-import React, { useState } from 'react';
-import { Activity, FileText, AlertTriangle } from 'lucide-react';
-import { DEFAULT_POLICY_CONFIG_2026, getRecognizedLivingCost } from '../../rehab-chatbot-package/config/PolicyConfig';
-import { formatKoreanWon } from './ui';
+import { useMemo, useState } from 'react';
+import { Calculator } from 'lucide-react';
+import { FormField, MoneyInput, inputClass } from './ui';
+import CalcResultPanel from './calculator/CalcResultPanel';
+import {
+  computePublicRange, emptyPublicCalcInput, type HousingKind, type PublicCalcInput,
+} from '../../services/repayment/publicCalculator';
+import { REVIEW_REGION_LABEL, type ReviewRegion } from '../../services/cases/caseReviewCalc';
 
+/**
+ * 변제금 계산기 (참고용) — 제도 이해용 일반 계산 (B-7, 고객 기획서 9번)
+ *  * 변호사 '사건 검토'와 같은 통합 엔진·같은 기준표, 결과는 범위
+ *  * 감면율·감면액·'가능성' 표현 없음, 상담 요청에 결과를 붙이지 않음, 입력·결과 저장·전송 없음
+ *  * 통합어드민 '플랫폼 설정 › 기능 표시'에서 켜야 보인다 (외부 변호사 검토 뒤)
+ */
 interface CalculatorViewProps {
-  onNavigateToRequest: (data: {
-    income: number;
-    debtTotal: number;
-    dependents: number;
-    title: string;
-    content: string;
-    step: number;
-    requestType?: 'direct' | 'open';
-  }) => void;
+  /** 홈 빠른 계산기에서 넘어온 입력 (그대로 이어서 계산) */
+  initial?: Partial<PublicCalcInput>;
+  onStartCheck: () => void;
+  onFindLawyer: () => void;
 }
 
-export default function CalculatorView({ onNavigateToRequest }: CalculatorViewProps) {
-  const [calcIncome, setCalcIncome] = useState<number>(250);
-  const [calcDebt, setCalcDebt] = useState<number>(7000);
-  const [calcDependents, setCalcDependents] = useState<number>(0);
+const HOUSING_LABEL: Record<HousingKind, string> = { rent: '월세', jeonse: '전세', own: '자가', free: '무상 거주' };
+const YEARS = [2025, 2026, 2027];
+
+export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: CalculatorViewProps) {
+  const thisYear = new Date().getFullYear();
+  const [v, setV] = useState<PublicCalcInput>(() => ({
+    ...emptyPublicCalcInput(YEARS.includes(thisYear) ? thisYear : 2026),
+    ...(initial || {}),
+  }));
+  const set = <K extends keyof PublicCalcInput>(k: K, val: PublicCalcInput[K]) => setV(p => ({ ...p, [k]: val }));
+  const money = (k: keyof PublicCalcInput) => (n: number | null) => set(k, (n ?? 0) as any);
+
+  const result = useMemo(() => {
+    if (!(v.monthlyIncome > 0) || !(v.totalDebt > 0)) return null;
+    return computePublicRange(v).range;
+  }, [v]);
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn text-left">
-      <div className="dark bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white rounded-3xl shadow-2xl border border-slate-800 p-6 sm:p-8 md:p-10 space-y-8 shadow-glow relative overflow-hidden transition-all duration-300">
-        {/* Background glow effects */}
-        <div className="absolute left-1/3 top-1/4 w-[350px] h-[350px] bg-brand/5 rounded-full blur-[100px] pointer-events-none"></div>
-        <div className="absolute right-1/4 bottom-1/4 w-[300px] h-[300px] bg-blue-500/5 rounded-full blur-[90px] pointer-events-none"></div>
+    <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
+      <header className="space-y-2">
+        <p className="text-sm font-bold text-brand flex items-center gap-1.5">
+          <Calculator className="w-4 h-4" aria-hidden="true" /> 변제금 계산기 (참고용)
+        </p>
+        <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight break-keep">
+          공개 기준으로 보는 개인회생 변제금 범위
+        </h1>
+        <p className="text-sm md:text-base text-slate-600 leading-relaxed break-keep max-w-3xl">
+          기준 중위소득 생계비·추가 생계비 기준·재산 가치·변제기간 원칙을 적용해 대략적인 범위를 보여 드려요. 내 사건에서 실제로 얼마를 갚게 되는지는 자료를 확인한 변호사와 법원이 정해요.
+        </p>
+      </header>
 
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/10 pb-6 relative z-10">
-          <div className="space-y-1.5">
-            <span className="text-xs sm:text-sm text-teal-400 font-bold uppercase tracking-widest flex items-center gap-1.5">
-              <Activity className="w-4.5 h-4.5 text-teal-400" />
-              채무관리 사전 체크 계산기
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        <section aria-label="입력" className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-5 md:p-6 space-y-5 shadow-sm">
+          <fieldset className="space-y-4">
+            <legend className="text-base font-extrabold text-slate-900">소득과 채무</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="월 실수령 소득" required hint="세금·4대보험을 뺀 금액">
+                {p => <MoneyInput {...p} value={v.monthlyIncome || null} onChange={money('monthlyIncome')} />}
+              </FormField>
+              <FormField label="총 채무" required hint="대출·카드·개인 빚 원금 합계">
+                {p => <MoneyInput {...p} value={v.totalDebt || null} onChange={money('totalDebt')} />}
+              </FormField>
+              <FormField label="그중 세금·4대보험 체납" optional>
+                {p => <MoneyInput {...p} value={v.priorityDebt || null} onChange={money('priorityDebt')} />}
+              </FormField>
+              <FormField label="적용 연도" hint="신청 예정 연도의 기준표">
+                {p => (
+                  <select {...p} value={v.year} onChange={e => set('year', Number(e.target.value))} className={inputClass}>
+                    {YEARS.map(y => <option key={y} value={y}>{y}년</option>)}
+                  </select>
+                )}
+              </FormField>
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-4">
+            <legend className="text-base font-extrabold text-slate-900">가족과 사는 곳</legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="가구원 수 (본인 포함)">
+                {p => (
+                  <select {...p} value={v.householdSize} onChange={e => set('householdSize', Number(e.target.value))} className={inputClass}>
+                    {[1, 2, 3, 4, 5, 6, 7].map(n => <option key={n} value={n}>{n}인</option>)}
+                  </select>
+                )}
+              </FormField>
+              <FormField label="그중 미성년 자녀">
+                {p => (
+                  <select {...p} value={v.minorChildren} onChange={e => set('minorChildren', Number(e.target.value))} className={inputClass}>
+                    {[0, 1, 2, 3, 4].map(n => <option key={n} value={n}>{n}명</option>)}
+                  </select>
+                )}
+              </FormField>
+              <FormField label="사는 지역">
+                {p => (
+                  <select {...p} value={v.region} onChange={e => set('region', e.target.value as ReviewRegion)} className={inputClass}>
+                    {(Object.keys(REVIEW_REGION_LABEL) as ReviewRegion[]).map(r => <option key={r} value={r}>{REVIEW_REGION_LABEL[r]}</option>)}
+                  </select>
+                )}
+              </FormField>
+              <FormField label="주거 형태">
+                {p => (
+                  <select {...p} value={v.housing} onChange={e => set('housing', e.target.value as HousingKind)} className={inputClass}>
+                    {(Object.keys(HOUSING_LABEL) as HousingKind[]).map(h => <option key={h} value={h}>{HOUSING_LABEL[h]}</option>)}
+                  </select>
+                )}
+              </FormField>
+              {v.housing === 'rent' && (
+                <FormField label="월세" optional>
+                  {p => <MoneyInput {...p} value={v.monthlyRent || null} onChange={money('monthlyRent')} />}
+                </FormField>
+              )}
+              {(v.housing === 'rent' || v.housing === 'jeonse') && (
+                <FormField label="보증금" optional>
+                  {p => <MoneyInput {...p} value={v.housingDeposit || null} onChange={money('housingDeposit')} />}
+                </FormField>
+              )}
+              <FormField label="매달 의료비" optional>
+                {p => <MoneyInput {...p} value={v.medicalExpense || null} onChange={money('medicalExpense')} />}
+              </FormField>
+              {v.minorChildren > 0 && (
+                <FormField label="자녀 1명당 매달 교육비" optional>
+                  {p => <MoneyInput {...p} value={v.educationPerChild || null} onChange={money('educationPerChild')} />}
+                </FormField>
+              )}
+            </div>
+          </fieldset>
+
+          <fieldset className="space-y-4">
+            <legend className="text-base font-extrabold text-slate-900">주요 재산 <span className="text-sm font-medium text-slate-500">(있는 것만)</span></legend>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="예금·적금">
+                {p => <MoneyInput {...p} value={v.savings || null} onChange={money('savings')} />}
+              </FormField>
+              <FormField label="보험 해약환급금 합계">
+                {p => <MoneyInput {...p} value={v.insuranceRefund || null} onChange={money('insuranceRefund')} />}
+              </FormField>
+              <FormField label="자동차 (시세 − 할부 잔액)">
+                {p => <MoneyInput {...p} value={v.carNet || null} onChange={money('carNet')} />}
+              </FormField>
+              <FormField label="부동산 (시세 − 담보 대출)">
+                {p => <MoneyInput {...p} value={v.realEstateNet || null} onChange={money('realEstateNet')} />}
+              </FormField>
+            </div>
+          </fieldset>
+
+          <label className="flex items-start gap-2.5 text-sm text-slate-700 leading-relaxed">
+            <input type="checkbox" className="mt-1 w-4 h-4" checked={v.shortPlanReason} onChange={e => set('shortPlanReason', e.target.checked)} />
+            <span className="break-keep">
+              65세 이상, 중증장애, 30세 미만, 미성년 자녀 2명 이상, 한부모, 전세사기 피해 중 하나에 해당해요
+              <span className="block text-xs text-slate-500">회생법원 실무준칙의 3년 미만 변제기간 검토 사유예요. 해당하는지는 변호사가 확인해요.</span>
             </span>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-white">나의 예상 변제 부담 시뮬레이션</h1>
-          </div>
-          <p className="text-sm sm:text-base text-slate-300 leading-relaxed max-w-sm font-medium">
-            소득과 채무, 부양가족 수에 따른 2026 인정 생계비(기준 중위소득 60%)를 대입하여 예상 변제 부담을 단순 시뮬레이션합니다. 실제 결과는 달라질 수 있습니다.
-          </p>
-        </div>
+          </label>
+        </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch relative z-10">
-          {/* Sliders */}
-          <div className="lg:col-span-7 space-y-8 flex flex-col justify-between">
-            {/* Income Slider */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 text-base">
-                <span className="text-slate-200 font-bold min-w-0 break-keep">월 평균 세후 실수령 소득</span>
-                <span className="shrink-0 whitespace-nowrap font-extrabold text-teal-300 text-lg bg-teal-400/10 px-3.5 py-1 rounded-xl border border-teal-400/20 shadow-sm">{calcIncome.toLocaleString()}만 원</span>
-              </div>
-              <input 
-                type="range" 
-                min="100" 
-                max="800" 
-                step="10" 
-                value={calcIncome} 
-                onChange={(e) => setCalcIncome(Number(e.target.value))} 
-                className="w-full my-2" 
-              />
-              <div className="flex justify-between text-xs sm:text-sm text-slate-400 font-bold">
-                <span>100만 원</span><span>450만 원</span><span>800만 원</span>
-              </div>
-            </div>
-
-            {/* Debt Slider */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between gap-3 text-base">
-                <span className="text-slate-200 font-bold min-w-0 break-keep">총 채무액 (대출, 카드론, 투자손실 등)</span>
-                {/* 한 줄 고정 (이전: '1.50억 원 (15,000만 원)'이 좁은 화면에서 두 줄로 깨짐) */}
-                <span className="shrink-0 whitespace-nowrap font-extrabold text-amber-300 text-lg bg-amber-400/10 px-3.5 py-1 rounded-xl border border-amber-400/20 shadow-sm">
-                  {formatKoreanWon(calcDebt * 10000)}
-                </span>
-              </div>
-              <input 
-                type="range" 
-                min="1000" 
-                max="30000" 
-                step="500" 
-                value={calcDebt} 
-                onChange={(e) => setCalcDebt(Number(e.target.value))} 
-                className="w-full my-2 slider-amber" 
-              />
-              <div className="flex justify-between text-xs sm:text-sm text-slate-400 font-bold">
-                <span>1,000만 원</span><span>1.5억 원</span><span>3억 원</span>
-              </div>
-            </div>
-
-            {/* Dependents Select */}
-            <div className="space-y-3">
-              <label className="block text-base text-slate-200 font-bold">부양 가족 수 (본인 제외)</label>
-              <div className="grid grid-cols-4 gap-2.5">
-                {[0, 1, 2, 3].map(num => (
-                  <button 
-                    key={num} 
-                    type="button" 
-                    onClick={() => setCalcDependents(num)} 
-                    className={`py-3.5 rounded-2xl border text-sm sm:text-base font-bold transition-all duration-200 cursor-pointer ${
-                      calcDependents === num 
-                        ? 'bg-brand border-brand text-white shadow-[0_4px_15px_rgba(30,58,95,0.35)] scale-[1.03]' 
-                        : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800/80 hover:text-slate-200'
-                    }`}
-                  >
-                    {num === 0 ? '0명 (1인)' : `${num}명 (${num+1}인)`}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Calculation Results */}
-          <div className="lg:col-span-5 bg-gradient-to-br from-slate-900/80 to-brand/10 border border-brand/20 p-6 rounded-3xl flex flex-col justify-between space-y-6 shadow-premium relative overflow-hidden">
-            {/* Subtle glow layer */}
-            <div className="absolute right-0 top-0 w-32 h-32 bg-brand/10 rounded-full blur-2xl pointer-events-none"></div>
-            
-            {(() => {
-              // 2026 기준 중위소득 60% 인정 생계비 (만원 단위, PolicyConfig 단일 출처)
-              const minLivingCost = Math.round(
-                getRecognizedLivingCost(calcDependents + 1, DEFAULT_POLICY_CONFIG_2026) / 10000
-              );
-              const monthlyRepayment = Math.max(0, calcIncome - minLivingCost);
-              const totalRepayment = Math.min(calcDebt, monthlyRepayment * 36);
-              const isBankruptcyApplicable = monthlyRepayment <= 0;
-
-              return (
-                <>
-                  <div className="space-y-4 text-left relative z-10">
-                    <span className="text-xs sm:text-sm uppercase font-bold tracking-wider text-teal-300 block border-b border-white/10 pb-2">
-                      🔍 1차 사전 체크 리포트
-                    </span>
-                    <div className="space-y-3.5 text-sm sm:text-base text-slate-200 font-medium">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">2026 인정 생계비 (기준 중위소득 60%):</span>
-                        <strong className="text-white text-base font-bold">{minLivingCost}만 원</strong>
-                      </div>
-                      {isBankruptcyApplicable ? (
-                        <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl text-sm text-red-300 font-semibold leading-relaxed shadow-sm">
-                          ⚠️ 월 소득이 인정 생계비보다 적습니다. 이 경우 개인파산 면책 신청을 검토해 볼 수 있는 상황입니다. 정확한 가능 여부는 변호사 검토가 필요합니다.
-                        </div>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-400">예상 월 가용 변제금:</span>
-                            <strong className="text-teal-300 text-base font-bold">{monthlyRepayment.toLocaleString()}만 원 / 월</strong>
-                          </div>
-                          <div className="flex justify-between items-center">
-                            <span className="text-slate-400">예상 총 변제액 (36개월):</span>
-                            <strong className="text-white text-base font-bold">{Math.round(totalRepayment).toLocaleString()}만 원</strong>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-
-                  <div className="pt-2 relative z-10">
-                    <button
-                      onClick={() => onNavigateToRequest({
-                        income: calcIncome,
-                        debtTotal: calcDebt,
-                        dependents: calcDependents,
-                        title: `시뮬레이션 결과 검토 요청`,
-                        content: `채무 시뮬레이션 결과:\n- 월 세후 소득: ${calcIncome}만 원\n- 총 부채액: ${calcDebt}만 원\n- 부양가족 수: ${calcDependents}명 (${calcDependents + 1}인 가구)\n\n위 입력값 기준 시뮬레이션 결과를 바탕으로 변호사의 검토 의견을 받아보고 싶습니다.`,
-                        step: 3
-                      })}
-                      className="w-full bg-gradient-to-r from-brand to-blue-600 hover:from-brand-hover hover:to-blue-700 text-white font-bold py-4 rounded-2xl text-base transition-all duration-300 flex items-center justify-center gap-2 shadow-sm hover:shadow-brand-sm transform hover:-translate-y-0.5 cursor-pointer active:scale-[0.98]"
-                    >
-                      <FileText className="w-5 h-5" />
-                      <span>이 결과로 변호사 검토 요청하기</span>
-                    </button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
-
-      {/* Banner Notice */}
-      <div className="bg-amber-500/5 dark:bg-amber-500/5 border border-amber-500/20 p-6 rounded-3xl text-sm sm:text-base space-y-3 shadow-premium">
-        <h4 className="font-bold text-amber-700 dark:text-amber-400 flex items-center gap-2 text-base">
-          <AlertTriangle className="w-5 h-5" />
-          <span>시뮬레이션 이용 시 유의사항</span>
-        </h4>
-        <div className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium space-y-2 text-sm sm:text-base">
-          <p>
-            본 결과는 입력값 기준 예상 변제 부담을 단순 시뮬레이션한 <strong>참고자료</strong>이며, 법률 판단이 아닙니다.
-            실제 변제금과 조정 가능성은 법원, 소득, 재산, 채무 발생 원인, 최근 채무 비율, 세금체납 여부 등에 따라 달라질 수 있습니다.
-          </p>
-          <p>
-            정확한 진행 가능성과 예상 변제금은 변호사의 개별 검토를 통해 확인하시기 바랍니다.
-          </p>
-        </div>
-        <div className="pt-2 flex justify-end">
-          <button 
-            onClick={() => onNavigateToRequest({
-              income: calcIncome,
-              debtTotal: calcDebt,
-              dependents: calcDependents,
-              title: '',
-              content: '',
-              step: 1,
-              requestType: 'open'
-            })}
-            className="text-base bg-amber-600 hover:bg-amber-500 text-white font-bold px-6 py-3 rounded-xl transition-all shadow-md hover:shadow-lg cursor-pointer transform hover:-translate-y-0.5 active:scale-[0.98]"
-          >
-            내 조건으로 변호사 상담 요청하기 &rarr;
-          </button>
-        </div>
+        <section aria-label="계산 결과" className="lg:col-span-5 lg:sticky lg:top-24">
+          <CalcResultPanel range={result} year={v.year} onStartCheck={onStartCheck} onFindLawyer={onFindLawyer} />
+        </section>
       </div>
     </div>
   );
