@@ -1630,7 +1630,7 @@ export default function CrmTab({
       if (!ok) return;
       const delivered = await deliverClientNotice({
         officeId, workspaceKey: clientId, milestone, alimtokText: rendered, phone: clientReq.phone, receiverName: clientReq.clientName,
-      }, () => sendAlimtok(clientReq.phone, milestone, vars));
+      }, () => sendAlimtok(clientReq.phone, milestone, vars, { caseKey: clientId }));
       const summary = describeDelivery(delivered);
       if (summary.ok) toast.success(`[${label}] ${summary.text}`);
       else toast.error(`[${label}] ${summary.text}`);
@@ -3025,7 +3025,7 @@ export default function CrmTab({
                 resultText = '연락처 없음 — 미발송';
               } else {
                 const personalized = message.replace(/#\{의뢰인명\}/g, () => t.clientName || '');
-                const res = await sendAlimtok(t.phone, 'document_request', { clientName: t.clientName || '' }, { customText: personalized, receiverName: t.clientName || '' });
+                const res = await sendAlimtok(t.phone, 'document_request', { clientName: t.clientName || '' }, { customText: personalized, receiverName: t.clientName || '', caseKey: t.id });
                 if (res.ok) { sent++; resultText = `접수됨${res.channel && res.channel !== 'alimtalk' ? ` (${res.channel === 'lms_fallback' ? 'LMS 대체' : 'SMS 대체'})` : ''}`; }
                 else { failed++; firstError = firstError || res.error || '발송 실패'; resultText = `실패: ${res.error || '발송 실패'}`; }
               }

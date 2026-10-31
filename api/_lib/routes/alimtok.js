@@ -238,7 +238,20 @@ export default async function handler(req, res) {
     sender,            // 발신번호
     buttons,           // 알림톡 버튼 배열
     reserveTime,       // 예약일시 (YYYYMMDDHHmmss, 없으면 즉시)
+    officeId,          // 사건 소통 기록에 남길 사무소 (선택)
+    caseKey,           // 사건 작업 공간 키 (선택) — 접수 성공 때만 서버가 기록
   } = req.body || {};
+
+  // 접수에 성공했을 때만 사건 소통 기록에 '알림톡 보냄'을 남긴다 (서버 함수가 사무소 구성원·사건 소속을 다시 확인)
+  const logToCase = async (body, note) => {
+    if (typeof officeId !== 'string' || typeof caseKey !== 'string' || !officeId || !/^[A-Za-z0-9_-]{1,80}$/.test(caseKey)) return;
+    try {
+      const { error } = await authSupabase.rpc('record_alimtok_comm_log', {
+        p_office_id: officeId.slice(0, 80), p_key: caseKey, p_user: req.user.id, p_body: String(body || '').slice(0, 2000), p_note: note,
+      });
+      if (error) console.warn('[Alimtok] comm log failed:', error.message);
+    } catch (e) { console.warn('[Alimtok] comm log failed:', e?.message); }
+  };
 
   if (!phone) {
     return res.status(400).json({ ok: false, error: '수신번호(phone)는 필수입니다.' });
@@ -338,6 +351,7 @@ export default async function handler(req, res) {
       );
     });
 
+    await logToCase(content, `알림톡 접수${milestone ? ` · ${String(milestone).slice(0, 40)}` : ''}`);
     return res.status(200).json({
       ok: true,
       mock: false,
@@ -394,6 +408,7 @@ export default async function handler(req, res) {
         }
       });
 
+      await logToCase(content, `알림톡 대신 문자(${isShort ? 'SMS' : 'LMS'}) 접수`);
       return res.status(200).json({
         ok: true,
         mock: false,

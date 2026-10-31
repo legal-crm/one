@@ -4,8 +4,10 @@ import { FileSignature, Smartphone, Users, CheckCircle2, FileText, Send, X } fro
 import { toast } from 'sonner';
 import type { ConsultRequest, Case, Lawyer as LawyerType, ElectronicContract, FeeInstallment, CrmStatus, CrmClientExtension } from '../../types';
 import { createContract, saveContract, calculateCourtCosts } from '../../services/contractService';
-import { sendAlimtok } from '../../services/alimtokService';
+import { renderTemplate, sendAlimtok } from '../../services/alimtokService';
 import { saveCrmClient, createDefaultCrmExtension, loadCrmData } from '../../services/crmService';
+import { deliverClientNotice, describeDelivery } from '../../services/comm/clientNoticeService';
+import { getCrmOfficeScope } from '../../services/crmService';
 import { notifyCaseClient } from '../../services/notifications/caseClientNotice';
 import ModalPortal from '../common/ModalPortal';
 import { newRemoteSignToken } from '../../utils/secureToken';
@@ -282,6 +284,7 @@ function ContractConversionModalInner({
 
       // 6. 알림톡 / 문자 자동 전송 (선택 시) — 실제 발송 결과를 확인
       let alimtokNotice = '';
+      let alimtokInfo = '';
       if (shouldSendAlimtok && !hasClientPhone) {
         alimtokNotice = ' (의뢰인 연락처가 공개되지 않아 알림톡은 보내지 않았습니다)';
       } else if (shouldSendAlimtok) {
@@ -291,30 +294,45 @@ function ContractConversionModalInner({
             ? `${firmLabel ? `[${firmLabel}] ` : ''}${activeLawyer.name} 변호사\n\n${request.clientName}님, 사건 수임 계약서가 모바일 전자서명으로 발송되었습니다.\n\n📌 약정 수임료: ${totalFee.toLocaleString()}만 원 (착수금 ${initialFee.toLocaleString()}만 원 / ${installmentCount}회 분납)\n📌 서명 요청: 가능한 빨리 서명해 주세요\n\n아래 안전 서명 링크에 접속하시어 내용을 확인하신 후 스마트폰 본인인증 및 전자서명을 진행해 주세요.\n\n▶ 모바일 전자서명 링크:\n${signUrl}`
             : undefined;
 
-          const sendRes = await sendAlimtok(clientPhone, 'contract_signed', {
+          const contractVars = {
             firmName: firmLabel,
             lawyerName: activeLawyer.name,
             clientName: request.clientName,
             date: new Date().toLocaleDateString('ko-KR'),
             trackingUrl: signUrl
-          }, {
+          };
+          // 사무소 설정 '의뢰인 안내 방법'대로: 알림톡 / 담당자 카톡 할 일 / 둘 다 / 보내지 않음 (서버 사무소가 없으면 알림톡)
+          const contractDelivery = await deliverClientNotice({
+            officeId: getCrmOfficeScope(), workspaceKey: request.id, milestone: 'contract_signed',
+            alimtokText: alimtokText || renderTemplate('contract_signed', contractVars),
+            phone: clientPhone, receiverName: request.clientName, title: '수임 계약 안내',
+          }, () => sendAlimtok(clientPhone, 'contract_signed', contractVars, {
             customText: alimtokText,
             buttons: [
               { name: '전자계약서 서명하기', url: signUrl, urlMobile: signUrl, urlPc: signUrl }
-            ]
-          });
-          if (!sendRes.ok) alimtokNotice = ` (알림톡 발송 실패: ${sendRes.error || '원인 불명'} — 채팅 링크로 안내하세요)`;
-          else if (sendRes.mock) alimtokNotice = ' (알림톡 서비스가 설정되지 않아 실제 발송되지 않았습니다)';
+            ],
+            caseKey: request.id,
+          }));
+          const contractSummary = describeDelivery(contractDelivery);
+          if (contractDelivery.method === 'none') alimtokNotice = ' (사무소 설정에서 계약 안내는 보내지 않도록 되어 있어요)';
+          else if (!contractSummary.ok) alimtokNotice = ` (${contractSummary.text} — 채팅 링크로 안내하세요)`;
+          else alimtokInfo = ` ${contractSummary.text}.`;
 
           if (sendDocPackage) {
-            sendAlimtok(clientPhone, 'document_request', {
+            const docVars = {
               firmName: firmLabel,
               lawyerName: activeLawyer.name,
               clientName: request.clientName,
               deadline: '계약일로부터 7일 이내',
               documentList: '1. 신분증 사본\n2. 주민등록등·초본\n3. 가족관계증명서\n4. 소득금액증명원\n5. 채무증명원',
               trackingUrl: `${origin}?tab=documents`
-            });
+            };
+            void deliverClientNotice({
+              officeId: getCrmOfficeScope(), workspaceKey: request.id, milestone: 'document_request',
+              alimtokText: renderTemplate('document_request', docVars), phone: clientPhone, receiverName: request.clientName,
+              title: '계약 후 준비 서류 안내',
+            }, () => sendAlimtok(clientPhone, 'document_request', docVars, { caseKey: request.id }))
+              .then(r => { const s2 = describeDelivery(r); if (!s2.ok) toast.error(`준비 서류 안내: ${s2.text}`); });
           }
         } catch {
           alimtokNotice = ' (알림톡 발송 중 오류가 발생했습니다)';
@@ -329,7 +347,7 @@ function ContractConversionModalInner({
       } else if (alimtokNotice) {
         toast.warning(baseMsg + alimtokNotice);
       } else {
-        toast.success(baseMsg + (shouldSendAlimtok ? ' 알림톡도 발송되었습니다.' : ''));
+        toast.success(baseMsg + alimtokInfo);
       }
       if (knownCreditorCount === 0) {
         toast.info('채권자 수가 입력되지 않아 법원비용(송달료)은 0원으로 잡혔습니다. 계약 관리에서 채권자 수를 입력해 주세요.');
@@ -541,10 +559,10 @@ function ContractConversionModalInner({
               <div className="flex-1 text-xs">
                 <div className="font-bold text-slate-900 flex items-center gap-1.5">
                   <Send className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>의뢰인 카카오 알림톡/문자 계약 안내 즉시 전송</span>
+                  <span>의뢰인에게 계약 안내 보내기</span>
                 </div>
                 <div className="text-slate-500 mt-0.5 leading-relaxed">
-                  담당 변호사 선임 완료 및 다음 진행 절차(서류 준비) 안내 메시지를 발송합니다.
+                  사무소 설정 › 의뢰인 안내 방법대로 알림톡 또는 담당자 카톡 할 일로 보내요. 다음 진행 절차(서류 준비)도 함께 안내해요.
                 </div>
               </div>
             </label>

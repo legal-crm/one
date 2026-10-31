@@ -7,6 +7,7 @@ import { notifyCaseClient } from './notifications/caseClientNotice';
 import { supabase, isSupabaseConfigured, getAuthHeaders } from '../supabaseClient';
 import { localYmd, parseLocalYmd } from '../utils/localDate';
 import { feeAmountWon, feeTotalWon } from '../utils/feeUnits';
+import { getCrmOfficeScope } from './crmService';
 
 /** /api/alimtok 호출용 헤더 (서버가 로그인 세션을 요구함) */
 const apiHeaders = async (json = false): Promise<Record<string, string>> => ({
@@ -42,6 +43,8 @@ export interface SendAlimtokOptions {
   buttons?: Array<{ name: string; url: string; urlPc?: string; urlMobile?: string }>;
   sender?: string;
   templateCode?: string;
+  /** 사건 작업 공간 키 — 접수에 성공하면 서버가 그 사건 소통 기록에 '알림톡 보냄'을 남긴다 (사무소 ID는 로그인 사무소) */
+  caseKey?: string;
 }
 
 export interface SendAlimtokResult {
@@ -87,7 +90,8 @@ export const sendAlimtok = async (
         altContent: options.altContent || rendered,
         sender: options.sender,
         buttons: options.buttons,
-        vars 
+        vars,
+        ...(options.caseKey && getCrmOfficeScope() ? { caseKey: options.caseKey, officeId: getCrmOfficeScope() } : {}),
       }),
     });
 
@@ -339,6 +343,7 @@ export const sendFeeAlimtok = async (params: SendFeeAlimtokParams): Promise<{ ok
     altSubject: params.altSubject || `[${params.firmName || '법무법인'}] ${ALIMTOK_MILESTONE_CONFIG[params.milestone]?.label || '수임료 안내'}`,
     altContent: params.altContent || params.customMessage,
     buttons: params.buttons as any,
+    caseKey: params.clientId,
   };
 
   const res = await sendAlimtok(params.phone, params.milestone, finalVars, sendOptions);

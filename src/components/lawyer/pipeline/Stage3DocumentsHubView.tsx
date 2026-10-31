@@ -628,7 +628,7 @@ export default function Stage3DocumentsHubView({
       officeId: getCrmOfficeScope(), workspaceKey: clientRequest.id, milestone,
       alimtokText: renderTemplate(milestone, vars), kakaoText: previewText ? toKakaoPlainText(previewText) : undefined,
       phone: clientRequest.phone, receiverName: clientRequest.clientName,
-    }, () => sendAlimtok(clientRequest.phone, milestone, vars));
+    }, () => sendAlimtok(clientRequest.phone, milestone, vars, { caseKey: clientRequest.id }));
     const summary = describeDelivery(delivered);
     const res = { ok: summary.ok, error: summary.ok ? undefined : summary.text };
     if (summary.ok && delivered.method !== 'alimtok') toast.success(summary.text);
@@ -661,7 +661,7 @@ export default function Stage3DocumentsHubView({
       officeId: getCrmOfficeScope(), workspaceKey: clientRequest.id, milestone: 'doc_phase2_reminder',
       alimtokText: renderTemplate('doc_phase2_reminder', vars), phone: clientRequest.phone, receiverName: clientRequest.clientName,
       title: `서류 제출 안내 · ${docName}`.slice(0, 80),
-    }, () => sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', vars));
+    }, () => sendAlimtok(clientRequest.phone, 'doc_phase2_reminder', vars, { caseKey: clientRequest.id }));
     const summary = describeDelivery(delivered);
     if (summary.ok) toast.success(`'${docName}' 제출 안내: ${summary.text}`);
     else toast.error(summary.text);
