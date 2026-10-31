@@ -339,14 +339,14 @@ ${clientName}님, 1차 서류 수령 확인 완료! 부채증명서 발급(약 7
 
 ■ 요청 서류: ${selectedIds.length}건 (${unsubmittedDocs.filter(d => selectedIds.includes(d.id)).slice(0, 2).map(d => d.name).join(', ')}${selectedIds.length > 2 ? ` 외 ${selectedIds.length - 2}건` : ''})
 ■ 제출 기한: ${deadlineStr}까지
-■ 제출 방법: 마이페이지 서류함 업로드 또는 등기우편 발송`
+■ 제출 방법: 마이김변 '내 사건' 서류함 업로드 또는 등기우편 발송`
               ) : (
 `[${officeName}]
 ${clientName}님, 사건 접수를 위한 맞춤 서류함이 준비되었습니다.
 
 ■ 요청 서류: ${selectedIds.length}건 (${unsubmittedDocs.filter(d => selectedIds.includes(d.id)).slice(0, 2).map(d => d.name).join(', ')}${selectedIds.length > 2 ? ` 외 ${selectedIds.length - 2}건` : ''})
 ■ 제출 기한: ${deadlineStr}까지
-■ 제출 방법: 마이페이지 서류함에 사진·파일로 올리시거나 사무소로 보내 주세요.`
+■ 제출 방법: 마이김변 '내 사건' 서류함에 사진·파일로 올리시거나 사무소로 보내 주세요.`
               )}
             </div>
           </div>

@@ -82,7 +82,7 @@ export default function CompanionIntroView({ lookupIds, onOpenCompanion, onStart
         <ul className="space-y-2 text-sm text-slate-700 leading-relaxed break-keep list-disc pl-5">
           <li>마이김변에서 변호사에게 사건을 맡기면, 담당 변호사가 입력한 사건 정보가 자동으로 표시됩니다.</li>
           <li>다른 곳에서 진행 중인 사건도 사건번호와 변제 조건(월 변제금·납부일·회차)을 직접 등록해 관리할 수 있어요.</li>
-          <li>관리 화면은 마이페이지의 '회생동행' 탭에 있습니다.</li>
+          <li>관리 화면은 '내 사건'의 '회생동행'에 있습니다.</li>
         </ul>
         <p className="text-sm text-slate-600 break-keep">
           아직 신청 전이라면{' '}

@@ -257,7 +257,7 @@ export default function AlimtalkTemplateRegisterModal({
                 type="text"
                 value={buttonName}
                 onChange={e => setButtonName(e.target.value)}
-                placeholder="예: 마이페이지 확인하기"
+                placeholder="예: 내 사건 확인하기"
                 className="w-full p-2 bg-white border border-slate-300 rounded-lg text-xs"
               />
             </div>

@@ -73,7 +73,7 @@ function ClientStatementSyncModalInner({
   // 진술서 작성 안내: 문구 복사 (이전: 아무것도 보내지 않고 '알림톡이 재발송되었습니다' 표시)
   const handleSendReminder = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const text = `[${clientName}님] 법원 제출용 진술서 작성이 필요합니다. 마이페이지 > 진술서에서 작성해 주세요. ${origin}/?tab=mypage`;
+    const text = `[${clientName}님] 법원 제출용 진술서 작성이 필요합니다. 마이김변 '내 사건' > 진술서에서 작성해 주세요. ${origin}/?tab=mypage`;
     try {
       await navigator.clipboard.writeText(text);
       toast.success('진술서 작성 안내 문구가 복사되었습니다. 자동 발송되지 않으니 카카오톡·문자로 전달해 주세요.');

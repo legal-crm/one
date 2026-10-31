@@ -1,7 +1,7 @@
 import React from 'react';
-import { Home, ClipboardCheck, MessageSquare, Search, User } from 'lucide-react';
+import { Home, ClipboardCheck, FolderOpen, Search, User } from 'lucide-react';
 import { cn } from '../../utils/cn';
-import { CLIENT_TAB_LABELS, clientTabHref, handleSpaLinkClick, type ClientTab } from './clientTabs';
+import { CLIENT_TAB_LABELS, clientTabHref, handleSpaLinkClick, isMyCaseTab, type ClientTab } from './clientTabs';
 
 /**
  * 모바일 하단 GNB (md 미만)
@@ -12,7 +12,7 @@ interface MobileGNBProps {
   activeTab: ClientTab;
   onNavigate: (tab: ClientTab) => void;
   onStartCheck: () => void;
-  /** 로그인 상태에서 상담 관련 읽지 않은 알림이 있으면 '내 관리방'에 점 표시 */
+  /** 로그인 상태에서 상담 관련 읽지 않은 알림이 있으면 '내 사건'에 점 표시 */
   showChatDot?: boolean;
   isHidden?: boolean;
 }
@@ -21,9 +21,10 @@ export default function MobileGNB({ activeTab, onNavigate, onStartCheck, showCha
   const items: { tab: ClientTab; label: string; icon: React.ElementType; onClick: () => void; dot?: boolean }[] = [
     { tab: 'landing', label: CLIENT_TAB_LABELS.landing, icon: Home, onClick: () => onNavigate('landing') },
     { tab: 'request', label: '상황 체크', icon: ClipboardCheck, onClick: onStartCheck },
-    { tab: 'chat', label: CLIENT_TAB_LABELS.chat, icon: MessageSquare, onClick: () => onNavigate('chat'), dot: showChatDot },
     { tab: 'lawyers', label: CLIENT_TAB_LABELS.lawyers, icon: Search, onClick: () => onNavigate('lawyers') },
-    { tab: 'mypage', label: CLIENT_TAB_LABELS.mypage, icon: User, onClick: () => onNavigate('mypage') },
+    // MY-Q6: 홈 · 상황 체크 · 변호사 찾기 · 내 사건(상담 포함) · 내 정보
+    { tab: 'mypage', label: CLIENT_TAB_LABELS.mypage, icon: FolderOpen, onClick: () => onNavigate('mypage'), dot: showChatDot },
+    { tab: 'me', label: CLIENT_TAB_LABELS.me, icon: User, onClick: () => onNavigate('me') },
   ];
 
   return (
@@ -39,7 +40,7 @@ export default function MobileGNB({ activeTab, onNavigate, onStartCheck, showCha
       <ul className="h-full flex items-stretch">
         {items.map((item) => {
           const Icon = item.icon;
-          const active = activeTab === item.tab;
+          const active = activeTab === item.tab || (item.tab === 'mypage' && isMyCaseTab(activeTab));
           return (
             <li key={item.tab} className="flex-1 min-w-0">
               <a

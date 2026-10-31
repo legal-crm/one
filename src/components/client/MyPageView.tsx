@@ -1,21 +1,18 @@
-import { FileCheck, FileText, ShieldCheck } from 'lucide-react';
-import { Badge, SegmentedTabs } from './ui';
+import { FileCheck, FileText } from 'lucide-react';
+import { Badge } from './ui';
 import NextActionCard from './mypage/NextActionCard';
 import RehabCompanionView from './companion/RehabCompanionView';
-import type { MyPageSubTab } from './mypage/nextAction';
 import { getRequestRoomStage } from './consultFlow';
 import ClientProposalTracker from './proposal/ClientProposalTracker';
 import { useMyPageModel, type MyPageViewProps } from './mypage/useMyPageModel';
 import MyPageCompactView from './mypage/MyPageCompactView';
-import MyPageNotificationsPanel from './mypage/MyPageNotificationsPanel';
 import MyCaseDetails from './mypage/MyCaseDetails';
 import MyPageModals from './mypage/MyPageModals';
 import MyServerCasesCard from './mypage/MyServerCasesCard';
-import PrivacyRequestCard from './mypage/PrivacyRequestCard';
-import { isSupabaseConfigured } from '../../supabaseClient';
 
 /**
- * 마이페이지 (탭: 내 사건 · 회생동행 · 알림·설정)
+ * '내 사건' 화면의 사건 진행 · 회생동행 영역 (MY-1, 이전 이름 '마이페이지')
+ * 상담은 같은 '내 사건' 머리글의 '상담'(ChatView), 알림·계정·동의는 '내 정보'(mypage/MyInfoView)
  * - 상태·핸들러: mypage/useMyPageModel · 섹션: mypage/*Card, MyCaseDetails · 모달: mypage/MyPageModals
  * - isCompact: 내 관리방 '내 채무' 창에서 쓰는 간단 보기(mypage/MyPageCompactView)
  */
@@ -24,8 +21,8 @@ export default function MyPageView(props: MyPageViewProps) {
   const {
     activeRequest, allProposals, assignedLawyer, companionFallbackIds, contractedProposal,
     handleStartContractFromProposal, isCompact, isContracted, lawyers, mypageTab, mypageTabsRef, nextAction,
-    onNavigateToChat, openDocRequestCount, profile, rejectedDocCount, requests, runNextAction, setMypageTab,
-    setSelectedProposalForReport, unreadNotificationCount, userAlias,
+    onNavigateToChat, openDocRequestCount, profile, rejectedDocCount, requests, runNextAction,
+    setSelectedProposalForReport, userAlias,
   } = vm;
 
   // [isCompact 모드] 내 관리방 '내 채무' 창 전용 보기
@@ -34,16 +31,9 @@ export default function MyPageView(props: MyPageViewProps) {
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
 
-      {/* 머리글: 제목·가명·담당 변호사 (가명 변경은 알림·설정 탭에서 서버 중복 확인을 거쳐 한다) */}
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">마이페이지</h1>
-          <Badge tone="teal" icon={<ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" />}>스텔스 가명 보호</Badge>
-        </div>
-        <p className="text-sm text-slate-600 leading-relaxed break-keep">
-          <strong className="text-slate-900">{userAlias || '회원'}</strong>님의 사건 진행·서류·납부를 관리합니다. 수임 계약 전까지 변호사에게는 가명으로 표시됩니다.
-        </p>
-        {assignedLawyer && (
+      {/* 제목·가명·영역 고르기는 '내 사건' 머리글(mycase/MyCaseHubHeader)이 맡는다. 가명 변경은 '내 정보'에서 */}
+      {assignedLawyer && (
+        <header>
           <p className="flex items-center gap-2 text-sm text-slate-700">
             {assignedLawyer.avatar ? (
               <img src={assignedLawyer.avatar} alt="" className="w-7 h-7 rounded-lg object-cover" />
@@ -52,39 +42,20 @@ export default function MyPageView(props: MyPageViewProps) {
             )}
             <span>담당 변호사 <strong className="text-slate-900">{assignedLawyer.name} 변호사</strong>{assignedLawyer.firm ? ` · ${assignedLawyer.firm}` : ''}</span>
           </p>
-        )}
-      </header>
+        </header>
+      )}
 
       <NextActionCard next={nextAction} onAction={runNextAction} />
-      {/* 마이페이지 탭: 내 사건(진단·서류·계약·수임료) / 회생동행(진행·변제 관리) / 알림·설정 */}
-      <div ref={mypageTabsRef} className="scroll-mt-4">
-        <SegmentedTabs<MyPageSubTab>
-          tabs={[
-            {
-              id: 'diagnosis',
-              label: '내 사건',
-              badge: openDocRequestCount + rejectedDocCount > 0
-                ? <span className="ml-1 rounded-full bg-amber-700 px-1.5 text-xs font-bold text-white">{openDocRequestCount + rejectedDocCount}<span className="sr-only">건 서류 할 일</span></span>
-                : undefined,
-            },
-            { id: 'companion', label: '회생동행' },
-            {
-              id: 'settings',
-              label: '알림·설정',
-              badge: unreadNotificationCount > 0
-                ? <span className="ml-1 rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">{unreadNotificationCount}<span className="sr-only">개 새 알림</span></span>
-                : undefined,
-            },
-          ]}
-          value={mypageTab}
-          onChange={setMypageTab}
-          ariaLabel="마이페이지 메뉴"
-          idPrefix="mypage"
-        />
-      </div>
-      {/* ═══ 탭 1: 회생·파산 완주동행 (메인 허브) ═══ */}
+      {/* 영역(사건 진행 · 회생동행)은 '내 사건' 머리글에서 고른다. 다음 할 일 버튼이 영역을 바꾸면 이 위치로 스크롤 */}
+      <div ref={mypageTabsRef} className="scroll-mt-4" aria-hidden="true" />
+      {mypageTab === 'diagnosis' && openDocRequestCount + rejectedDocCount > 0 && (
+        <p className="text-sm font-bold text-amber-800">
+          서류 할 일 {openDocRequestCount + rejectedDocCount}건이 있어요. 아래 서류함에서 확인해 주세요.
+        </p>
+      )}
+      {/* ═══ 회생동행 (진행·변제 관리) ═══ */}
       {!isCompact && mypageTab === 'companion' && (
-        <div role="tabpanel" id="mypage-panel-companion" aria-labelledby="mypage-tab-companion">
+        <div>
           <RehabCompanionView
             userAlias={userAlias}
             clientId={activeRequest?.id || requests[0]?.id}
@@ -95,13 +66,9 @@ export default function MyPageView(props: MyPageViewProps) {
         </div>
       )}
 
-      {/* ═══ 탭 3: 알림 수신함 & 설정 ═══ */}
-      {mypageTab === 'settings' && !isCompact && <MyPageNotificationsPanel vm={vm} />}
-      {mypageTab === 'settings' && !isCompact && isSupabaseConfigured && <PrivacyRequestCard />}
-
-      {/* ═══ 탭 2: 채무 진단 & 맞춤 제안서 / 법원 서류 제출 ═══ */}
+      {/* ═══ 사건 진행: 진단·제안서·서류·계약·수임료 ═══ */}
       {mypageTab === 'diagnosis' && (
-        <div role="tabpanel" id="mypage-panel-diagnosis" aria-labelledby="mypage-tab-diagnosis" className="space-y-6 animate-fadeIn">
+        <div className="space-y-6 animate-fadeIn">
           {/* 서버 사건 기록 (사무소가 기록한 단계·날짜, CM-11) */}
           <MyServerCasesCard isLoggedIn={vm.isLoggedIn} />
           {/* ═══ [제안서 중심 Proposal-First 트래커] ═══ */}

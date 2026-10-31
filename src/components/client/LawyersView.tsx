@@ -229,7 +229,7 @@ export default function LawyersView({
             </p>
           </div>
           {onOpenConsultRoom && (
-            <Button variant="secondary" onClick={onOpenConsultRoom} className="self-start sm:self-auto">내 관리방 보기</Button>
+            <Button variant="secondary" onClick={onOpenConsultRoom} className="self-start sm:self-auto">상담 보기</Button>
           )}
         </div>
       );

@@ -526,7 +526,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                                     <li className="break-keep">아래 <strong className="text-slate-900">변호사에게 상담 요청하기</strong>에서 받을 변호사를 고르고, 동의한 뒤 결과를 보냅니다.</li>
                                                     <li className="break-keep">
                                                         {isLoggedIn
-                                                            ? '결과는 내 관리방에 저장되어 언제든 다시 볼 수 있습니다.'
+                                                            ? '결과는 \'내 사건\'에 저장되어 언제든 다시 볼 수 있습니다.'
                                                             : '결과는 이 기기에 임시로 저장됩니다. 로그인하면 계정에 저장되고 상담을 요청할 수 있습니다.'}
                                                     </li>
                                                     {result.status !== 'POSSIBLE' && (
@@ -1954,7 +1954,7 @@ const RehabResultReport: React.FC<RehabResultReportProps> = ({
                                 </h3>
                                 <p className="text-sm text-slate-500 leading-relaxed mb-5">
                                     {loginPromptAction === 'consultation'
-                                        ? '변호사를 직접 선택하고 상담을 요청하려면 로그인이 필요합니다. 로그인 후 진단 결과가 내 관리방에 안전하게 저장됩니다.'
+                                        ? '변호사를 직접 선택하고 상담을 요청하려면 로그인이 필요합니다. 로그인 후 정리한 내용이 \'내 사건\'에 안전하게 저장됩니다.'
                                         : loginPromptAction === 'pdf'
                                             ? '진단 결과를 PDF로 저장하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'
                                             : '진단 결과를 공유하려면 로그인이 필요합니다. 로그인 후 다시 시도해주세요.'}

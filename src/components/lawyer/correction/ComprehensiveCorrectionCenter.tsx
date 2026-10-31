@@ -1247,7 +1247,7 @@ ${new Date().getFullYear()}.  .  .
               onClick={async () => {
                 // 알림톡 연동 전: 안내 문구 복사 (이전: 실제 발송 없이 '발송되었습니다' 표시)
                 const pending = docRequests.filter(r => r.status !== 'APPROVED').map(r => `- ${r.docTitle}`).join('\n');
-                const text = `[${clientName}님] 법원 보정에 필요한 추가 서류를 마이페이지 서류함에 제출해 주세요.${pending ? '\n' + pending : ''}${dueDate ? `\n제출 기한: ${dueDate}` : ''}`;
+                const text = `[${clientName}님] 법원 보정에 필요한 추가 서류를 마이김변 '내 사건' 서류함에 제출해 주세요.${pending ? '\n' + pending : ''}${dueDate ? `\n제출 기한: ${dueDate}` : ''}`;
                 try { await navigator.clipboard.writeText(text); toast.success('보정서류 제출 안내 문구가 복사되었습니다. 채팅·문자로 전달해 주세요.'); }
                 catch { toast.error('클립보드 복사에 실패했습니다.'); }
               }}

@@ -62,7 +62,9 @@ import ClientHeader from './client/ClientHeader';
 import MobileGNB from './client/MobileGNB';
 import LandingView from './client/landing/LandingView';
 import { remedyData, renderRemedyIcon, SOLUTION_LABELS } from './client/remedyData';
-import { CLIENT_TAB_LABELS, isClientTab, readInitialClientTab, resolveClientNavTarget, type ClientTab, type MyPageSection } from './client/clientTabs';
+import { CLIENT_TAB_LABELS, isClientTab, isMyCaseTab, myCaseHubSectionOf, readInitialClientTab, resolveClientNavTarget, type ClientTab, type MyCaseHubSection, type MyPageSection } from './client/clientTabs';
+import MyCaseHubHeader from './client/mycase/MyCaseHubHeader';
+import MyInfoView from './client/mypage/MyInfoView';
 import { Button, EmptyState, Modal, PageSkeleton } from './client/ui';
 import { LAWYER_REQUEST_LIMIT, LAWYER_REQUEST_RECEIVED_NOTICE, buildClientRequestNotice, clearPendingLawyerRequest, mergeLawyerRequest, readPendingLawyerRequest, stashPendingLawyerRequest } from './client/consultFlow';
 import { getDisplayName as getLawyerDisplayName } from './client/lawyerDirectory';
@@ -355,6 +357,9 @@ export default function ClientRole({
   const [localUnreadCount, setUnreadCount] = useState(() => getUnreadCount());
   // 마이페이지 안에서 처음 보여 줄 탭. 비워 두면 마이페이지가 사건 상태로 정한다(계약 전 → 내 사건, 계약 후 → 회생동행)
   const [mypageSubTab, setMypageSubTab] = useState<MyPageSection | undefined>(undefined);
+  // 같은 영역을 다시 골라도 반영되게 하는 요청 번호, 지금 보이는 영역('내 사건' 머리글 표시용)
+  const [mypageSubTabReq, setMypageSubTabReq] = useState(0);
+  const [mypageShownSection, setMypageShownSection] = useState<MyPageSection>('diagnosis');
 
   // [SEO] 탭 전환 시 document.title + meta description 동적 갱신
   const currentMeta = TAB_META[activeTab] || TAB_META.landing;
@@ -2015,8 +2020,8 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
       handleStartDiagnosisClick();
       return;
     }
-    // 마이페이지로 갈 때만 영역을 정한다 (영역 없이 가면 사건 상태에 맞는 탭)
-    if (target.tab === 'mypage') setMypageSubTab(target.mypageSection);
+    // '내 사건'으로 갈 때만 영역을 정한다 (영역 없이 가면 사건 상태에 맞는 영역)
+    if (target.tab === 'mypage') { setMypageSubTab(target.mypageSection); setMypageSubTabReq(n => n + 1); }
     if (target.tab === 'notices') setSelectedNoticeId(null);
     setActiveTab(target.tab);
   };
@@ -2198,29 +2203,25 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {/* TAB: CLIENT 1:1 INQUIRY BOARD */}
             {activeTab === 'inquiry' && (<InquiryView inquiries={inquiries} setInquiries={setInquiries} isLoggedIn={isLoggedIn} userAlias={userAlias} onShowAuthModal={() => setShowAuthModal(true)} onOpenGuestInquiry={() => setShowInquiryPopup(true)} inquiryTitle={inquiryTitle} setInquiryTitle={setInquiryTitle} inquiryContent={inquiryContent} setInquiryContent={setInquiryContent} onLogActivity={onLogActivity} />)}
 
-            {/* TAB: MYPAGE (채무 진단 대시보드 + 개인 설정) */}
-            {/* TAB: 마이페이지 = 내 사건(진단·서류·계약·수임료) + 회생동행(진행·변제) + 알림·설정 (IA 통합안) */}
-            {activeTab === 'mypage' && (
-              <MyPageView
+            {/* '내 사건' 머리글 (MY-1): 사건 진행(mypage) · 상담(chat) · 회생동행(mypage) 한 화면 */}
+            {isMyCaseTab(activeTab) && (
+              <MyCaseHubHeader
+                section={myCaseHubSectionOf(activeTab, mypageShownSection) as MyCaseHubSection}
                 userAlias={userAlias}
-                setUserAlias={setUserAlias}
-                isEditingAlias={isEditingAlias}
-                setIsEditingAlias={setIsEditingAlias}
-                tempAlias={tempAlias}
-                setTempAlias={setTempAlias}
-                activeRequest={activeRequest}
-                activeResult={activeResult}
-                onUpdateFinancialProfile={handleUpdateFinancialProfile}
-                onStartDiagnosis={handleStartDiagnosisClick}
-                requests={clientRequests}
-                onNavigateToChat={(reqId) => { if (reqId) setActiveChatReqId(reqId); setActiveTab('chat'); }}
-                isCompact={false}
-                initialSubTab={mypageSubTab}
-                lawyers={directoryLawyers}
-                isLoggedIn={isLoggedIn}
-                // 예전 최상위 회생동행 탭은 로그인한 의뢰인 ID로 기록을 저장했다 → 함께 찾아 기록이 사라져 보이지 않게
-                companionFallbackIds={isLoggedIn && currentClientId ? [currentClientId] : undefined}
-                // 알림은 헤더와 같은 상태를 쓴다(누르면 읽음 + 관련 화면 이동, 헤더 숫자도 함께 갱신)
+                consultDot={hasUnreadConsultUpdate}
+                onSelect={(section) => {
+                  if (section === 'consult') { setActiveTab('chat'); return; }
+                  setMypageSubTab(section === 'companion' ? 'companion' : 'diagnosis');
+                  setMypageSubTabReq(n => n + 1);
+                  setActiveTab('mypage');
+                }}
+              />
+            )}
+
+            {/* TAB: '내 정보' = 알림 · 계정 설정 · 동의 기록 · 개인정보 요청 (MY-1) */}
+            {activeTab === 'me' && (
+              <MyInfoView
+                userAlias={userAlias}
                 notifications={clientNotifications}
                 onNotificationClick={handleNotificationClick}
                 onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
@@ -2244,15 +2245,43 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
               />
             )}
 
-            {/* TAB: 내 관리방 (3-Zone: 채무대시보드 + 변호사선택 + 채팅) */}
+            {/* TAB: '내 사건' › 사건 진행·회생동행 (진단·서류·계약·수임료 / 진행·변제) */}
+            {activeTab === 'mypage' && (
+              <MyPageView
+                userAlias={userAlias}
+                setUserAlias={setUserAlias}
+                isEditingAlias={isEditingAlias}
+                setIsEditingAlias={setIsEditingAlias}
+                tempAlias={tempAlias}
+                setTempAlias={setTempAlias}
+                activeRequest={activeRequest}
+                activeResult={activeResult}
+                onUpdateFinancialProfile={handleUpdateFinancialProfile}
+                onStartDiagnosis={handleStartDiagnosisClick}
+                requests={clientRequests}
+                onNavigateToChat={(reqId) => { if (reqId) setActiveChatReqId(reqId); setActiveTab('chat'); }}
+                isCompact={false}
+                initialSubTab={mypageSubTab}
+                subTabRequestId={mypageSubTabReq}
+                onSubTabChange={setMypageShownSection}
+                lawyers={directoryLawyers}
+                isLoggedIn={isLoggedIn}
+                // 예전 최상위 회생동행 탭은 로그인한 의뢰인 ID로 기록을 저장했다 → 함께 찾아 기록이 사라져 보이지 않게
+                companionFallbackIds={isLoggedIn && currentClientId ? [currentClientId] : undefined}
+                // 알림은 헤더와 같은 상태를 쓴다(누르면 읽음 + 관련 화면 이동, 헤더 숫자도 함께 갱신)
+                notifications={clientNotifications}
+                onNotificationClick={handleNotificationClick}
+                onMarkAllNotificationsRead={handleMarkAllNotificationsRead}
+              />
+            )}
+
+            {/* TAB: '내 사건' › 상담 (3-Zone: 채무대시보드 + 변호사선택 + 채팅) */}
             {activeTab === 'chat' && (
               !isLoggedIn ? (
-                <div className="rounded-2xl border border-slate-200 bg-white">
-                  {/* 페이지 제목(화면 읽기용): 로그인 안내만 보일 때도 탭마다 h1 하나 */}
-                  <h1 className="sr-only">내 관리방</h1>
+                <div className="mx-auto max-w-5xl rounded-2xl border border-slate-200 bg-white">
                   <EmptyState
                     icon={<Lock className="w-6 h-6" />}
-                    title="내 관리방은 로그인 후 이용할 수 있습니다"
+                    title="상담은 로그인 후 이용할 수 있습니다"
                     description="변호사에게 보낸 상담 요청, 도착한 제안서, 1:1 대화를 한곳에서 확인합니다. 아직 채무 정리를 하지 않았다면 내 상황 체크하기부터 시작해 보세요."
                     action={<Button onClick={() => setShowAuthModal(true)}>로그인</Button>}
                     secondaryAction={<Button variant="secondary" onClick={handleStartDiagnosisClick}>내 상황 체크하기</Button>}
@@ -2573,7 +2602,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
         mobile="center"
         icon={<RefreshCw className="w-5 h-5" />}
         title="이미 정리한 채무 정보가 있습니다"
-        description="새로 체크하면 새 결과가 마이페이지와 내 관리방의 채무 현황에 표시됩니다."
+        description="새로 체크하면 새 결과가 '내 사건'의 채무 현황에 표시됩니다."
         footer={
           <>
             <Button variant="secondary" onClick={() => setShowResetDiagnosisModal(false)} className="flex-1 sm:flex-none">

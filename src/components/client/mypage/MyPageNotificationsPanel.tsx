@@ -5,7 +5,6 @@ import { cn } from '../../../utils/cn';
 import { loadClientNotifications, markAllAsRead, markAsRead } from '../../../services/clientNotificationService';
 import type { ClientNotification } from '../../../services/clientNotificationService';
 import { Badge, Button, EmptyState } from '../ui';
-import type { MyPageModel } from './useMyPageModel';
 
 // 헤더 알림 목록(ClientHeader)과 같은 아이콘·이름
 const TYPE_META: Record<ClientNotification['type'], { label: string; icon: React.ElementType }> = {
@@ -30,8 +29,17 @@ function formatRelativeTime(iso: string): string {
  * - 알림은 헤더 알림과 같은 상태(ClientRole)를 쓴다 → 누르면 읽음 처리 + 관련 화면으로 이동, 헤더 숫자도 함께 줄어든다
  * - 이전: div onClick(키보드로 누를 수 없음), 읽음 처리해도 화면이 다시 그려지지 않음, 이모지·10~11px 글자·깜빡이는 점
  */
-export default function MyPageNotificationsPanel({ vm }: { vm: MyPageModel }) {
-  const { settingsPanel, notifications: sharedNotifications, onNotificationClick, onMarkAllNotificationsRead } = vm;
+interface MyPageNotificationsPanelProps {
+  notifications?: ClientNotification[];
+  onNotificationClick?: (n: ClientNotification) => void;
+  onMarkAllNotificationsRead?: () => void;
+  /** 알림 아래에 붙일 계정 설정 */
+  settingsPanel?: React.ReactNode;
+}
+
+export default function MyPageNotificationsPanel({
+  notifications: sharedNotifications, onNotificationClick, onMarkAllNotificationsRead, settingsPanel,
+}: MyPageNotificationsPanelProps) {
 
   // ClientRole이 알림 상태를 넘기지 않은 경우(단독 사용)에만 이 기기 저장소를 직접 읽고, 바꾼 뒤 다시 그린다
   const [, rerender] = useReducer((x: number) => x + 1, 0);
@@ -57,7 +65,7 @@ export default function MyPageNotificationsPanel({ vm }: { vm: MyPageModel }) {
   };
 
   return (
-    <div role="tabpanel" id="mypage-panel-settings" aria-labelledby="mypage-tab-settings" className="space-y-6">
+    <div className="space-y-6">
       <section aria-labelledby="mypage-notifications-title" className="rounded-2xl border border-slate-200 bg-white p-5 sm:p-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="mypage-notifications-title" className="flex items-center gap-2 text-lg font-bold text-slate-900">

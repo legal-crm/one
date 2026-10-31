@@ -14,6 +14,7 @@ export const CLIENT_TABS = [
   'reviews',
   'qna',
   'mypage',
+  'me',
   'news',
   'notices',
   'inquiry',
@@ -38,6 +39,7 @@ export const CLIENT_PATH_TAB_MAP: Record<string, ClientTab> = {
   '/companion': 'companion',
   '/company': 'company',
   '/my': 'mypage',
+  '/me': 'me',
 };
 
 /** 명칭 사전 */
@@ -45,11 +47,13 @@ export const CLIENT_TAB_LABELS: Record<ClientTab, string> = {
   landing: '홈',
   request: '내 상황 체크하기',
   lawyers: '변호사 찾기',
-  chat: '내 관리방',
+  // '내 사건' 한 곳 안의 '상담' 영역 (MY-1: 이전 '내 관리방'·'마이페이지' 두 이름을 '내 사건'·'내 정보'로 정리)
+  chat: '상담',
   calculator: '변제금 계산기',
   reviews: '이용 후기',
   qna: '상담 사례',
-  mypage: '마이페이지',
+  mypage: '내 사건',
+  me: '내 정보',
   news: '법률 정보',
   notices: '공지사항',
   inquiry: '1:1 문의',
@@ -58,8 +62,23 @@ export const CLIENT_TAB_LABELS: Record<ClientTab, string> = {
   company: '회사 소개',
 };
 
-/** 마이페이지 안의 영역 */
-export type MyPageSection = 'companion' | 'diagnosis' | 'settings';
+/** '내 사건' 안의 영역 (사건 진행 · 회생동행). '상담'은 chat 탭, 계정·알림은 '내 정보'(me) 탭 */
+export type MyPageSection = 'companion' | 'diagnosis';
+
+/** '내 사건' 화면의 세 영역: 사건 진행(mypage) · 상담(chat) · 회생동행(mypage) */
+export type MyCaseHubSection = 'progress' | 'consult' | 'companion';
+
+/** 지금 화면 → '내 사건' 영역 (내 사건 화면이 아니면 null) */
+export function myCaseHubSectionOf(tab: ClientTab, mypageSection?: MyPageSection): MyCaseHubSection | null {
+  if (tab === 'chat') return 'consult';
+  if (tab === 'mypage') return mypageSection === 'companion' ? 'companion' : 'progress';
+  return null;
+}
+
+/** 내 사건 메뉴(머리글·하단 메뉴)를 켤 화면 */
+export function isMyCaseTab(tab: ClientTab): boolean {
+  return tab === 'mypage' || tab === 'chat';
+}
 
 /**
  * 이동 대상 정규화.
@@ -78,7 +97,12 @@ export function resolveClientNavTarget(raw: string | null | undefined): ClientNa
     case 'fees':
       return { kind: 'tab', tab: 'mypage', mypageSection: 'diagnosis' };
     case 'settings':
-      return { kind: 'tab', tab: 'mypage', mypageSection: 'settings' };
+    case 'account':
+      return { kind: 'tab', tab: 'me' };
+    case 'mycase':
+      return { kind: 'tab', tab: 'mypage', mypageSection: 'diagnosis' };
+    case 'room':
+      return { kind: 'tab', tab: 'chat' };
     case 'home':
       return { kind: 'tab', tab: 'landing' };
     default:
@@ -91,8 +115,9 @@ export function readInitialClientTab(): ClientTab {
   if (typeof window === 'undefined') return 'landing';
   const mapped = CLIENT_PATH_TAB_MAP[window.location.pathname];
   if (mapped) return mapped;
-  // 알림톡 버튼 주소 https://mykim.kr/my, /my/… → 마이페이지('내 사건') (MY-2, 이전: 미등록 주소라 홈으로 갔다)
+  // 알림톡 버튼 주소 https://mykim.kr/my, /my/… → '내 사건' (MY-2, 이전: 미등록 주소라 홈으로 갔다)
   if (/^\/my(\/|$)/.test(window.location.pathname)) return 'mypage';
+  if (/^\/me(\/|$)/.test(window.location.pathname)) return 'me';
   const tabParam = new URLSearchParams(window.location.search).get('tab');
   return isClientTab(tabParam) ? tabParam : 'landing';
 }

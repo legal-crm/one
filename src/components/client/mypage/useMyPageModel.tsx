@@ -33,7 +33,11 @@ export interface MyPageViewProps {
   requests: ConsultRequest[];
   onNavigateToChat: (reqId?: string) => void;
   isCompact?: boolean;
-  initialSubTab?: 'companion' | 'diagnosis' | 'settings';
+  initialSubTab?: 'companion' | 'diagnosis';
+  /** 바깥에서 영역을 고를 때마다 바뀌는 번호 (같은 영역을 다시 골라도 반영) */
+  subTabRequestId?: number;
+  /** 보이는 영역을 알린다 ('내 사건' 머리글 표시용, 한 방향) */
+  onSubTabChange?: (tab: 'companion' | 'diagnosis') => void;
   /** 실제 등록 변호사 목록 (mock 데이터 대신 사용) */
   lawyers?: User[];
   /** 로그인 여부 (알림·설정 탭 안내용) */
@@ -66,6 +70,8 @@ export function useMyPageModel(props: MyPageViewProps) {
     onNavigateToChat,
     isCompact = false,
     initialSubTab,
+    subTabRequestId,
+    onSubTabChange,
     isLoggedIn = false,
     settingsPanel,
     companionFallbackIds,
@@ -78,14 +84,19 @@ export function useMyPageModel(props: MyPageViewProps) {
 
   // 마이페이지 3대 서브 탭 (계약 전에는 제안서/진단 'diagnosis' 우선 활성화)
   const [mypageTab, setMypageTab] = useState<MyPageSubTab>(initialSubTab || 'diagnosis');
+  // 지금 보이는 영역을 늘 바깥('내 사건' 머리글)에 알린다 — 처음 열 때·다음 할 일 버튼·사건 상태로 고른 경우 모두
+  const onSubTabChangeRef = React.useRef(onSubTabChange);
+  onSubTabChangeRef.current = onSubTabChange;
+  useEffect(() => { onSubTabChangeRef.current?.(mypageTab); }, [mypageTab]);
   const mypageTabsRef = React.useRef<HTMLDivElement>(null);
   const didPickDefaultTab = React.useRef(!!initialSubTab);
 
+  // 바깥에서 영역을 고르면(머리글·알림 링크) 같은 영역을 다시 골라도 반영되도록 요청 번호로 받는다
   useEffect(() => {
     if (initialSubTab) {
       setMypageTab(initialSubTab);
     }
-  }, [initialSubTab]);
+  }, [initialSubTab, subTabRequestId]);
 
   // CRM 변경 이벤트 및 스토리지 변경 수신 시 마이페이지 실시간 자동 갱신
   useEffect(() => {

@@ -1,13 +1,13 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import {
   Bell, Building2, Calculator, ChevronDown, ClipboardCheck, FileText, HeartHandshake, HelpCircle, Info,
-  LogOut, Mail, Megaphone, Menu, MessageSquare, Newspaper, Search, Settings, Star, User, BookOpen,
+  LogOut, Mail, Megaphone, Menu, MessageSquare, Newspaper, Search, Settings, Star, User, BookOpen, FolderOpen,
 } from 'lucide-react';
 import type { ClientNotification } from '../../services/clientNotificationService';
 import BrandLogo, { BRAND_TAGLINE } from './BrandLogo';
 import { Button, Modal } from './ui';
 import { cn } from '../../utils/cn';
-import { CLIENT_TAB_LABELS, clientTabHref, handleSpaLinkClick, type ClientTab } from './clientTabs';
+import { CLIENT_TAB_LABELS, clientTabHref, handleSpaLinkClick, isMyCaseTab, type ClientTab } from './clientTabs';
 
 /* ─────────────────────────────────────────────
    고객 사이트 헤더
@@ -188,7 +188,7 @@ function NotificationPopover({
               }}
               className="w-full min-h-11 rounded-xl text-sm font-bold text-brand hover:bg-brand-light"
             >
-              마이페이지에서 진행 상황 보기
+              내 사건에서 진행 상황 보기
             </button>
           </div>
         </div>
@@ -223,12 +223,12 @@ function AccountMenu({ alias, onMyPage, onSettings, onLogout }: { alias: string;
       {open && (
         <div id={panelId} className="absolute right-0 top-full mt-2 w-56 rounded-2xl border border-slate-200 bg-white shadow-lg p-1.5 z-10 animate-fadeInScale">
           <button type="button" className={item} onClick={() => { setOpen(false); onMyPage(); }}>
-            <User className="w-4 h-4 text-slate-500" aria-hidden="true" />
-            마이페이지
+            <FolderOpen className="w-4 h-4 text-slate-500" aria-hidden="true" />
+            내 사건
           </button>
           <button type="button" className={item} onClick={() => { setOpen(false); onSettings(); }}>
-            <Settings className="w-4 h-4 text-slate-500" aria-hidden="true" />
-            계정 설정
+            <User className="w-4 h-4 text-slate-500" aria-hidden="true" />
+            내 정보
           </button>
           <div className="my-1 border-t border-slate-100" />
           <button type="button" className={cn(item, 'text-red-700 hover:bg-red-50 hover:text-red-800')} onClick={() => { setOpen(false); onLogout(); }}>
@@ -270,7 +270,7 @@ export default function ClientHeader({
     { tab: 'request', onClick: onStartCheck },
     { tab: 'lawyers', onClick: () => onNavigate('lawyers') },
     { tab: 'qna', onClick: () => onNavigate('qna') },
-    { tab: 'chat', onClick: () => onNavigate('chat'), dot: isLoggedIn && hasUnreadConsultUpdate },
+    { tab: 'mypage', onClick: () => onNavigate('mypage'), dot: isLoggedIn && hasUnreadConsultUpdate },
   ];
 
   const menuGroups: { title: string; items: MenuEntry[] }[] = [
@@ -279,8 +279,8 @@ export default function ClientHeader({
       items: [
         { tab: 'lawyers', icon: Search },
         { tab: 'qna', icon: HelpCircle },
-        { tab: 'chat', icon: MessageSquare },
-        { tab: 'mypage', icon: User },
+        { tab: 'mypage', icon: FolderOpen },
+        { tab: 'me', icon: User },
       ],
     },
     {
@@ -322,7 +322,7 @@ export default function ClientHeader({
 
         <nav aria-label="주요 메뉴" className="hidden lg:flex items-center gap-1 ml-4 xl:ml-8">
           {primaryNav.map((item) => {
-            const active = activeTab === item.tab;
+            const active = activeTab === item.tab || (item.tab === 'mypage' && isMyCaseTab(activeTab));
             return (
               <a
                 key={item.tab}
@@ -412,7 +412,7 @@ export default function ClientHeader({
                 <p className="text-sm text-slate-600">스텔스 가명으로 이용 중입니다</p>
               </div>
               <Button variant="secondary" size="sm" onClick={() => { setMenuOpen(false); onOpenSettings(); }}>
-                설정
+                내 정보
               </Button>
             </div>
           ) : (
@@ -441,7 +441,7 @@ export default function ClientHeader({
               <h3 className="px-3 mb-1.5 text-xs font-bold text-slate-500">{group.title}</h3>
               <ul className="space-y-0.5">
                 {group.items.map(({ tab, icon: Icon }) => {
-                  const active = activeTab === tab;
+                  const active = activeTab === tab || (tab === 'mypage' && isMyCaseTab(activeTab));
                   return (
                     <li key={tab}>
                       <a

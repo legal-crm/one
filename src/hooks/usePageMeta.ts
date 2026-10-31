@@ -33,7 +33,7 @@ export function usePageMeta(title: string, description: string) {
 export const TAB_META: Record<string, { title: string; description: string }> = {
   landing: {
     title: 'my김변(마이김변) — 채무 정보 정리 후 변호사를 직접 선택하세요',
-    description: '채무 정보를 정리하고, 상담을 원하는 변호사를 직접 선택하세요. 익명 진단부터 변호사 선택까지, 채무상담 플랫폼 my김변.',
+    description: '채무 정보를 정리하고, 상담을 원하는 변호사를 직접 선택하세요. 채무 정보 정리부터 변호사 선택까지, 채무상담 플랫폼 my김변.',
   },
   request: {
     title: '내 상황 체크하기 | 채무 정보 정리 | my김변',
@@ -44,12 +44,12 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
     description: '회생·파산 상담이 가능한 변호사의 프로필을 비교하고, 상담할 변호사를 직접 선택하세요.',
   },
   chat: {
-    title: '내 관리방 | 변호사 상담 | my김변',
+    title: '상담 | 내 사건 | my김변',
     description: '선택한 변호사와 비공개 상담방에서 소통합니다.',
   },
   calculator: {
-    title: '변제금 계산기 | 개인회생 시뮬레이션 | my김변',
-    description: '예상 변제금과 탕감 금액을 미리 계산해볼 수 있습니다.',
+    title: '변제금 계산기 | 개인회생 제도 이해 | my김변',
+    description: '개인회생 변제금이 어떤 기준으로 정해지는지 제도 기준으로 살펴봅니다. 실제 금액은 변호사 상담에서 확인하세요.',
   },
   reviews: {
     title: '이용 후기 | 실제 상담 경험 | my김변',
@@ -80,8 +80,12 @@ export const TAB_META: Record<string, { title: string; description: string }> = 
     description: 'my김변 서비스 이용 방법을 안내합니다.',
   },
   mypage: {
-    title: '마이페이지 | my김변',
-    description: '내 상담 내역과 계정 정보를 관리합니다.',
+    title: '내 사건 | my김변',
+    description: '상담 요청, 사건 진행, 서류, 납부를 한곳에서 확인합니다.',
+  },
+  me: {
+    title: '내 정보 | my김변',
+    description: '알림, 가명, 동의 기록, 개인정보 요청을 관리합니다.',
   },
   company: {
     title: '회사 소개 | my김변',

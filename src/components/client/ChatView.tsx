@@ -31,7 +31,7 @@ import ContractMethodSelectModal, { type OfflineContractRequestPayload } from '.
 const PrintableReportTemplate = React.lazy(() => import('./PrintableReportTemplate'));
 
 /* ─────────────────────────────────────────────
-   내 관리방 (상담방 우선 구조)
+   '내 사건' › 상담 (상담방 우선 구조)
    - 맨 위: 지금 단계 + 다음 할 일 + 주 버튼 1개 (단계 계산은 consultFlow.getConsultRoomStage 한 곳)
    - 모바일: [상담방 | 요청·제안 | 내 채무] 세그먼트 탭 / 데스크톱(lg): 2열(주 영역 + 옆 칸)
    - 상담방: 날짜 구분선·말풍선 묶음·자동 높이 입력창·예시 질문
@@ -515,7 +515,7 @@ export default function ChatView({
           ? <Button onClick={() => setContractSelectProposal(currentChatProposal)} leftIcon={<Check className="w-4 h-4" aria-hidden="true" />}>수임 계약 진행</Button>
           : null;
       case 'contracted':
-        return <Button variant="secondary" onClick={() => onSetActiveTab('mypage')}>마이페이지에서 진행 보기</Button>;
+        return <Button variant="secondary" onClick={() => onSetActiveTab('mycase')}>사건 진행 보기</Button>;
       case 'closed':
         return <Button variant="secondary" onClick={() => onSetActiveTab('request')}>내 상황 체크 다시 하기</Button>;
       default:
@@ -770,7 +770,7 @@ export default function ChatView({
             tabs={tabs}
             value={mobileTab}
             onChange={selectTab}
-            ariaLabel="내 관리방 보기"
+            ariaLabel="상담 보기"
             idPrefix="room"
           />
         </div>

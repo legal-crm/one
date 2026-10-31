@@ -78,7 +78,7 @@ export const ProposalAnalyzingCard: React.FC<ProposalAnalyzingCardProps> = ({
             </div>
             <div>
               <p className="text-xs font-bold text-slate-700 dark:text-slate-300">3. 제안서 도착</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">마이페이지·상담방에서 확인</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">'내 사건'에서 확인</p>
             </div>
           </li>
         </ol>

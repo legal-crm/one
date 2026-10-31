@@ -47,7 +47,7 @@ export function getStageCopy(stage: ConsultRoomStage, ctx: StageCopyContext): { 
     case 'contracted':
       return {
         headline: '수임 계약을 마쳤어요',
-        description: '사건 진행과 준비할 서류는 마이페이지에서 확인할 수 있어요. 변호사와의 대화는 이곳에서 이어집니다.',
+        description: '사건 진행과 준비할 서류는 위 \'사건 진행\'에서 확인할 수 있어요. 변호사와의 대화는 이곳에서 이어집니다.',
       };
     case 'closed':
     default:
@@ -71,7 +71,7 @@ export default function ConsultStatusStrip({ status, copy, actions, switcher }: 
   return (
     <header className="space-y-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">내 관리방</h1>
+        <h2 className="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">상담</h2>
         {status && <Badge tone={status.tone} size="md">{status.label}</Badge>}
         {switcher && <div className="w-full sm:w-auto sm:ml-auto">{switcher}</div>}
       </div>

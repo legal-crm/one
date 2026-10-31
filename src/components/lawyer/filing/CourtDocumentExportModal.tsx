@@ -152,7 +152,7 @@ function CourtDocumentExportModalInner({
   // 제출동의 요청: 안내 문구 복사 (이전: 아무것도 보내지 않고 '알림톡이 전송되었습니다' 표시)
   const handleSendConsentAlimtalk = async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const text = `[${clientName}님] 법원에 제출할 신청서류 초안이 준비되었습니다. 마이페이지에서 내용을 확인하시고 이상이 없으면 제출에 동의해 주세요. ${origin}/?tab=mypage`;
+    const text = `[${clientName}님] 법원에 제출할 신청서류 초안이 준비되었습니다. 마이김변 '내 사건'에서 내용을 확인하시고 이상이 없으면 제출에 동의해 주세요. ${origin}/?tab=mypage`;
     try {
       await navigator.clipboard.writeText(text);
       toast.success('제출동의 요청 문구가 복사되었습니다. 자동 발송되지 않으니 카카오톡·문자로 전달해 주세요.');

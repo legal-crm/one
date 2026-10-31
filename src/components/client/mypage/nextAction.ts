@@ -3,10 +3,10 @@ import type { Tone } from '../ui/feedback';
 
 /* ─────────────────────────────────────────────
    마이페이지 '지금 할 일' — 사건 상태 하나로 맨 위 카드와 첫 탭을 정한다
-   (내 관리방 = 대화·제안·계약 / 마이페이지 = 내 사건·회생동행·설정)
+   ('내 사건' = 사건 진행·상담(대화·제안·계약)·회생동행 / '내 정보' = 알림·계정·동의)
    ───────────────────────────────────────────── */
 
-export type MyPageSubTab = 'diagnosis' | 'companion' | 'settings';
+export type MyPageSubTab = 'diagnosis' | 'companion';
 
 export interface NextActionInput {
   hasCheck: boolean;
@@ -115,13 +115,13 @@ export function getMyPageNextAction(input: NextActionInput): NextAction {
         title: '변호사의 제안서를 기다리고 있어요',
         description: '변호사가 채무 현황을 검토한 뒤 제안서를 보내면 알림으로 알려 드려요.',
         tone: 'info',
-        action: { label: '내 관리방 보기', kind: 'room' },
+        action: { label: '상담 보기', kind: 'room' },
         defaultTab: 'diagnosis',
       };
     case 'review_proposals':
       return {
         title: `제안서 ${proposalCount}건이 도착했어요`,
-        description: '내 관리방에서 조건을 비교하고 이야기를 나눠 볼 변호사의 상담을 시작하세요.',
+        description: '상담에서 조건을 비교하고 이야기를 나눠 볼 변호사와 상담을 시작하세요.',
         tone: 'info',
         action: { label: '제안서 비교하기', kind: 'room' },
         defaultTab: 'diagnosis',
@@ -130,7 +130,7 @@ export function getMyPageNextAction(input: NextActionInput): NextAction {
     case 'counseling':
       return {
         title: '변호사와 상담하고 있어요',
-        description: '대화와 수임 계약은 내 관리방에서 이어집니다.',
+        description: '대화와 수임 계약은 상담에서 이어집니다.',
         tone: 'brand',
         action: { label: '상담방 열기', kind: 'room' },
         defaultTab: 'diagnosis',
@@ -140,7 +140,7 @@ export function getMyPageNextAction(input: NextActionInput): NextAction {
         title: '상담을 요청할 변호사를 골라 주세요',
         description: '체크 결과로 최대 3명에게 요청하고 제안서를 비교할 수 있어요.',
         tone: 'brand',
-        action: { label: '내 관리방에서 변호사 고르기', kind: 'room' },
+        action: { label: '상담에서 변호사 고르기', kind: 'room' },
         defaultTab: 'diagnosis',
       };
   }
