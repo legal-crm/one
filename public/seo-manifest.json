@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-10-31T03:50:56.449Z",
+  "generatedAt": "2026-10-31T17:27:34.874Z",
   "origin": "https://mykim.kr",
   "counts": {
-    "pages": 30,
-    "indexable": 30,
-    "guides": 11,
+    "pages": 32,
+    "indexable": 31,
+    "guides": 12,
     "articles": 8,
-    "rssItems": 19,
+    "rssItems": 20,
     "pagesWithIssues": 8
   },
   "pages": [
@@ -41,7 +41,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "home",
-      "hash": "c08fba1ac5e11cf7",
+      "hash": "eee162d3ca66cd5a",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -69,10 +69,36 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "a94d7c1f484966a8",
+      "hash": "027913b58cb04996",
       "issues": [
         "description 짧음 (45자)"
       ],
+      "lastmod": "2026-10-31"
+    },
+    {
+      "file": "calculator.html",
+      "url": "https://mykim.kr/calculator",
+      "title": "개인회생 변제금 계산 방법과 참고용 계산기 | my김변",
+      "titleLength": 30,
+      "description": "기준 중위소득 60% 생계비, 추가 생계비, 청산가치, 변제기간 3년 원칙 등 개인회생 변제금을 계산하는 공개 기준과 참고용 계산기. 개인 사건의 결과를 판단하지 않습니다.",
+      "descriptionLength": 96,
+      "canonical": "https://mykim.kr/calculator",
+      "noindex": true,
+      "h1Count": 1,
+      "ogImage": "https://mykim.kr/mykim_logo.png",
+      "jsonLdTypes": [
+        "Answer",
+        "BreadcrumbList",
+        "FAQPage",
+        "ListItem",
+        "Question"
+      ],
+      "jsonLdValid": true,
+      "datePublished": "",
+      "dateModified": "",
+      "section": "page",
+      "hash": "aa05755752d7162b",
+      "issues": [],
       "lastmod": "2026-10-31"
     },
     {
@@ -97,7 +123,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "8b6722d9df08490b",
+      "hash": "5363c952187c32c9",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -124,7 +150,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "e38f8c44669a8a4e",
+      "hash": "8a5b79a0c8e21dbc",
       "issues": [
         "description 짧음 (33자)"
       ],
@@ -146,7 +172,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "2b8e1a495e533ed2",
+      "hash": "c1c85f2c5d3b49e4",
       "issues": [
         "title 짧음 (14자)"
       ],
@@ -174,7 +200,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "6ee1c2695dd3e88f",
+      "hash": "65a05d372f0d69fb",
       "issues": [
         "description 짧음 (31자)"
       ],
@@ -196,7 +222,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "bf0214b6f888e05e",
+      "hash": "88cf6fb5dd9f60ce",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -222,7 +248,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "7475e6dde64996e5",
+      "hash": "4e259c5389bf6d22",
       "issues": [
         "description 짧음 (45자)"
       ],
@@ -250,7 +276,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "bbca42b7eb6aed91",
+      "hash": "1a7e664fae2cbbdf",
       "issues": [
         "description 짧음 (29자)"
       ],
@@ -278,7 +304,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "e95522546c50bb26",
+      "hash": "caa64e2a3458b409",
       "issues": [
         "description 짧음 (45자)"
       ],
@@ -300,7 +326,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "page",
-      "hash": "1ade4145d9dec7a5",
+      "hash": "de1b2e9df0a24241",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -326,7 +352,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "9efb6d7d3a4ad1c8",
+      "hash": "38693d5af96b9af8",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -352,7 +378,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "e2fecf91a968073b",
+      "hash": "a494eca2b2a09476",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -378,7 +404,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "ff486aba42c108ee",
+      "hash": "9392b9c1f96757c3",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -404,9 +430,35 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "1b8397da1cf3b836",
+      "hash": "398a6c52c6617de2",
       "issues": [],
       "lastmod": "2026-10-31"
+    },
+    {
+      "file": "guide/debt-programs.html",
+      "url": "https://mykim.kr/guide/debt-programs.html",
+      "title": "채무 관련 제도 한눈에 보기 — 개인회생·파산·채무조정·생계비계좌 | my김변",
+      "titleLength": 43,
+      "description": "개인회생, 개인파산, 신용회복위원회 채무조정, 금융회사 직접 채무조정 요청, 채무자대리인, 세금 체납, 법률구조, 생계비계좌의 일반 정보와 공식 연락처를 모았습니다. 추천 순서가 아닙니다.",
+      "descriptionLength": 105,
+      "canonical": "https://mykim.kr/guide/debt-programs.html",
+      "noindex": false,
+      "h1Count": 1,
+      "ogImage": "https://mykim.kr/mykim_logo.png",
+      "jsonLdTypes": [
+        "Article",
+        "BreadcrumbList",
+        "ItemList",
+        "ListItem",
+        "Organization"
+      ],
+      "jsonLdValid": true,
+      "datePublished": "",
+      "dateModified": "2026-10-29",
+      "section": "guide",
+      "hash": "ecd18be6e154004a",
+      "issues": [],
+      "lastmod": "2026-10-29"
     },
     {
       "file": "guide/debt-types.html",
@@ -430,7 +482,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "01aec16eeadf207a",
+      "hash": "5a4107a7757f7770",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -456,7 +508,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "e8f2e40939d8cf77",
+      "hash": "61bade17f1aa363b",
       "issues": [
         "description 짧음 (31자)"
       ],
@@ -484,7 +536,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "273c1f96f8d16d7c",
+      "hash": "d8c10ae7ccffece8",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -510,7 +562,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "299b5aad2553db4f",
+      "hash": "5232123ccec3814b",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -536,7 +588,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "7303d576402eae30",
+      "hash": "1c6cc2938f2aa4c9",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -562,7 +614,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "16b585c125e77402",
+      "hash": "534af1df9b72aacf",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -588,7 +640,7 @@
       "datePublished": "",
       "dateModified": "",
       "section": "guide",
-      "hash": "721c91ca9b3eff28",
+      "hash": "b00f03fdf1b11358",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -607,14 +659,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-28",
       "dateModified": "",
       "section": "article",
-      "hash": "4d3afae692a4b4c9",
+      "hash": "34214c2c908e9c20",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -633,14 +684,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-06-01",
       "dateModified": "",
       "section": "article",
-      "hash": "c832fcc70be8c09d",
+      "hash": "21ce7edfbd4c6799",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -659,14 +709,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-10",
       "dateModified": "",
       "section": "article",
-      "hash": "37cd60f4453dd94f",
+      "hash": "c5e35100d977f48a",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -685,14 +734,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-15",
       "dateModified": "",
       "section": "article",
-      "hash": "8a5326369d2b2986",
+      "hash": "84c70c8e975c8e4d",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -711,14 +759,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-30",
       "dateModified": "",
       "section": "article",
-      "hash": "82c8c16ddd45c0b2",
+      "hash": "c039042479de45af",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -737,14 +784,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-19",
       "dateModified": "",
       "section": "article",
-      "hash": "b0cafe8d3dde05cd",
+      "hash": "d798c09231099272",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -763,14 +809,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-25",
       "dateModified": "",
       "section": "article",
-      "hash": "017942cc2683afba",
+      "hash": "05ad93261458c82d",
       "issues": [],
       "lastmod": "2026-10-31"
     },
@@ -789,14 +834,13 @@
         "Article",
         "BreadcrumbList",
         "ListItem",
-        "Organization",
-        "Person"
+        "Organization"
       ],
       "jsonLdValid": true,
       "datePublished": "2026-05-22",
       "dateModified": "",
       "section": "article",
-      "hash": "d95adf05b8b8f282",
+      "hash": "307b61397fe510d5",
       "issues": [],
       "lastmod": "2026-10-31"
     }

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- scripts/debt-programs-build.mjs 가 빌드 때 만듭니다. 직접 고치지 마세요 (원본 src/content/debtProgramsData.js, 운영 값은 통합어드민 '제도 안내'). -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <title>채무 관련 제도 한눈에 보기 — 개인회생·파산·채무조정·생계비계좌 | my김변</title>
+    <meta name="description" content="개인회생, 개인파산, 신용회복위원회 채무조정, 금융회사 직접 채무조정 요청, 채무자대리인, 세금 체납, 법률구조, 생계비계좌의 일반 정보와 공식 연락처를 모았습니다. 추천 순서가 아닙니다.">
+    <link rel="canonical" href="https://mykim.kr/guide/debt-programs.html">
+    <meta property="og:title" content="채무 관련 제도 한눈에 보기 — 개인회생·파산·채무조정·생계비계좌 | my김변">
+    <meta property="og:description" content="개인회생, 개인파산, 신용회복위원회 채무조정, 금융회사 직접 채무조정 요청, 채무자대리인, 세금 체납, 법률구조, 생계비계좌의 일반 정보와 공식 연락처를 모았습니다. 추천 순서가 아닙니다.">
+    <meta property="og:url" content="https://mykim.kr/guide/debt-programs.html">
+    <meta property="og:type" content="article">
+    <meta property="og:image" content="https://mykim.kr/mykim_logo.png">
+    <meta property="og:locale" content="ko_KR">
+    <meta property="og:site_name" content="my김변">
+    <meta name="twitter:card" content="summary">
+    <meta name="article:modified_time" content="2026-10-29">
+    <style>
+        body { font-family: 'Pretendard Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; line-height: 1.8; color: #333; margin: 0; padding: 0; background: #fafafa; min-height: 100vh; display: flex; flex-direction: column; }
+        h1 { font-size: 24px; border-bottom: 2px solid #6C5CE7; padding-bottom: 12px; color: #2d3436; }
+        h2 { margin-top: 0; font-size: 18px; color: #6C5CE7; }
+        p, li { font-size: 15px; color: #444; }
+        ul { padding-left: 20px; }
+        li { margin-bottom: 6px; }
+        a { color: #4c3fcf; }
+        nav.breadcrumb { font-size: 12px; color: #777; margin-bottom: 16px; }
+        nav.breadcrumb a { color: #6C5CE7; text-decoration: none; }
+        .highlight-box { background: #f0edfc; border-left: 4px solid #6C5CE7; padding: 16px 20px; border-radius: 0 8px 8px 0; margin: 20px 0; font-size: 14px; color: #2d3436; }
+        .toc { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; margin: 16px 0 24px; }
+        .toc a { display: inline-block; padding: 8px 12px; border: 1px solid #ddd6fe; border-radius: 10px; background: #fff; text-decoration: none; font-size: 14px; }
+        .program { background: #fff; border: 1px solid #e8e5f8; border-radius: 16px; padding: 20px 22px; margin: 16px 0; scroll-margin-top: 16px; }
+        .program .sub { font-weight: 700; margin: 12px 0 4px; color: #2d3436; }
+        .program .links { list-style: none; padding-left: 0; }
+        .program .checked { font-size: 12px; color: #777; margin-bottom: 0; }
+        .cta-box { background: linear-gradient(135deg, #6C5CE7, #a29bfe); color: white; padding: 24px; border-radius: 12px; text-align: center; margin: 32px 0; }
+        .cta-box a { color: white; text-decoration: none; font-weight: 700; font-size: 16px; }
+        .footer-note { margin-top: 32px; font-size: 12px; color: #777; }
+    </style>
+    <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"홈","item":"https://mykim.kr"},{"@type":"ListItem","position":2,"name":"채무상담 가이드","item":"https://mykim.kr/guide/debt-management.html"},{"@type":"ListItem","position":3,"name":"제도 한눈에 보기","item":"https://mykim.kr/guide/debt-programs.html"}]},{"@type":"Article","headline":"채무 관련 제도 한눈에 보기 — 개인회생·파산·채무조정·생계비계좌","description":"개인회생, 개인파산, 신용회복위원회 채무조정, 금융회사 직접 채무조정 요청, 채무자대리인, 세금 체납, 법률구조, 생계비계좌의 일반 정보와 공식 연락처를 모았습니다. 추천 순서가 아닙니다.","dateModified":"2026-10-29","author":{"@type":"Organization","name":"마이김변 편집팀"},"publisher":{"@type":"Organization","name":"my김변","url":"https://mykim.kr"}},{"@type":"ItemList","name":"채무 관련 제도","itemListElement":[{"@type":"ListItem","position":1,"name":"개인회생","url":"https://mykim.kr/guide/debt-programs.html#rehab"},{"@type":"ListItem","position":2,"name":"개인파산","url":"https://mykim.kr/guide/debt-programs.html#bankruptcy"},{"@type":"ListItem","position":3,"name":"신용회복위원회 채무조정","url":"https://mykim.kr/guide/debt-programs.html#credit"},{"@type":"ListItem","position":4,"name":"금융회사에 직접 채무조정 요청","url":"https://mykim.kr/guide/debt-programs.html#direct_adjust"},{"@type":"ListItem","position":5,"name":"새도약기금","url":"https://mykim.kr/guide/debt-programs.html#new_leap"},{"@type":"ListItem","position":6,"name":"채무자대리인","url":"https://mykim.kr/guide/debt-programs.html#representation"},{"@type":"ListItem","position":7,"name":"세금 체납","url":"https://mykim.kr/guide/debt-programs.html#tax"},{"@type":"ListItem","position":8,"name":"소송구조·법률구조","url":"https://mykim.kr/guide/debt-programs.html#legal_aid"},{"@type":"ListItem","position":9,"name":"생계비계좌","url":"https://mykim.kr/guide/debt-programs.html#living_account"}]}]}</script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 font-sans antialiased flex flex-col min-h-screen">
+    <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-10 pb-20">
+    <nav class="breadcrumb"><a href="/">홈</a> &gt; <a href="/guide/debt-management.html">채무관리 가이드</a> &gt; 제도 한눈에 보기</nav>
+    <h1>채무 관련 제도 한눈에 보기</h1>
+    <div class="highlight-box">
+        빚 문제와 관련해 확인할 수 있는 제도의 일반 정보와 공식 연락처를 모았습니다. <strong>아래 목록은 추천 순서가 아닙니다.</strong> 어떤 제도를 쓸 수 있는지, 결과가 어떻게 될지는 소득·재산·채무 사정에 따라 달라지므로 해당 기관이나 변호사에게 확인하세요.
+    </div>
+    <ul class="toc"><li><a href="#rehab">개인회생</a></li><li><a href="#bankruptcy">개인파산</a></li><li><a href="#credit">신용회복위원회 채무조정</a></li><li><a href="#direct_adjust">금융회사에 직접 채무조정 요청</a></li><li><a href="#new_leap">새도약기금</a></li><li><a href="#representation">채무자대리인</a></li><li><a href="#tax">세금 체납</a></li><li><a href="#legal_aid">소송구조·법률구조</a></li><li><a href="#living_account">생계비계좌</a></li></ul>
+    <section class="program" id="rehab">
+        <h2>개인회생</h2>
+        <p>일정한 소득이 있는 분이 법원에 신청해, 인가된 변제계획대로 보통 3년(최대 5년) 갚고 나머지 채무를 면책받는 절차예요.</p>
+        <ul><li>무담보 10억 원·담보 15억 원 이하 채무가 대상이에요 (채무자회생법 제579조).</li><li>매달 정해진 금액을 갚고, 다 갚으면 법원이 면책을 정해요.</li><li>재산을 유지하면서 진행할 수 있지만, 재산 가치만큼은 갚아야 해요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>대법원 전자소송</strong> · <a href="https://ecfs.scourt.go.kr" rel="noopener nofollow" target="_blank">ecfs.scourt.go.kr</a></li><li><strong>대한법률구조공단</strong> · <a href="tel:132">☎ 132</a> · <a href="https://www.klac.or.kr" rel="noopener nofollow" target="_blank">www.klac.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="bankruptcy">
+        <h2>개인파산</h2>
+        <p>갚을 능력이 없는 상태를 법원이 확인하고 재산을 정리한 뒤, 면책 결정으로 남은 채무를 갚지 않아도 되게 하는 절차예요.</p>
+        <ul><li>소득이 없거나 생계비보다 적은 경우 검토해요.</li><li>면책 결정이 확정되면 남은 채무 책임이 면제돼요.</li><li>세금·벌금 등 일부 채무는 면책되지 않아요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>대법원 전자소송</strong> · <a href="https://ecfs.scourt.go.kr" rel="noopener nofollow" target="_blank">ecfs.scourt.go.kr</a></li><li><strong>대한법률구조공단</strong> · <a href="tel:132">☎ 132</a> · <a href="https://www.klac.or.kr" rel="noopener nofollow" target="_blank">www.klac.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="credit">
+        <h2>신용회복위원회 채무조정</h2>
+        <p>신용회복위원회에 신청해 은행·카드사 등 협약 금융회사 채무의 이자 감면·상환 기간 조정을 받는 제도예요. 법원 절차가 아니에요.</p>
+        <ul><li>신청이 접수되면 협약 금융회사의 추심이 멈추는 것이 일반적이에요.</li><li>사채 등 협약에 들지 않은 채무는 대상이 아니에요.</li><li>조정안대로 갚지 못하면 효력을 잃을 수 있어요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>신용회복위원회</strong> · <a href="tel:16005500">☎ 1600-5500</a> · <a href="https://www.ccrs.or.kr" rel="noopener nofollow" target="_blank">www.ccrs.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="direct_adjust">
+        <h2>금융회사에 직접 채무조정 요청</h2>
+        <p>개인채무자보호법(2024년 10월 시행)에 따라 연체된 대출을 금융회사에 직접 채무조정해 달라고 요청할 수 있어요.</p>
+        <ul><li>일정 금액 이하의 연체 대출이 대상이에요. 금액 기준은 금융회사나 금융감독원에서 확인해 주세요.</li><li>금융회사는 정해진 기간 안에 결과를 알려야 해요.</li><li>요청 중에는 추심이 제한될 수 있어요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>금융감독원</strong> · <a href="tel:1332">☎ 1332</a> · <a href="https://www.fss.or.kr" rel="noopener nofollow" target="_blank">www.fss.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="new_leap">
+        <h2>새도약기금</h2>
+        <p>오랫동안 연체된 채권을 정부가 만든 기금이 사들여 정리하는 제도예요. 내 채권이 대상인지는 공식 안내로 확인해요.</p>
+        <ul><li>대상 채권과 확인 방법은 공식 발표·안내에 따라요.</li><li>대상이 아니어도 회생·파산·신용회복 같은 다른 제도를 검토할 수 있어요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>금융위원회</strong> · <a href="https://www.fsc.go.kr" rel="noopener nofollow" target="_blank">www.fsc.go.kr</a></li><li><strong>서민금융진흥원</strong> · <a href="tel:1397">☎ 1397</a> · <a href="https://www.kinfa.or.kr" rel="noopener nofollow" target="_blank">www.kinfa.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="representation">
+        <h2>채무자대리인</h2>
+        <p>변호사를 대리인으로 선임해 채권자에게 알리면, 채권자가 채무자에게 직접 연락하는 추심이 제한돼요(법에서 정한 예외가 있어요).</p>
+        <ul><li>과도한 추심 연락에 대응할 때 검토해요.</li><li>불법 추심은 신고하거나 법적으로 대응할 수 있어요.</li><li>채무 자체를 줄이려면 별도 절차가 필요해요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>대한법률구조공단</strong> · <a href="tel:132">☎ 132</a> · <a href="https://www.klac.or.kr" rel="noopener nofollow" target="_blank">www.klac.or.kr</a></li><li><strong>금융감독원 불법사금융 신고</strong> · <a href="tel:1332">☎ 1332</a> · <a href="https://www.fss.or.kr" rel="noopener nofollow" target="_blank">www.fss.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="tax">
+        <h2>세금 체납</h2>
+        <p>체납 세금은 납부 유예·분할 납부·징수권 소멸시효 등을 확인할 수 있어요. 세금은 회생·파산으로 면책되지 않아 따로 대응해요.</p>
+        <ul><li>국세·지방세에 따라 신청처가 달라요.</li><li>압류가 있으면 해제 요건을 확인해요.</li><li>납기 연장·분할 납부를 신청할 수 있어요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>국세청</strong> · <a href="tel:126">☎ 126</a> · <a href="https://www.nts.go.kr" rel="noopener nofollow" target="_blank">www.nts.go.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="legal_aid">
+        <h2>소송구조·법률구조</h2>
+        <p>비용을 내기 어려운 분은 대한법률구조공단의 법률구조를 받거나, 법원에 소송구조(비용 납부 유예 등)를 신청할 수 있어요.</p>
+        <ul><li>소득·재산 기준이 있어요.</li><li>회생·파산 신청 비용에 쓸 수 있는지는 법원·공단이 정해요.</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>대한법률구조공단</strong> · <a href="tel:132">☎ 132</a> · <a href="https://www.klac.or.kr" rel="noopener nofollow" target="_blank">www.klac.or.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <section class="program" id="living_account">
+        <h2>생계비계좌</h2>
+        <p>2026년 2월부터 압류할 수 없는 생계비 전용 계좌를 한 사람당 1개 만들 수 있어요. 이 계좌의 일정 금액(250만 원)까지는 압류되지 않아요.</p>
+        <ul><li>민사집행법 제246조의2·시행령에 근거해요.</li><li>만드는 방법과 대상 금융회사는 거래 은행에서 확인해요.</li><li>이미 압류된 돈을 돌려받는 절차는 따로 있어요(압류금지채권 범위 변경 신청 등).</li></ul>
+        <p class="sub">공식 연락처</p>
+        <ul class="links"><li><strong>국가법령정보센터</strong> · <a href="https://www.law.go.kr" rel="noopener nofollow" target="_blank">www.law.go.kr</a></li></ul>
+        <p class="checked">공식 안내와 대조한 날: 2026-10-29</p>
+    </section>
+    <div class="cta-box">
+        <p style="margin: 0 0 12px 0; font-size: 18px; font-weight: 800; color: white;">내 상황을 먼저 정리해 보세요</p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; color: rgba(255,255,255,0.9);">채무·소득을 정리하고, 상담받을 변호사를 직접 고를 수 있어요.</p>
+        <a href="/check">내 상황 체크하기 →</a>
+    </div>
+    <p class="footer-note">이 페이지는 일반적인 제도 안내이며 개별 사건에 대한 법률 판단이 아닙니다. 기준과 절차는 바뀔 수 있으니 각 기관의 공식 안내를 함께 확인하세요.</p>
+    </main>
+    <!-- 3-Zone Dark Footer -->
+    <footer class="w-full bg-[#111827] text-slate-400 mt-auto">
+      <!-- ZONE 1: 내비게이션 링크 -->
+      <div class="border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <nav class="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-sm font-medium">
+            <a href="/about" class="text-slate-400 hover:text-white transition-colors">서비스 소개</a>
+            <a href="/faq" class="text-slate-400 hover:text-white transition-colors">자주 묻는 질문</a>
+            <a href="/?tab=guide" class="text-slate-400 hover:text-white transition-colors">서비스 이용안내</a>
+            <a href="/guide/debt-management" class="text-slate-400 hover:text-white transition-colors">채무관리 가이드</a>
+            <a href="/?tab=notices" class="text-slate-400 hover:text-white transition-colors">공지사항</a>
+            <a href="/?tab=inquiry" class="text-slate-400 hover:text-white transition-colors">1:1 문의</a>
+          </nav>
+        </div>
+      </div>
+
+            <!-- ZONE 2: 회사 정보 + 법적 면책 -->
+      <div class="border-b border-white/10">
+        <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-10">
+          <!-- 브랜드 -->
+          <div class="space-y-4 mb-6">
+            <div class="space-y-1">
+              <p class="text-white font-bold text-base">채무 해결, 변호사와 함께</p>
+              <p class="text-xs sm:text-sm text-slate-400">내 사건에 맞는 변호사를 비교하세요.</p>
+            </div>
+            <p class="text-base font-bold text-slate-200">몬스터랩</p>
+          </div>
+
+          <!-- 회사 정보 -->
+          <div class="space-y-1.5 text-xs sm:text-sm text-slate-400 leading-relaxed">
+            <p>
+              상호: 몬스터랩
+              <span class="mx-1.5 text-slate-600">|</span>
+              대표: 진성호
+              <span class="mx-1.5 text-slate-600">|</span>
+              사업자등록번호: 521-39-01355
+              <span class="mx-1.5 text-slate-600">|</span>
+              통신판매업 신고: 제2026-진접오남-0565호
+              <span class="mx-1.5 text-slate-600">|</span>
+              개인정보 보호책임자: 진성호(대표)
+              <span class="mx-1.5 text-slate-600">|</span>
+              호스팅 서비스 제공자: Vercel Inc.
+            </p>
+            <p>
+              사업장 주소지: 경기도 남양주시 진접읍 해밀예당1로189번길 3, 2102동 301호(원일플로라아파트)
+              <span class="mx-1.5 text-slate-600">|</span>
+              전화번호: 070-4187-2882
+              <span class="mx-1.5 text-slate-600">|</span>
+              고객문의: support@mykim.kr
+            </p>
+          </div>
+
+          <!-- 법적 면책 요약 -->
+          <div class="mt-6 pt-5 border-t border-white/5 space-y-2 text-xs text-slate-500 leading-relaxed">
+            <p>
+              본 서비스는 이용자가 자신의 채무·소득·지출 정보를 정리하고, 공개된 변호사 정보를 검색·열람할 수 있도록 지원하는 정보기술 플랫폼입니다. 플랫폼은 변호사 광고·정보 제공 서비스로, 의뢰인과 변호사 사이의 상담·수임 계약의 당사자가 아니며 이를 중개하거나 알선하지 않습니다. 변호사회원이 제공하는 법률 서비스의 내용과 질에 대한 책임은 해당 변호사회원에게 있습니다.
+            </p>
+            <p>
+              플랫폼은 변호사법 제34조에 의거 변호사 알선료·수수료 수취를 금지하는 구조를 채택하고 있으며, 광고비는 정액제로 상담 건수·수임 여부·사건 결과와 연동되지 않습니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ZONE 3: 하단 바 -->
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-3 text-xs sm:text-sm">
+          <div class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+            <a href="/tos" class="text-slate-400 hover:text-white transition-colors font-medium">서비스 이용약관</a>
+            <a href="/privacy" class="text-slate-400 hover:text-white transition-colors font-bold">개인정보 처리방침</a>
+            <a href="/legal" class="text-slate-400 hover:text-white transition-colors font-medium">법적 고지 및 책임한계</a>
+          </div>
+          <p class="text-slate-500 font-medium">© 2026 my김변. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+</body>
+</html>

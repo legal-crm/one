@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Modal, Button, Callout, inputClass } from '../ui';
-import { DEBT_PROGRAMS, DEBT_PROGRAM_ORDER } from '../debtPrograms';
+import { DEBT_PROGRAMS, visibleDebtPrograms, useDebtProgramsVersion } from '../debtPrograms';
 
 /** 정리 확인 화면에서 더 받는 사실 (I-3 일부) — 판정·결과 표시 없음 */
 export interface IntakeExtraFacts {
@@ -51,6 +51,7 @@ export default function IntakeReviewModal({
   onLearn: () => void;
 }) {
   const [x, setX] = useState<IntakeExtraFacts>(EMPTY_EXTRA);
+  useDebtProgramsVersion();
   const fp = profile || {};
   const groups = useMemo(() => [
     { title: '가족', rows: [
@@ -243,7 +244,7 @@ export default function IntakeReviewModal({
         <details className="rounded-2xl border border-slate-200 bg-white p-4">
           <summary className="cursor-pointer text-sm font-bold text-slate-900 min-h-10 flex items-center">회생·파산 말고 다른 제도도 있어요</summary>
           <ul className="mt-2 space-y-2 text-sm">
-            {DEBT_PROGRAM_ORDER.filter(k => k !== 'rehab' && k !== 'bankruptcy').map(k => {
+            {visibleDebtPrograms().filter(k => k !== 'rehab' && k !== 'bankruptcy').map(k => {
               const p = DEBT_PROGRAMS[k];
               const link = p.links[0];
               return (

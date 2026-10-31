@@ -3,6 +3,7 @@ import { SectionHeader, SegmentedTabs } from '../ui';
 import { cn } from '../../../utils/cn';
 import type { SolutionType } from '../SolutionDetailModal';
 import { SOLUTION_ITEMS, SOLUTION_LABELS, renderRemedyIcon, type RemedyInfo } from '../remedyData';
+import { visibleDebtPrograms, useDebtProgramsVersion } from '../debtPrograms';
 
 /**
  * 상황별·제도별 채무 정보 (기존 '상황별 채무관리' + '채무조정 방법' 두 섹션을 탭 하나로 통합)
@@ -24,6 +25,7 @@ const iconWrap =
 
 export default function SituationSection({ remedies, onSelectRemedy, onSelectSolution }: SituationSectionProps) {
   const [mode, setMode] = useState<Mode>('situation');
+  useDebtProgramsVersion();
 
   return (
     <section className="w-full py-12 md:py-16 bg-white border-b border-slate-200" aria-labelledby="landing-situation-title">
@@ -65,7 +67,7 @@ export default function SituationSection({ remedies, onSelectRemedy, onSelectSol
         ) : (
           <div role="tabpanel" id="landing-situation-panel-solution" aria-labelledby="landing-situation-tab-solution">
             <ul className="grid grid-cols-3 sm:grid-cols-5 gap-x-2 gap-y-3 sm:gap-x-4 max-w-4xl mx-auto">
-              {SOLUTION_ITEMS.map(({ type, icon: Icon }) => (
+              {SOLUTION_ITEMS.filter(i => visibleDebtPrograms().includes(i.type)).map(({ type, icon: Icon }) => (
                 <li key={type}>
                   <button type="button" onClick={() => onSelectSolution(type)} className={cn(itemClass, 'w-full')}>
                     <span className={iconWrap} aria-hidden="true">
@@ -76,6 +78,11 @@ export default function SituationSection({ remedies, onSelectRemedy, onSelectSol
                 </li>
               ))}
             </ul>
+            <p className="mt-5 text-center">
+              <a href="/guide/debt-programs.html" className="inline-flex items-center min-h-[44px] px-3 text-sm font-bold text-brand hover:underline whitespace-nowrap">
+                모든 제도를 한 페이지로 보기
+              </a>
+            </p>
           </div>
         )}
 

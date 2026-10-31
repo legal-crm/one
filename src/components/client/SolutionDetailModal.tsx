@@ -2,7 +2,7 @@ import React from 'react';
 import {
   X, ArrowRight, Scale, FileCheck2, HeartHandshake, UserCheck, Receipt, Handshake, Sprout, LifeBuoy, Wallet, Phone, ExternalLink,
 } from 'lucide-react';
-import { DEBT_PROGRAMS, type SolutionType } from './debtPrograms';
+import { DEBT_PROGRAMS, useDebtProgramsVersion, type SolutionType } from './debtPrograms';
 
 // 제도 데이터는 debtPrograms.ts 한 곳 (NF-1: 공식 연락처·확인일, 판단 없음)
 export type { SolutionType } from './debtPrograms';
@@ -29,6 +29,7 @@ export default function SolutionDetailModal({
   onClose,
   onStartDiagnosis,
 }: SolutionDetailModalProps) {
+  useDebtProgramsVersion();
   const data = DEBT_PROGRAMS[solutionType];
   const Icon = SOLUTION_ICON[solutionType];
 
