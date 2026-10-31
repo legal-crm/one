@@ -91,11 +91,11 @@ export function getMyPageNextAction(input: NextActionInput): NextAction {
       }
     }
     return {
-      title: '사건 진행과 변제 일정은 회생동행에서 관리하세요',
-      description: '법원 진행 단계, 월 변제금 납부 기록, 생활 위기 때 받을 수 있는 지원을 한곳에서 봅니다.',
+      title: '사건 진행과 변제 일정을 확인하세요',
+      description: '아래 사건 카드에서 법원 진행 단계, 할 일, 변제금 납부 기록을 한곳에서 봅니다.',
       tone: 'success',
-      action: { label: '회생동행 보기', kind: 'tab', tab: 'companion' },
-      defaultTab: 'companion',
+      action: { label: '사건 진행 보기', kind: 'tab', tab: 'diagnosis' },
+      defaultTab: 'diagnosis',
     };
   }
 

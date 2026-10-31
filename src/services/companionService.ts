@@ -13,7 +13,7 @@ import {
 import { CourtRepealThreshold } from '../types/courtPetitionTypes';
 import { getAuthHeaders } from '../supabaseClient';
 import { localYmd } from '../utils/localDate';
-import { readCompanionRecord, writeCompanionRecord, removeCompanionRecord } from './companionRecordStore';
+import { readCompanionRecord, writeCompanionRecord, removeCompanionRecord, listCompanionRecords } from './companionRecordStore';
 
 const COMPANION_STORAGE_KEY = 'mykim_rehab_companion_case';
 const CRISIS_STORAGE_KEY = 'mykim_life_crisis_reports';
@@ -987,6 +987,27 @@ export function loadBankruptcyCase(clientId?: string): BankruptcyCompanionCase |
     };
   }
   return null;
+}
+
+export type MyCompanionCaseEntry =
+  | { kind: 'rehab'; scope: string; data: RehabCompanionCase }
+  | { kind: 'bankruptcy'; scope: string; data: BankruptcyCompanionCase };
+
+/**
+ * 내가 회생동행에 등록한 사건 전부 ('내 사건' 목록용, MY-8). 시연용 가짜 사건은 뺀다.
+ * scope = 저장 키(상담 요청 ID 또는 '') — 사건 화면은 이 키로 다시 읽고 저장한다.
+ */
+export function listMyCompanionCases(): MyCompanionCaseEntry[] {
+  const out: MyCompanionCaseEntry[] = [];
+  for (const { scope, data } of listCompanionRecords<RehabCompanionCase>('rehab')) {
+    if (!data?.id || DEMO_REHAB_CASE_IDS.has(data.id)) continue;
+    out.push({ kind: 'rehab', scope, data });
+  }
+  for (const { scope, data } of listCompanionRecords<BankruptcyCompanionCase>('bankruptcy')) {
+    if (!data?.id || DEMO_BANKRUPTCY_CASE_IDS.has(data.id)) continue;
+    out.push({ kind: 'bankruptcy', scope, data });
+  }
+  return out.sort((a, b) => String(b.data.createdAt || '').localeCompare(String(a.data.createdAt || '')));
 }
 
 /** 기존 사건에 병합 저장 — 사건이 없고 완전한 데이터(id)도 아니면 저장하지 않는다 (부분 값으로 가짜 사건이 생기지 않도록) */

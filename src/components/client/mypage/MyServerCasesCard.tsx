@@ -5,7 +5,7 @@
 // - 판단·가능성 표현 없이 진행 사실만 보여 준다(제109조)
 // ============================================================
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Briefcase, MessageSquare, RefreshCw } from 'lucide-react';
+import { AlertTriangle, Briefcase, FolderPlus, MessageSquare, Plus, RefreshCw } from 'lucide-react';
 
 /** '내 사건' 카드에서 그 사건의 상담방 열기 (ClientRole이 받아 상담 탭으로 옮긴다) */
 export const OPEN_CONSULT_CHAT_EVENT = 'mykim:open-consult-chat';
@@ -18,14 +18,44 @@ import MyDebtCertProgress from './MyDebtCertProgress';
 import MyPlanPaymentsSection from './MyPlanPaymentsSection';
 import MyCaseFormsSection from './MyCaseFormsSection';
 import MyBankruptcySchedule from './MyBankruptcySchedule';
+import MyCompanionCaseCard from './MyCompanionCaseCard';
+import CaseRegistrationModal from '../companion/CaseRegistrationModal';
+import { listMyCompanionCases, type MyCompanionCaseEntry } from '../../../services/companionService';
 
 const CASE_TYPE_LABEL = { rehab: '개인회생', bankruptcy: '개인파산·면책' } as const;
 const GROUP_LABELS = ['상담', '계약', '서류 준비', '신청·접수', '법원 심사', '변제·면책'];
 
-export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean }) {
+interface MyServerCasesCardProps {
+  isLoggedIn: boolean;
+  /** 직접 등록하는 사건을 저장할 키 (지금 상담 요청 ID, 없으면 '') */
+  registerScopeId?: string;
+  userAlias?: string;
+}
+
+/**
+ * 직접 등록한 사건 목록 — 사무소가 같은 상담 요청으로 사건 기록을 시작했고 출처가 '마이김변 변호사'면 뺀다
+ * (그 사건은 사무소 기록이 원본이고, 변제금 납부는 사무소 '변제 수행 장부'로 확인한다)
+ */
+function visibleCompanionCases(cases: MyCaseSummary[]): MyCompanionCaseEntry[] {
+  const serverKeys = new Set(cases.map(c => c.workspaceKey));
+  return listMyCompanionCases().filter(e => !(e.data.sourceType === 'mykim_lawyer' && e.scope && serverKeys.has(e.scope)));
+}
+
+export default function MyServerCasesCard({ isLoggedIn, registerScopeId, userAlias }: MyServerCasesCardProps) {
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
   const [cases, setCases] = useState<MyCaseSummary[]>([]);
   const [error, setError] = useState('');
+  const [companionCases, setCompanionCases] = useState<MyCompanionCaseEntry[]>([]);
+  const [registerOpen, setRegisterOpen] = useState(false);
+
+  // 회생동행 기록은 로그인 때 서버에서 한 번 읽어 메모리에 둔다 → 바뀌면 다시 센다
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    const refresh = () => setCompanionCases(visibleCompanionCases(cases));
+    refresh();
+    window.addEventListener('mykim:companion-changed', refresh);
+    return () => window.removeEventListener('mykim:companion-changed', refresh);
+  }, [isLoggedIn, cases]);
 
   const load = useCallback(async () => {
     setState('loading');
@@ -70,17 +100,66 @@ export default function MyServerCasesCard({ isLoggedIn }: { isLoggedIn: boolean 
     );
   }
 
-  // 사무소가 아직 사건 기록을 시작하지 않았으면 이 카드는 숨긴다(아래 기존 진행 화면이 보임)
-  if (cases.length === 0) return null;
+  const registerModal = (
+    <CaseRegistrationModal
+      isOpen={registerOpen}
+      onClose={() => setRegisterOpen(false)}
+      onSuccess={() => setCompanionCases(visibleCompanionCases(cases))}
+      initialAlias={userAlias}
+      clientId={registerScopeId || undefined}
+    />
+  );
+
+  const registerButton = (
+    <button
+      type="button"
+      onClick={() => setRegisterOpen(true)}
+      className="min-h-[44px] px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold text-slate-800 hover:bg-slate-50 inline-flex items-center gap-2 whitespace-nowrap active:scale-[0.98]"
+    >
+      <Plus className="w-4 h-4" aria-hidden="true" />
+      사건 직접 등록
+    </button>
+  );
+
+  // 사무소 사건도, 직접 등록한 사건도 없으면 등록 안내만 (아래 기존 진행 화면은 그대로 보임)
+  if (cases.length === 0 && companionCases.length === 0) {
+    return (
+      <section className="rounded-2xl border border-dashed border-slate-300 bg-white p-5 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold text-slate-900">다른 사무소에 맡겼거나 직접 진행 중인 사건이 있나요?</p>
+          <p className="mt-1 text-sm text-slate-600 break-keep">사건번호와 변제 조건을 등록하면 납부 일정·절차 진행을 여기서 함께 관리할 수 있어요. 기록은 내 계정에만 저장돼요.</p>
+        </div>
+        {registerButton}
+        {registerModal}
+      </section>
+    );
+  }
 
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
-      <h2 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
-        <Briefcase className="w-5 h-5 text-brand" aria-hidden="true" />사무소가 기록한 진행 상황
-      </h2>
-      <ul className="space-y-3">
-        {cases.map(c => <CaseCard key={c.caseId} c={c} />)}
-      </ul>
+      {cases.length > 0 && (
+        <>
+          <h2 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
+            <Briefcase className="w-5 h-5 text-brand" aria-hidden="true" />사무소가 기록한 진행 상황
+          </h2>
+          <ul className="space-y-3">
+            {cases.map(c => <CaseCard key={c.caseId} c={c} />)}
+          </ul>
+        </>
+      )}
+      {companionCases.length > 0 && (
+        <>
+          <h2 className="flex items-center gap-2 text-base font-extrabold text-slate-900">
+            <FolderPlus className="w-5 h-5 text-brand" aria-hidden="true" />직접 등록한 사건
+          </h2>
+          <p className="text-xs text-slate-600">다른 사무소에 맡긴 사건이나 직접 진행하는 사건이에요. 기록은 내 계정에만 저장되고 사무소에는 보이지 않아요.</p>
+          <ul className="space-y-3">
+            {companionCases.map(e => <MyCompanionCaseCard key={`${e.kind}|${e.scope}`} entry={e} userAlias={userAlias} />)}
+          </ul>
+        </>
+      )}
+      <div>{registerButton}</div>
+      {registerModal}
     </section>
   );
 }

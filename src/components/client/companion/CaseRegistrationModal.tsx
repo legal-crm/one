@@ -261,7 +261,7 @@ export default function CaseRegistrationModal({
         otherFixedExpenses: Number(otherFixedExpenses) || 0,
       });
 
-      toast.success('회생동행 사건을 등록했습니다. 이 기기에 저장됩니다.');
+      toast.success("사건을 등록했어요. '내 사건'에서 납부 일정과 진행을 확인할 수 있어요.");
       onSuccess('individual_rehab');
       onClose();
     } catch (err) {

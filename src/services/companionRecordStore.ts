@@ -47,6 +47,29 @@ export function readCompanionRecord<T>(kind: CompanionKind, scope: string): T | 
   return readLocal<T>(kind, scope);
 }
 
+/** 이 계정(로그인 전엔 이 기기)의 회생동행 기록 전부 — '내 사건' 목록에 직접 등록한 사건을 함께 보여 줄 때 (MY-8) */
+export function listCompanionRecords<T>(kind: CompanionKind): Array<{ scope: string; data: T }> {
+  const out: Array<{ scope: string; data: T }> = [];
+  if (serverUser) {
+    const prefix = `${kind}|`;
+    for (const [key, value] of cache) {
+      if (key.startsWith(prefix) && value && typeof value === 'object') out.push({ scope: key.slice(prefix.length), data: value as T });
+    }
+    return out;
+  }
+  try {
+    const base = LOCAL_BASE[kind];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key || (key !== base && !key.startsWith(`${base}_`))) continue;
+      const scope = key === base ? '' : key.slice(base.length + 1);
+      const data = readLocal<T>(kind, scope);
+      if (data) out.push({ scope, data });
+    }
+  } catch { /* ignore */ }
+  return out;
+}
+
 export function writeCompanionRecord(kind: CompanionKind, scope: string, data: unknown): void {
   if (serverUser && isSupabaseConfigured) {
     cache.set(cacheKey(kind, scope), data);

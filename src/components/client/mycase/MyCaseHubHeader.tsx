@@ -1,5 +1,5 @@
 import React from 'react';
-import { FolderOpen, HeartHandshake, MessageSquare, ShieldCheck } from 'lucide-react';
+import { FolderOpen, MessageSquare, ShieldCheck } from 'lucide-react';
 import { cn } from '../../../utils/cn';
 import { Badge } from '../ui';
 import { clientTabHref, handleSpaLinkClick, type MyCaseHubSection } from '../clientTabs';
@@ -7,7 +7,7 @@ import { clientTabHref, handleSpaLinkClick, type MyCaseHubSection } from '../cli
 /**
  * '내 사건' 머리글 (MY-1)
  * 이전에는 '내 관리방'(상담·제안·계약)과 '마이페이지'(사건·회생동행·설정)가 따로 있어 같은 일을 두 곳에서 찾았다.
- * 이제 한 화면 '내 사건' 안에서 사건 진행 · 상담 · 회생동행을 고르고, 알림·계정·동의는 '내 정보'로 옮겼다.
+ * 이제 한 화면 '내 사건' 안에서 사건 진행 · 상담을 고르고(직접 등록한 회생동행 사건도 사건 진행 안, MY-8), 알림·계정·동의는 '내 정보'로 옮겼다.
  * 영역마다 주소가 따로 있다(?tab=mypage / ?tab=chat) — 알림 링크·뒤로 가기가 그대로 동작한다.
  */
 interface MyCaseHubHeaderProps {
@@ -21,7 +21,6 @@ interface MyCaseHubHeaderProps {
 const SECTIONS: { id: MyCaseHubSection; label: string; icon: React.ElementType; href: string }[] = [
   { id: 'progress', label: '사건 진행', icon: FolderOpen, href: clientTabHref('mypage') },
   { id: 'consult', label: '상담', icon: MessageSquare, href: clientTabHref('chat') },
-  { id: 'companion', label: '회생동행', icon: HeartHandshake, href: clientTabHref('mypage') },
 ];
 
 export default function MyCaseHubHeader({ section, onSelect, userAlias, consultDot = false }: MyCaseHubHeaderProps) {

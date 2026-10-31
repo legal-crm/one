@@ -1,7 +1,6 @@
 import { FileCheck, FileText } from 'lucide-react';
 import { Badge } from './ui';
 import NextActionCard from './mypage/NextActionCard';
-import RehabCompanionView from './companion/RehabCompanionView';
 import { getRequestRoomStage } from './consultFlow';
 import ClientProposalTracker from './proposal/ClientProposalTracker';
 import { useMyPageModel, type MyPageViewProps } from './mypage/useMyPageModel';
@@ -20,7 +19,7 @@ export default function MyPageView(props: MyPageViewProps) {
   const vm = useMyPageModel(props);
   const {
     activeRequest, allProposals, assignedLawyer, companionFallbackIds, contractedProposal,
-    handleStartContractFromProposal, isCompact, isContracted, lawyers, mypageTab, mypageTabsRef, nextAction,
+    handleStartContractFromProposal, isCompact, isContracted, lawyers, mypageTabsRef, nextAction,
     onNavigateToChat, openDocRequestCount, profile, rejectedDocCount, requests, runNextAction,
     setSelectedProposalForReport, userAlias,
   } = vm;
@@ -46,31 +45,23 @@ export default function MyPageView(props: MyPageViewProps) {
       )}
 
       <NextActionCard next={nextAction} onAction={runNextAction} />
-      {/* 영역(사건 진행 · 회생동행)은 '내 사건' 머리글에서 고른다. 다음 할 일 버튼이 영역을 바꾸면 이 위치로 스크롤 */}
+      {/* 다음 할 일 버튼이 영역을 고르면 이 위치로 스크롤 */}
       <div ref={mypageTabsRef} className="scroll-mt-4" aria-hidden="true" />
-      {mypageTab === 'diagnosis' && openDocRequestCount + rejectedDocCount > 0 && (
+      {openDocRequestCount + rejectedDocCount > 0 && (
         <p className="text-sm font-bold text-amber-800">
           서류 할 일 {openDocRequestCount + rejectedDocCount}건이 있어요. 아래 서류함에서 확인해 주세요.
         </p>
       )}
-      {/* ═══ 회생동행 (진행·변제 관리) ═══ */}
-      {!isCompact && mypageTab === 'companion' && (
-        <div>
-          <RehabCompanionView
-            userAlias={userAlias}
-            clientId={activeRequest?.id || requests[0]?.id}
-            fallbackClientIds={companionFallbackIds}
-            onNavigateToChat={onNavigateToChat}
-            embedded
-          />
-        </div>
-      )}
-
-      {/* ═══ 사건 진행: 진단·제안서·서류·계약·수임료 ═══ */}
-      {mypageTab === 'diagnosis' && (
+      {/* ═══ 사건 진행: 사무소 사건 + 직접 등록한 사건(회생동행, MY-8) · 제안서·서류·계약 ═══
+          (이전: '회생동행'이 따로 된 영역이라 같은 사건을 두 곳에서 찾았다) */}
+      {(
         <div className="space-y-6 animate-fadeIn">
-          {/* 서버 사건 기록 (사무소가 기록한 단계·날짜, CM-11) */}
-          <MyServerCasesCard isLoggedIn={vm.isLoggedIn} />
+          {/* 서버 사건 기록 (사무소가 기록한 단계·날짜, CM-11) + 직접 등록한 사건 */}
+          <MyServerCasesCard
+            isLoggedIn={vm.isLoggedIn}
+            registerScopeId={activeRequest?.id || requests[0]?.id || companionFallbackIds?.[0]}
+            userAlias={userAlias}
+          />
           {/* ═══ [제안서 중심 Proposal-First 트래커] ═══ */}
           {/* 계약 전 단계(!isContracted)일 때는 제안서 작성 중/도착 상태를 최우선 센터피스로 렌더링 */}
           {/* 요청을 보낸 뒤에만 진행을 보여 준다 (아무에게도 요청하지 않았는데 '검토 중'으로 보이지 않게) */}

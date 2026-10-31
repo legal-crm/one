@@ -2212,11 +2212,15 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
           <TabErrorBoundary key={activeTab} tabName={isClientTab(activeTab) ? CLIENT_TAB_LABELS[activeTab] : undefined} onNavigateHome={() => setActiveTab('landing')}>
           <React.Suspense fallback={<PageSkeleton />}>
             {/* TAB: 회생동행 (3~5년 변제관리 & 면책 완주) */}
-            {/* 최상위 회생동행 = 소개 화면. 실제 관리는 마이페이지 '회생동행' 탭 (IA 통합안) */}
+            {/* 최상위 회생동행 = 소개 화면. 실제 관리는 '내 사건' 사건 진행 목록의 사건 카드 (MY-8) */}
             {activeTab === 'companion' && (
               <CompanionIntroView
                 lookupIds={[activeRequest?.id, isLoggedIn ? currentClientId : undefined, undefined]}
-                onOpenCompanion={() => { setMypageSubTab('companion'); setActiveTab('mypage'); window.scrollTo({ top: 0 }); }}
+                onOpenCompanion={() => {
+                  setMypageSubTab('diagnosis'); setMypageSubTabReq(n => n + 1); setActiveTab('mypage'); window.scrollTo({ top: 0 });
+                  // '내 사건'은 로그인 후 보인다 (등록한 사건 기록은 계정에 저장)
+                  if (!isLoggedIn) setShowAuthModal(true);
+                }}
                 onStartCheck={handleStartDiagnosisClick}
               />
             )}
@@ -2251,7 +2255,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 consultDot={hasUnreadConsultUpdate}
                 onSelect={(section) => {
                   if (section === 'consult') { setActiveTab('chat'); return; }
-                  setMypageSubTab(section === 'companion' ? 'companion' : 'diagnosis');
+                  setMypageSubTab('diagnosis');
                   setMypageSubTabReq(n => n + 1);
                   setActiveTab('mypage');
                 }}

@@ -31,7 +31,12 @@ interface CompanionDashboardProps {
   onOpenRegisterModal: () => void;
   onUpdateCashflow: (updated: any) => void;
   onNavigateToSupport?: () => void;
+  /** '내 사건' 사건 화면 탭마다 보여 줄 부분 (MY-8). 없으면 전부 */
+  sections?: CompanionDashboardSection[];
 }
+
+/** month 이번 달 할 일 · progress 사건 요약·변제 진행 · schedule 회차별 납부 기록 · budget 생활비 점검 · tools 도구와 안내 · docs 서류 보관함 */
+export type CompanionDashboardSection = 'month' | 'progress' | 'schedule' | 'budget' | 'tools' | 'docs';
 
 const PAID_STATUSES: RepaymentVerificationStatus[] = ['court_confirmed', 'receipt_uploaded', 'self_marked'];
 const isPaidRound = (s: RepaymentRoundItem) => PAID_STATUSES.includes(s.status);
@@ -111,8 +116,10 @@ export default function CompanionDashboard({
   onOpenPaymentModal,
   onOpenCrisisModal,
   onOpenRegisterModal,
-  onNavigateToSupport
+  onNavigateToSupport,
+  sections,
 }: CompanionDashboardProps) {
+  const show = (s: CompanionDashboardSection) => !sections || sections.includes(s);
   const schedules = Array.isArray(caseData?.schedules) ? caseData.schedules : [];
   const documents = Array.isArray(caseData?.documents) ? caseData.documents : [];
   const today = localYmd();
@@ -295,6 +302,7 @@ export default function CompanionDashboard({
     <div className="space-y-5 text-left">
 
       {/* ═══ 1. 이번 달 할 일 (가장 위) ═══ */}
+      {show('month') && (
       <section aria-labelledby="companion-this-month" className="rounded-3xl border-2 border-brand/15 bg-white p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
@@ -390,12 +398,14 @@ export default function CompanionDashboard({
         </div>
         {!allDone && focusRound && (
           <p className="text-xs text-slate-600 leading-relaxed">
-            기록은 이 기기에 저장되는 개인 기록이에요. 법원의 공식 변제 현황과 다를 수 있어요.
+            기록은 내 계정에만 저장되는 개인 기록이에요(담당 사무소에는 보이지 않아요). 법원의 공식 변제 현황과 다를 수 있어요.
           </p>
         )}
       </section>
+      )}
 
       {/* ═══ 2. 사건 요약 · 변제 진행 ═══ */}
+      {show('progress') && (
       <section aria-labelledby="companion-progress" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
@@ -451,8 +461,10 @@ export default function CompanionDashboard({
         </dl>
         <p className="text-xs text-slate-600 leading-relaxed">직접 남긴 기록을 바탕으로 계산했어요. 법원 공식 변제 현황과 다를 수 있어요.</p>
       </section>
+      )}
 
       {/* ═══ 3. 회차별 납부 일정 (모바일: 다가오는 3회차 + 연도별 펼치기) ═══ */}
+      {show('schedule') && (
       <section aria-labelledby="companion-schedule" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-3">
           <div>
@@ -534,8 +546,10 @@ export default function CompanionDashboard({
           </>
         )}
       </section>
+      )}
 
       {/* ═══ 4. 이번 달 생활비 점검 ═══ */}
+      {show('budget') && (
       <section aria-labelledby="companion-cashflow" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
@@ -594,8 +608,10 @@ export default function CompanionDashboard({
           </Callout>
         ) : null}
       </section>
+      )}
 
       {/* ═══ 5. 도구와 안내 (이전: 큰 배너 5개가 이번 달 정보보다 위에 있었음) ═══ */}
+      {show('tools') && (
       <section aria-labelledby="companion-tools" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-3">
         <h2 id="companion-tools" className="text-lg font-bold text-slate-900">도구와 안내</h2>
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -629,14 +645,16 @@ export default function CompanionDashboard({
           </Button>
         )}
       </section>
+      )}
 
       {/* ═══ 6. 서류 보관함 ═══ */}
+      {show('docs') && (
       <section aria-labelledby="companion-docs" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div>
             <h2 id="companion-docs" className="text-lg font-bold text-slate-900">서류 보관함</h2>
             <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">
-              등록한 서류 목록이에요. 이 기기(브라우저)에만 저장되고 담당 사무소로 자동 전송되지 않아요.
+              등록한 서류 목록이에요. 내 계정에만 저장되고 담당 사무소로 자동 전송되지 않아요.
             </p>
           </div>
           <Badge tone="neutral">{documents.length}개</Badge>
@@ -673,6 +691,7 @@ export default function CompanionDashboard({
           </ul>
         )}
       </section>
+      )}
 
       {/* 대법원 사건 조회 안내 모달 */}
       <CourtCaseModal

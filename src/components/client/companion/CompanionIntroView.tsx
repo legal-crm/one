@@ -53,7 +53,7 @@ export default function CompanionIntroView({ lookupIds, onOpenCompanion, onStart
         description="개인회생·파산을 신청한 뒤 3~5년 동안 이어지는 변제와 법원 절차를 한곳에서 관리합니다."
         actions={
           <Button size="lg" onClick={onOpenCompanion} rightIcon={<ArrowRight className="w-4 h-4" aria-hidden="true" />}>
-            {hasCase ? '내 회생동행 열기' : '회생동행 시작하기'}
+            {hasCase ? "'내 사건'에서 열기" : "'내 사건'에서 시작하기"}
           </Button>
         }
       />
@@ -80,16 +80,16 @@ export default function CompanionIntroView({ lookupIds, onOpenCompanion, onStart
       <section aria-labelledby="companion-start" className="rounded-2xl border border-slate-200 bg-slate-50 p-5 sm:p-6 space-y-3">
         <h2 id="companion-start" className="text-base font-bold text-slate-900">어떻게 시작하나요?</h2>
         <ul className="space-y-2 text-sm text-slate-700 leading-relaxed break-keep list-disc pl-5">
-          <li>마이김변에서 변호사에게 사건을 맡기면, 담당 변호사가 입력한 사건 정보가 자동으로 표시됩니다.</li>
-          <li>다른 곳에서 진행 중인 사건도 사건번호와 변제 조건(월 변제금·납부일·회차)을 직접 등록해 관리할 수 있어요.</li>
-          <li>관리 화면은 '내 사건'의 '회생동행'에 있습니다.</li>
+          <li>마이김변에서 변호사에게 사건을 맡기면, 담당 사무소가 기록한 진행 상황이 '내 사건'에 표시됩니다.</li>
+          <li>다른 사무소에 맡겼거나 직접 진행하는 사건도 '내 사건'에서 사건번호와 변제 조건(월 변제금·납부일·회차)을 등록해 관리할 수 있어요.</li>
+          <li>등록한 사건의 기록은 내 계정에만 저장되고, 로그인하면 어느 기기에서나 볼 수 있어요.</li>
         </ul>
         <p className="text-sm text-slate-600 break-keep">
           아직 신청 전이라면{' '}
           <button type="button" onClick={onStartCheck} className="font-bold text-brand underline underline-offset-2 hover:text-brand-hover">
             내 상황 체크
           </button>
-          로 변제금부터 가늠해 보세요.
+          로 채무 상황부터 정리해 보세요.
         </p>
       </section>
     </div>

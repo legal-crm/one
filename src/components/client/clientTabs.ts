@@ -65,13 +65,16 @@ export const CLIENT_TAB_LABELS: Record<ClientTab, string> = {
 /** '내 사건' 안의 영역 (사건 진행 · 회생동행). '상담'은 chat 탭, 계정·알림은 '내 정보'(me) 탭 */
 export type MyPageSection = 'companion' | 'diagnosis';
 
-/** '내 사건' 화면의 세 영역: 사건 진행(mypage) · 상담(chat) · 회생동행(mypage) */
-export type MyCaseHubSection = 'progress' | 'consult' | 'companion';
+/**
+ * '내 사건' 화면의 두 영역: 사건 진행(mypage) · 상담(chat).
+ * 회생동행(직접 등록한 사건)은 사건 진행 목록 안에 같은 사건 카드로 들어갔다(MY-8). 옛 'companion' 영역 값은 사건 진행으로 연다.
+ */
+export type MyCaseHubSection = 'progress' | 'consult';
 
 /** 지금 화면 → '내 사건' 영역 (내 사건 화면이 아니면 null) */
-export function myCaseHubSectionOf(tab: ClientTab, mypageSection?: MyPageSection): MyCaseHubSection | null {
+export function myCaseHubSectionOf(tab: ClientTab, _mypageSection?: MyPageSection): MyCaseHubSection | null {
   if (tab === 'chat') return 'consult';
-  if (tab === 'mypage') return mypageSection === 'companion' ? 'companion' : 'progress';
+  if (tab === 'mypage') return 'progress';
   return null;
 }
 

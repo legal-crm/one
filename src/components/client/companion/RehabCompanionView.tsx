@@ -12,7 +12,7 @@ import {
   saveBankruptcyCase
 } from '../../../services/companionService';
 import { SegmentedTabs } from '../ui';
-import CompanionDashboard from './CompanionDashboard';
+import CompanionDashboard, { type CompanionDashboardSection } from './CompanionDashboard';
 import BankruptcyCompanionDashboard from './BankruptcyCompanionDashboard';
 import SupportCenterTab from './SupportCenterTab';
 import RecoveryAcademyTab from './RecoveryAcademyTab';
@@ -31,7 +31,23 @@ interface RehabCompanionViewProps {
   fallbackClientIds?: string[];
   /** 마이페이지 탭 안에 넣을 때 (바깥 여백을 줄인다) */
   embedded?: boolean;
+  /**
+   * '내 사건' 사건 화면 안에서 쓸 때 (MY-8): 사건 유형을 고정하고, 고른 탭의 내용만 보여 준다(안쪽 메뉴 없음).
+   * todo 이번 달 할 일·생활비·도구 / progress 진행·서류 / payments 변제금 납부 기록 / help 공적 지원·회복 아카데미
+   */
+  caseKind?: 'rehab' | 'bankruptcy';
+  section?: CompanionCaseSection;
+  /** 사건 화면에서 '공적 지원' 도구를 누르면 도움말 탭으로 */
+  onOpenHelp?: () => void;
 }
+
+export type CompanionCaseSection = 'todo' | 'progress' | 'payments' | 'help';
+
+const SECTION_PARTS: Record<Exclude<CompanionCaseSection, 'help'>, CompanionDashboardSection[]> = {
+  todo: ['month', 'budget', 'tools'],
+  progress: ['progress', 'docs'],
+  payments: ['schedule'],
+};
 
 /** CRM(담당 변호사 등록 정보)이 있으면 동기화, 없으면 이 기기에 저장된 사건 — 둘 다 없으면 null */
 function resolveRehabCase(clientId: string | undefined, alias: string): RehabCompanionCase | null {
@@ -93,13 +109,20 @@ export default function RehabCompanionView({
   clientId,
   fallbackClientIds,
   embedded = false,
+  caseKind,
+  section,
+  onOpenHelp,
 }: RehabCompanionViewProps) {
   const fallbackKey = (fallbackClientIds || []).join('|');
-  const [activeSubTab, setActiveSubTab] = useState<CompanionSubTab>('dashboard');
+  const inCase = !!section;
+  const [activeSubTabState, setActiveSubTab] = useState<CompanionSubTab>('dashboard');
+  const activeSubTab: CompanionSubTab = inCase ? (section === 'help' ? 'support' : 'dashboard') : activeSubTabState;
+  const openSupport = () => (inCase ? onOpenHelp?.() : setActiveSubTab('support'));
   const [rehabCase, setRehabCase] = useState<RehabCompanionCase | null>(() => resolveRehabCaseWithFallback(clientId, userAlias, fallbackClientIds));
   const [bankruptcyCase, setBankruptcyCase] = useState<BankruptcyCompanionCase | null>(() => loadBankruptcyCaseWithFallback(clientId, fallbackClientIds));
   // 저장된 사건 유형에 맞춰 시작 모드 결정
-  const [caseTypeMode, setCaseTypeMode] = useState<'rehab' | 'bankruptcy'>(() => (!rehabCase && bankruptcyCase ? 'bankruptcy' : 'rehab'));
+  const [caseTypeModeState, setCaseTypeMode] = useState<'rehab' | 'bankruptcy'>(() => (!rehabCase && bankruptcyCase ? 'bankruptcy' : 'rehab'));
+  const caseTypeMode = caseKind || caseTypeModeState;
 
   const refreshData = useCallback(() => {
     setRehabCase(resolveRehabCaseWithFallback(clientId, userAlias, fallbackClientIds));
@@ -164,6 +187,7 @@ export default function RehabCompanionView({
 
       {/* ═══ 상단 메뉴: 탭(모바일에서도 한 줄) · 대시보드일 때만 사건 유형 전환 ═══
           (이전: 탭 3개 + '사건 등록'이 한 줄에서 잘리고, 사건이 없을 때 '사건 등록'이 빈 화면의 '내 사건 등록하기'와 겹침) */}
+      {!inCase && (
       <div className="space-y-3">
         <SegmentedTabs<CompanionSubTab>
           tabs={SUB_TABS.map(t => ({ id: t.id, label: t.label, icon: <span className="hidden sm:inline-flex">{t.icon}</span> }))}
@@ -193,9 +217,10 @@ export default function RehabCompanionView({
           </div>
         )}
       </div>
+      )}
 
       {/* ═══ 탭 컨텐츠 ═══ */}
-      <div role="tabpanel" id={`companion-panel-${activeSubTab}`} aria-labelledby={`companion-tab-${activeSubTab}`}>
+      <div {...(inCase ? {} : { role: 'tabpanel', id: `companion-panel-${activeSubTab}`, 'aria-labelledby': `companion-tab-${activeSubTab}` })}>
       {activeSubTab === 'dashboard' && (
         caseTypeMode === 'rehab' ? (
           rehabCase ? (
@@ -210,7 +235,8 @@ export default function RehabCompanionView({
                 saveRehabCompanionCase(updatedCase, clientId);
                 setRehabCase(updatedCase);
               }}
-              onNavigateToSupport={() => setActiveSubTab('support')}
+              onNavigateToSupport={openSupport}
+              sections={inCase && section !== 'help' ? SECTION_PARTS[section!] : undefined}
             />
           ) : emptyState('rehab')
         ) : (
@@ -227,11 +253,14 @@ export default function RehabCompanionView({
       )}
 
       {activeSubTab === 'support' && (
-        <SupportCenterTab caseData={rehabCase} />
+        <SupportCenterTab caseData={caseTypeMode === 'rehab' ? rehabCase : null} />
       )}
 
-      {activeSubTab === 'academy' && (
-        <RecoveryAcademyTab />
+      {/* 사건 화면의 '도움말' = 공적 지원 + 회복 아카데미(면책신청서 양식 포함) */}
+      {(activeSubTab === 'academy' || (inCase && section === 'help')) && (
+        <div className={inCase ? 'mt-6' : undefined}>
+          <RecoveryAcademyTab />
+        </div>
       )}
       </div>
 
@@ -264,7 +293,7 @@ export default function RehabCompanionView({
         clientId={clientId}
         onNavigateToSupport={() => {
           setIsCrisisOpen(false);
-          setActiveSubTab('support');
+          openSupport();
         }}
       />
     </div>
