@@ -2784,6 +2784,8 @@ export default function LawyerRole({
       if (linkId === 'staff') { setActiveTab('staff-management'); return; }
     }
     if (linkType === 'ads') { setActiveTab('billing'); return; }
+    // 계산 기준표 새 버전 알림 (LS-12) → 설정 › 법률 기준
+    if (linkType === 'calc_standard') { setActiveTab('settings'); setSettingsCategory('rules' as any); return; }
     if (linkType === 'sales_lead') { setActiveTab('sales-leads'); return; }
     if (linkType === 'work_queue' || linkType === 'notice') { setActiveTab('dashboard'); return; }
     if (linkType === 'proposal_review') {
