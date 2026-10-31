@@ -592,7 +592,7 @@ export default function ConsultRequestManagementView({
 
                   {/* 재무 상태 4대 요건 카드 */}
                   <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs space-y-4">
-                    <h4 className="text-xs font-black text-slate-800">자가진단 재무 프로필 세부</h4>
+                    <h4 className="text-xs font-black text-slate-800">의뢰인 정리 자료 · 재무</h4>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
                       <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
                         <span className="text-xs text-slate-400 block">총 채무액</span>

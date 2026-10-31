@@ -99,3 +99,24 @@ export const LAWYER_REGIONS = [
   '제주',
 ] as const;
 export type LawyerRegion = (typeof LAWYER_REGIONS)[number];
+
+/** 프로필 편집기에서 고르는 사무소 시·도 ('전국'은 공개 조건에서 받지 않는다) */
+export const LAWYER_SIDO_OPTIONS = LAWYER_REGIONS.filter(r => r !== '전체');
+
+/** 프로필 편집기 분야 선택지 (자유 입력 대신 고르기, LD-4). 예전에 직접 적은 분야는 그대로 남긴다 */
+export const LAWYER_FIELD_OPTIONS = [
+  '개인회생',
+  '개인파산·면책',
+  '신용회복·채무조정',
+  '채권추심 대응',
+  '상속 채무(한정승인·상속포기)',
+  '법인회생·파산',
+] as const;
+
+export type ConsultMode = 'visit' | 'phone' | 'video';
+export const CONSULT_MODE_LABEL: Record<ConsultMode, string> = { visit: '방문 상담', phone: '전화 상담', video: '영상 상담' };
+
+/** 전화·영상 상담을 받는 변호사 = 비대면 가능 */
+export function isRemoteAvailable(l: Pick<User, 'consultModes'>): boolean {
+  return (l.consultModes || []).some(m => m === 'phone' || m === 'video');
+}

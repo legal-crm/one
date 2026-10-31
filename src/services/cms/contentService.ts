@@ -133,3 +133,24 @@ export async function fetchConsultCooldownRemaining(): Promise<number | null> {
   const n = Number(data);
   return Number.isFinite(n) ? n : null;
 }
+
+// ── 게시 상태 (CT-3 일부): 초안 → 게시 → 숨김. 공개 화면은 게시본만 읽는다 (RLS) ──
+export type ContentStatus = 'draft' | 'published' | 'hidden';
+export const CONTENT_STATUS_LABEL: Record<ContentStatus, string> = { draft: '초안', published: '게시', hidden: '내림' };
+
+export async function fetchContentStatuses(table: ContentTable): Promise<RpcResult<Record<string, { status: ContentStatus; isExample: boolean }>>> {
+  if (!isSupabaseConfigured) return { ok: false, code: 'not_configured', message: '서버가 설정되지 않았습니다.' };
+  const { data, error } = await supabase.from(table).select('id, status, is_example');
+  if (error) return { ok: false, code: 'load_failed', message: errText(error) };
+  const out: Record<string, { status: ContentStatus; isExample: boolean }> = {};
+  for (const r of (data || []) as any[]) out[r.id] = { status: (r.status || 'published') as ContentStatus, isExample: !!r.is_example };
+  return { ok: true, data: out };
+}
+
+export async function setContentStatus(table: ContentTable, ids: string[], status: ContentStatus): Promise<RpcResult<number>> {
+  if (!isSupabaseConfigured) return { ok: false, code: 'not_configured', message: '서버가 설정되지 않았습니다.' };
+  if (ids.length === 0) return { ok: true, data: 0 };
+  const { data, error } = await supabase.from(table).update({ status }).in('id', ids).select('id');
+  if (error) return { ok: false, code: 'save_failed', message: errText(error) };
+  return { ok: true, data: (data || []).length };
+}

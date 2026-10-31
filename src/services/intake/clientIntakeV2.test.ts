@@ -15,6 +15,12 @@ describe('의뢰인 정리 자료 v2 (I-4)', () => {
     expect(v.changedKeys).toBeUndefined();
   });
 
+  it("챗봇에서 '모름'이라고 답한 금액은 확인 필요로 (I-3)", () => {
+    const v = buildIntakeV2({ ...input, unknownSteps: ['rent_cost', 'asset_detail'] } as any);
+    expect(v.needCheck).toContain('월세 (모름)');
+    expect(v.needCheck).toContain('재산 금액 (모름)');
+  });
+
   it('고치면 바뀐 칸을 남긴다', () => {
     const first = buildIntakeV2(input as any);
     const second = buildIntakeV2({ ...input, monthlyIncome: 2_900_000 } as any, undefined, first);

@@ -251,7 +251,15 @@ function ClientStatementModalInner({
         monthlyIncome,
         tone: selectedTone,
         courtName: statement.courtName,
-        interviewAnswers: statement.story.lifeInterviewAnswers
+        interviewAnswers: statement.story.lifeInterviewAnswers,
+        // 외부 AI로 보내기 전에 가릴 이름 (직장·집 소유자·주소 요약·과거 사건번호) — 서버가 역할 표시로 바꾼다 (P-2)
+        maskTerms: [
+          ...(statement.jobHistories || []).map(j => j.companyName),
+          statement.residence?.ownerName,
+          statement.residence?.addressSummary,
+          statement.applicantAddress,
+          statement.pastHistory?.caseNumber,
+        ].filter((t): t is string => typeof t === 'string' && t.trim().length >= 2),
       });
 
       if (res && res.ok) {

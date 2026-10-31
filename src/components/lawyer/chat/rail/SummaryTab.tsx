@@ -123,7 +123,7 @@ export default function SummaryTab({ request, simulation, getDisplayPhoneNumber,
         <section className="pb-4">
           <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-5 text-center">
             <ClipboardList className="mx-auto w-7 h-7 text-slate-400" aria-hidden="true" />
-            <p className="mt-2 text-sm font-semibold text-slate-700">자가진단 정보가 없습니다</p>
+            <p className="mt-2 text-sm font-semibold text-slate-700">의뢰인 정리 자료가 없습니다</p>
             <p className="mt-1 text-xs text-slate-600">채무·소득을 입력하면 핵심 지표와 변제 시뮬레이션이 표시됩니다.</p>
             <button
               type="button"
@@ -147,12 +147,12 @@ export default function SummaryTab({ request, simulation, getDisplayPhoneNumber,
             ))}
           </ul>
         ) : (
-          <p className="text-xs text-slate-600">자가진단에서 확인된 위험 신호나 요청 사항이 없습니다.</p>
+          <p className="text-xs text-slate-600">정리 자료에서 확인된 위험 신호나 요청 사항이 없습니다.</p>
         )}
       </RailSection>
 
       {hasData && (
-        <RailSection icon={Calculator} title="변제 시뮬레이션" aside="자가진단 입력 기준 추정">
+        <RailSection icon={Calculator} title="변제 시뮬레이션" aside="의뢰인 입력 기준 추정">
           {simulation ? (
             <div className="rounded-xl border border-slate-200 bg-slate-50 p-3.5">
               <div className="flex items-start justify-between gap-3">

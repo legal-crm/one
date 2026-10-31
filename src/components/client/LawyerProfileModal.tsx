@@ -4,10 +4,9 @@ import {
   GraduationCap, Building, Heart, Copy, Check, ExternalLink, Navigation, Home, Star, Wallet, BadgeCheck,
 } from 'lucide-react';
 import type { User, SuccessReview } from '../../types';
-import { mockLawFirms } from '../../data';
 import { cn } from '../../utils/cn';
 import { Badge, Button, Modal, SegmentedTabs } from './ui';
-import { getAvatarSrc, getDisplayName, getExperienceYears, isAdLawyer } from './lawyerDirectory';
+import { CONSULT_MODE_LABEL, getAvatarSrc, getDisplayName, getExperienceYears, isAdLawyer } from './lawyerDirectory';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 변호사 공개 프로필 (고객 사이트 공통 모달 위에서 동작: 포커스 가두기·ESC·배경 스크롤 잠금)
@@ -49,7 +48,7 @@ export default function LawyerProfileModal({
   const [activeTab, setActiveTab] = useState<TabKey>('home');
   const [copiedAddress, setCopiedAddress] = useState(false);
 
-  const firmName = lawyer.firmName || lawyer.firm || mockLawFirms.find(f => f.id === lawyer.lawFirmId)?.name || '';
+  const firmName = lawyer.firmName || lawyer.firm || '';
   const displayName = getDisplayName(lawyer);
   const isVerified = lawyer.licenseStatus === 'verified';
   const years = getExperienceYears(lawyer.certYear);
@@ -155,7 +154,7 @@ export default function LawyerProfileModal({
       open
       onClose={onClose}
       title={`${displayName} 변호사`}
-      description={[firmName, lawyer.region].filter(Boolean).join(' · ') || undefined}
+      description={[firmName, lawyer.region, (lawyer.consultModes || []).length ? (lawyer.consultModes || []).map(m => CONSULT_MODE_LABEL[m]).join('·') : ''].filter(Boolean).join(' · ') || undefined}
       closeLabel="프로필 닫기"
       size="lg"
       mobile="fullscreen"
@@ -296,7 +295,7 @@ export default function LawyerProfileModal({
               ) : (
                 <p className="text-sm text-slate-600 break-keep">
                   사무소 위치·연락처가 아직 등록되지 않았습니다. 상담 요청 후 변호사가 직접 안내합니다.
-                  <span className="block text-xs text-slate-500 mt-1">비대면 상담이 가능한지도 상담 요청 때 변호사에게 확인할 수 있습니다.</span>
+                  {!(lawyer.consultModes || []).length && <span className="block text-xs text-slate-500 mt-1">비대면 상담이 가능한지도 상담 요청 때 변호사에게 확인할 수 있습니다.</span>}
                 </p>
               )}
             </section>

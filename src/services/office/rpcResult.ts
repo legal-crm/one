@@ -42,6 +42,12 @@ const MESSAGE_RULES: Array<[RegExp, string]> = [
   [/case_number and court_name required/i, '사건번호와 법원을 모두 입력해 주세요.'],
   [/date required|decision date required/i, '결정일(날짜)을 입력해 주세요.'],
   [/reason required/i, '사유를 입력해 주세요.'],
+  // 배정 (RB-8)
+  [/lawyer must be an active lawyer/i, '담당 변호사 자리에는 이 사무소의 변호사(대표 포함)만 지정할 수 있어요.'],
+  [/choose 1 to 200 items/i, '한 번에 1~200건까지 배정할 수 있어요.'],
+  [/choose two different members/i, '넘겨주는 사람과 넘겨받는 사람을 서로 다르게 골라 주세요.'],
+  [/member not active in this office/i, '지금 사용 중인 이 사무소 구성원만 고를 수 있어요.'],
+  [/member has no login/i, '아직 로그인 계정이 연결되지 않은 구성원에게는 리드를 배정할 수 없어요.'],
   [/invalid close reason/i, '종결 사유를 골라 주세요.'],
   [/case is closed/i, '종결된 사건이에요. 다시 열기를 먼저 해 주세요.'],
   [/only owner or assigned lawyer/i, '대표 또는 담당 변호사만 할 수 있어요.'],

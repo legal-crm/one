@@ -703,7 +703,7 @@ export default function App() {
   }, [lawyers]);
 
   // 변호사 프로필 DB 동기화 (localStorage는 오프라인 캐시로만 사용)
-  useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds: SEED_LAWYER_IDS });
+  const { loaded: lawyersLoaded } = useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds: SEED_LAWYER_IDS });
 
   // 정지된 계정이면 로그인을 끝내고 사유를 알린다 (관리자 화면 제외, OP-10)
   useAccountStatusGuard(currentRole === 'client' || currentRole === 'lawyer');
@@ -998,6 +998,7 @@ export default function App() {
                 messages={messages}
                 setMessages={setMessages}
                 lawyers={lawyers}
+                lawyersLoading={!lawyersLoaded}
                 onAddMessage={handleAddMessage}
                 onRetryMessage={handleRetryMessage}
                 newsArticles={newsArticles}

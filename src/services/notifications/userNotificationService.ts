@@ -77,6 +77,12 @@ export const OFFICE_NOTIFICATION_KINDS: Array<{ kind: string; label: string }> =
   { kind: 'notice_fallback_failed', label: '카톡 안내 알림톡 대체 실패' },
   { kind: 'consult_request_due_soon', label: '상담 요청 응답 기한 하루 전' },
   { kind: 'consult_request_expired', label: '상담 요청 응답 기한 지남' },
+  { kind: 'assignment', label: '사건·리드 배정' },
+  { kind: 'proposal_review', label: '제안서 검토 요청' },
+  { kind: 'contract_client_start', label: '의뢰인이 계약 시작' },
+  { kind: 'fee_contract_check', label: '계약서 수임료 일정 확인' },
+  { kind: 'device_pending', label: '업무폰 연결 승인 요청' },
+  { kind: 'case_purge_soon', label: '사건 파기 30일 전' },
 ];
 
 export interface MyNotificationPrefs { emailEnabled: boolean; kindsOff: string[]; quietStart: number; quietEnd: number }

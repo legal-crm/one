@@ -476,8 +476,8 @@ export default function ContractWizard({ contract: initialContract, onClose, onS
           </div>
           <div>
             <h4 className="text-xs font-black text-slate-900 flex items-center gap-1.5">
-              <span>AI 상담 및 자가진단 납부내역 가져오기</span>
-              <span className="text-xs bg-brand text-white px-2 py-0.5 rounded-full font-bold">리걸플로 스마트 연동</span>
+              <span>상담 자료 가져오기</span>
+              
             </h4>
             <p className="text-xs text-slate-500 mt-0.5">
               의뢰인이 '내 상황 체크하기'로 정리한 내용과 CRM 상담 데이터(채권자 수, 채무액, 예상비용)를 1초 만에 프리필합니다.

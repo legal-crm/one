@@ -28,6 +28,7 @@ import { computeBulkTransfer, isAssignedTo } from '../../services/staffTransfer'
 import { revokeAllUserSessionsByAdmin } from '../../services/sessionService';
 import { isSupabaseConfigured } from '../../supabaseClient';
 import OfficeMembersPanel from './staff/OfficeMembersPanel';
+import AssignmentPanel from './staff/AssignmentPanel';
 
 // ── 활동 타입 한글 라벨 ──
 const ACTIVITY_TYPE_LABELS: Record<StaffActivityType, { label: string; emoji: string; color: string }> = {
@@ -882,7 +883,10 @@ export default function StaffManagementTab({ requests, lawyers, activeLawyer, se
       {/* ══════════════════════════════════════════════════════════ */}
       {/* 섹션 3: 사건 배정 현황 */}
       {/* ══════════════════════════════════════════════════════════ */}
-      {activeSection === 'cases' && (
+      {isSupabaseConfigured && activeSection === 'cases' && (
+        <AssignmentPanel officeId={activeLawyer.id} canEditRules />
+      )}
+      {!isSupabaseConfigured && activeSection === 'cases' && (
         <div className="space-y-4">
           {/* 미배정 경고 */}
           {unassignedCount > 0 && (

@@ -105,4 +105,20 @@ export type FunnelEvent = 'calculator_used' | 'calculator_to_full' | 'calculator
 
 export function trackEvent(name: FunnelEvent): void {
   try { window.gtag?.('event', name); } catch { /* 무시 */ }
+  if (name === 'check_completed') void recordCheckCompleted();
+}
+
+// ── '정리 완료' 서버 집계 (OP-4): 이 탭 세션당 한 번, 세션 표시는 임의 값이고 입력값은 보내지 않는다 ──
+const CHECK_SESSION_KEY = 'mykim_check_session';
+async function recordCheckCompleted(): Promise<void> {
+  try {
+    let sid = sessionStorage.getItem(CHECK_SESSION_KEY);
+    if (!sid) {
+      sid = (crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9-]/g, '');
+      sessionStorage.setItem(CHECK_SESSION_KEY, sid);
+    }
+    const { supabase, isSupabaseConfigured } = await import('../../supabaseClient');
+    if (!isSupabaseConfigured) return;
+    await supabase.rpc('record_check_completed', { p_session: sid });
+  } catch { /* 집계는 실패해도 화면에 영향 없음 */ }
 }

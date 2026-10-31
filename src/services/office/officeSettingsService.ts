@@ -4,7 +4,7 @@
 import { supabase, isSupabaseConfigured } from '../../supabaseClient';
 import { toRpcError, NOT_CONFIGURED, type RpcResult } from './rpcResult';
 
-export type OfficeSettingsSection = 'profile' | 'seal' | 'client_messaging' | 'copy_rules' | 'work_defaults' | 'security';
+export type OfficeSettingsSection = 'profile' | 'seal' | 'client_messaging' | 'copy_rules' | 'work_defaults' | 'security' | 'assignment';
 
 export async function loadOfficeSettings<T extends Record<string, unknown>>(officeId: string, section: OfficeSettingsSection): Promise<RpcResult<{ data: T; version: number } | null>> {
   if (!isSupabaseConfigured) return NOT_CONFIGURED;

@@ -148,7 +148,7 @@ export async function markLawyerRechecked(lawyerId: string, note?: string): Prom
 }
 
 export const RECHECK_FIELD_LABEL: Record<string, string> = {
-  name: '실명', firm_name: '사무소명', photo: '사진', license_number: '등록번호',
+  name: '실명', firm_name: '사무소명', photo: '사진', license_number: '등록번호', copy_terms: '소개 문구(광고 규정 확인)',
 };
 
 export async function reviewLawyer(lawyerId: string, action: LawyerReviewAction, reason?: string): Promise<Result<{ status: LawyerReviewStatus; closedRequests: number }>> {

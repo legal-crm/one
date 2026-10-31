@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { ArrowRight, CheckCircle2, Heart, Info, ListChecks, MapPin, SearchX, ShieldCheck, Users, X } from 'lucide-react';
+import { ArrowRight, Briefcase, CheckCircle2, Heart, Info, ListChecks, MapPin, SearchX, ShieldCheck, Users, Video, X } from 'lucide-react';
 import { toast } from 'sonner';
 import type { User, SuccessReview } from '../../types';
 import { cn } from '../../utils/cn';
@@ -7,8 +7,10 @@ import LawyerCard from './LawyerCard';
 import LawyerProfileModal from './LawyerProfileModal';
 import { Button, EmptyState, FilterChips, PageHeader, Pagination, SearchField } from './ui';
 import {
+  LAWYER_FIELD_OPTIONS,
   LAWYER_REGIONS,
   type LawyerRegion,
+  isRemoteAvailable,
   getDisplayName,
   isAdLawyer,
   isPubliclyListable,
@@ -48,6 +50,8 @@ interface LawyersViewProps {
   onOpenConsultRoom?: () => void;
   /** 플랫폼 이용 후기 (프로필 모달에서 해당 변호사 후기만 표시) */
   reviews?: SuccessReview[];
+  /** 서버에서 변호사 목록을 처음 받는 중 */
+  loading?: boolean;
 }
 
 export default function LawyersView({
@@ -66,9 +70,12 @@ export default function LawyersView({
   onStartCheck,
   onOpenConsultRoom,
   reviews,
+  loading = false,
 }: LawyersViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedRegion, setSelectedRegion] = useState<LawyerRegion>('전체');
+  const [selectedField, setSelectedField] = useState<string>('전체');
+  const [remoteOnly, setRemoteOnly] = useState(false);
   const [page, setPage] = useState(1);
   const [profileLawyer, setProfileLawyer] = useState<User | null>(null);
   // 좋아요는 로그인한 계정에 서버 저장 (이전: 이 기기에만)
@@ -136,14 +143,25 @@ export default function LawyersView({
         || l.name.toLowerCase().includes(q)
         || (l.fields || []).some(f => f.toLowerCase().includes(q))
         || (l.bio || '').toLowerCase().includes(q)
-        || (l.firmName || '').toLowerCase().includes(q);
+        || (l.firmName || '').toLowerCase().includes(q)
+        || (l.region || '').toLowerCase().includes(q)
+        || (l.specialties || []).some(f => f.toLowerCase().includes(q));
       const matchesRegion = selectedRegion === '전체' || (l.region || '').includes(selectedRegion);
+      const matchesField = selectedField === '전체' || (l.fields || []).includes(selectedField);
+      const matchesRemote = !remoteOnly || isRemoteAvailable(l);
       const matchesFav = !showFavoritesOnly || favorites.has(l.id);
-      return matchesSearch && matchesRegion && matchesFav;
+      return matchesSearch && matchesRegion && matchesField && matchesRemote && matchesFav;
     });
-  }, [listable, searchQuery, selectedRegion, showFavoritesOnly, favorites]);
+  }, [listable, searchQuery, selectedRegion, selectedField, remoteOnly, showFavoritesOnly, favorites]);
 
-  const hasActiveFilter = !!searchQuery.trim() || selectedRegion !== '전체' || showFavoritesOnly;
+  // 분야 칩: 공개 변호사 중 한 명이라도 고른 분야만 (아무도 없는 칩을 눌러 빈 화면을 보지 않게)
+  const fieldOptions = useMemo(
+    () => LAWYER_FIELD_OPTIONS.filter(f => listable.some(l => (l.fields || []).includes(f))),
+    [listable]
+  );
+  const remoteCount = useMemo(() => listable.filter(isRemoteAvailable).length, [listable]);
+
+  const hasActiveFilter = !!searchQuery.trim() || selectedRegion !== '전체' || selectedField !== '전체' || remoteOnly || showFavoritesOnly;
 
   // ── 광고 등급별 분류 (광고와 일반 등록을 섞지 않고 구역을 나눠 표시) ──
   // 상단 광고(top)는 조건 없이 볼 때 맨 위 광고 구역에 노출한다.
@@ -167,6 +185,8 @@ export default function LawyersView({
   const resetFilters = () => {
     setSearchQuery('');
     setSelectedRegion('전체');
+    setSelectedField('전체');
+    setRemoteOnly(false);
     setShowFavoritesOnly(false);
     setPage(1);
   };
@@ -309,7 +329,7 @@ export default function LawyersView({
           value={searchQuery}
           onChange={(v) => { setSearchQuery(v); setPage(1); }}
           label="변호사 검색"
-          placeholder="변호사 이름, 사무소, 분야로 검색"
+          placeholder="변호사 이름, 사무소, 분야, 지역으로 검색"
         />
         <div className="flex items-start gap-2">
           <MapPin className="w-4 h-4 text-slate-400 mt-3.5 shrink-0 hidden sm:block" aria-hidden="true" />
@@ -321,7 +341,34 @@ export default function LawyersView({
             className="flex-1 min-w-0"
           />
         </div>
-        <p className="text-xs text-slate-500 break-keep">방문 상담을 원하면 사무소 지역을 고르세요.</p>
+        {fieldOptions.length > 1 && (
+          <div className="flex items-start gap-2">
+            <Briefcase className="w-4 h-4 text-slate-400 mt-3.5 shrink-0 hidden sm:block" aria-hidden="true" />
+            <FilterChips
+              options={['전체', ...fieldOptions].map(f => ({ value: f, label: f }))}
+              value={selectedField}
+              onChange={(v) => { setSelectedField(v); setPage(1); }}
+              label="업무 분야"
+              className="flex-1 min-w-0"
+            />
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={() => { setRemoteOnly(v => !v); setPage(1); }}
+            aria-pressed={remoteOnly}
+            disabled={remoteCount === 0 && !remoteOnly}
+            className={cn(
+              'min-h-11 inline-flex items-center gap-1.5 px-3.5 rounded-xl border text-sm font-bold whitespace-nowrap transition-colors active:scale-[0.98] disabled:opacity-50',
+              remoteOnly ? 'bg-brand-light border-brand/30 text-brand' : 'bg-white border-slate-300 text-slate-700 hover:border-slate-400',
+            )}
+          >
+            <Video className="w-4 h-4" aria-hidden="true" />
+            비대면(전화·영상) 상담 가능{remoteCount > 0 ? ` ${remoteCount}` : ''}
+          </button>
+          <p className="text-xs text-slate-500 break-keep">방문 상담을 원하면 사무소 지역을, 멀리 있어도 괜찮다면 비대면 가능을 고르세요.</p>
+        </div>
       </div>
 
       {/* 상단 광고 (상품: 상단 노출) — 모바일은 가로로 넘겨 보기 */}
@@ -367,15 +414,43 @@ export default function LawyersView({
           </p>
         </div>
 
-        {resultCount === 0 ? (
+        {!loading && !hasActiveFilter && listable.length > 0 && listable.length <= 2 && (
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-start gap-3">
+            <Info className="w-5 h-5 text-slate-500 mt-0.5 shrink-0" aria-hidden="true" />
+            <p className="text-sm text-slate-700 leading-relaxed break-keep">
+              아직 등록을 마친 변호사가 {listable.length}명이에요. 심사를 마치고 프로필을 채운 변호사가 생기면 이 목록에 바로 보여요.
+            </p>
+          </div>
+        )}
+
+        {loading && listable.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4" aria-busy="true" aria-label="변호사 목록을 불러오는 중">
+            {[0, 1, 2, 3].map(i => (
+              <div key={i} className="rounded-2xl border border-slate-200 bg-white p-5 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-14 h-14 rounded-full bg-slate-100 animate-pulse" />
+                  <div className="flex-1 space-y-2">
+                    <div className="h-4 w-1/3 rounded-lg bg-slate-100 animate-pulse" />
+                    <div className="h-3 w-1/2 rounded-lg bg-slate-100 animate-pulse" />
+                  </div>
+                </div>
+                <div className="h-3 w-full rounded-lg bg-slate-100 animate-pulse" />
+                <div className="h-3 w-4/5 rounded-lg bg-slate-100 animate-pulse" />
+                <div className="h-11 w-full rounded-xl bg-slate-100 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        ) : resultCount === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white">
             <EmptyState
               icon={showFavoritesOnly ? <Heart className="w-6 h-6" /> : <SearchX className="w-6 h-6" />}
-              title={showFavoritesOnly && favorites.size === 0 ? '즐겨찾기한 변호사가 없습니다' : '조건에 맞는 변호사가 없습니다'}
+              title={showFavoritesOnly && favorites.size === 0 ? '즐겨찾기한 변호사가 없습니다' : listable.length === 0 ? '아직 공개된 변호사가 없습니다' : '조건에 맞는 변호사가 없습니다'}
               description={showFavoritesOnly && favorites.size === 0
                 ? (requiresLogin ? '로그인한 뒤 카드의 하트를 누르면 즐겨찾기에 담겨 어느 기기에서나 다시 볼 수 있어요.' : '카드의 하트를 누르면 즐겨찾기에 담겨 어느 기기에서나 다시 볼 수 있어요.')
-                : '다른 지역을 고르거나 검색어를 바꿔 보세요.'}
-              action={hasActiveFilter ? <Button variant="secondary" onClick={resetFilters}>조건 초기화</Button> : undefined}
+                : listable.length === 0
+                  ? '변호사 심사를 마치고 프로필을 채운 변호사부터 이곳에 보여요. 그동안 내 상황 체크로 채무 정보를 먼저 정리해 둘 수 있어요.'
+                  : '다른 지역·분야를 고르거나 검색어를 바꿔 보세요.'}
+              action={hasActiveFilter ? <Button variant="secondary" onClick={resetFilters}>조건 초기화</Button> : (listable.length === 0 && onStartCheck ? <Button onClick={onStartCheck}>내 상황 체크하기</Button> : undefined)}
             />
           </div>
         ) : (

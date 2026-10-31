@@ -9,6 +9,7 @@ import { handleIndexNow } from './_lib/indexnow.js';
 import * as mk from './_lib/marketing-engine.js';
 import { textModels } from './_lib/marketing-engine.js';
 import { fixCompliance, scanCompliance } from './_lib/marketing-compliance.js';
+import { buildStatementMasker } from './_lib/statement-masking.js';
 
 // ─────────────────────────────────────────────────────────────
 // [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
@@ -302,8 +303,8 @@ async function handler(req, res) {
     if (cfCheck.success) isAuthorized = true;
   }
 
-  // 개발 환경 로컬 테스트 편의 지원
-  if (!isAuthorized && process.env.NODE_ENV === 'development') {
+  // 개발 환경 로컬 테스트 편의 지원 (Vercel 위에서는 쓰지 않음)
+  if (!isAuthorized && process.env.NODE_ENV === 'development' && !process.env.VERCEL) {
     isAuthorized = true;
   }
 
@@ -335,6 +336,15 @@ async function handler(req, res) {
   }
 
   const hasInterviewAnswers = interviewAnswers && Object.values(interviewAnswers).some(v => typeof v === 'string' && v.trim().length > 0);
+
+  // 외부 AI로 보낼 글은 비식별화 (P-2): 신청인·가족·직장·채권자 이름 → 역할 표시, 주민번호·전화·계좌·이메일 → 종류 표시
+  const masker = buildStatementMasker({
+    applicantName,
+    terms: Array.isArray(body.maskTerms) ? body.maskTerms.map(t => clipText(t, 40)).filter(Boolean).slice(0, 40) : [],
+  });
+  const aiRaw = masker.mask(rawVoiceOrText);
+  const aiKeywords = selectedKeywords.map(k => masker.mask(k));
+  const aiAnswers = interviewAnswers ? Object.fromEntries(Object.entries(interviewAnswers).map(([k, v]) => [k, masker.mask(v)])) : null;
 
   if (!rawVoiceOrText && (!selectedKeywords || selectedKeywords.length === 0) && !hasInterviewAnswers) {
     return res.status(400).json({ ok: false, error: '입력된 내용 또는 선택된 키워드가 없습니다.' });
@@ -404,25 +414,25 @@ ${resolution}`;
 
 [사건 및 의뢰인 정보]
 - 신청 사건 유형: ${isRehab ? '개인회생' : '개인파산 및 면책'}
-- 신청인 성명: ${applicantName}
+- 신청인: «신청인» (실명은 보내지 않음)
 - 관할 법원: ${courtName}
 - 총 채무 규모: 약 ${totalDebtAmount ? totalDebtAmount.toLocaleString() : '미기재'}만 원
 - 월 소득 수준: 약 ${monthlyIncome ? monthlyIncome.toLocaleString() : '미기재'}만 원
-- 선택된 주요 사유: ${selectedKeywords.join(', ') || '미선택'}
+- 선택된 주요 사유: ${aiKeywords.join(', ') || '미선택'}
 - 희망 문체 톤: ${tone === 'concise' ? '간결하고 명확하게' : tone === 'emotional' ? '진솔하고 호소력 있게' : '정중하고 격식 있는 법률 문체'}
 
 [고객이 말로 이야기한 원본 사연 / 메모]:
 """
-${rawVoiceOrText || '(키워드 및 인터뷰 기반 작성)'}
+${aiRaw || '(키워드 및 인터뷰 기반 작성)'}
 """
 ${hasInterviewAnswers ? `
 [신청인 6대 심층 인생 Q&A 인터뷰 답변]:
-- Q1. 성장 환경 및 가정 배경: ${interviewAnswers.upbringing || '특이사항 없음'}
-- Q2. 건강 및 질병/의료비 간병 사정: ${interviewAnswers.healthAndMedical || '특이사항 없음'}
-- Q3. 첫 경제활동 및 채무 발생 계기: ${interviewAnswers.firstDebtCause || '특이사항 없음'}
-- Q4. 채무 증대 과정 (돌려막기, 고금리 등): ${interviewAnswers.debtGrowthProcess || '특이사항 없음'}
-- Q5. 더 이상 갚을 수 없게 된 결정적 순간 (지급불능): ${interviewAnswers.insolvencyCrisis || '특이사항 없음'}
-- Q6. 회생/파산을 통한 갱생과 재기 다짐: ${interviewAnswers.futureResolution || '특이사항 없음'}
+- Q1. 성장 환경 및 가정 배경: ${aiAnswers.upbringing || '특이사항 없음'}
+- Q2. 건강 및 질병/의료비 간병 사정: ${aiAnswers.healthAndMedical || '특이사항 없음'}
+- Q3. 첫 경제활동 및 채무 발생 계기: ${aiAnswers.firstDebtCause || '특이사항 없음'}
+- Q4. 채무 증대 과정 (돌려막기, 고금리 등): ${aiAnswers.debtGrowthProcess || '특이사항 없음'}
+- Q5. 더 이상 갚을 수 없게 된 결정적 순간 (지급불능): ${aiAnswers.insolvencyCrisis || '특이사항 없음'}
+- Q6. 회생/파산을 통한 갱생과 재기 다짐: ${aiAnswers.futureResolution || '특이사항 없음'}
 ` : ''}
 
 [작성 및 심사 지침]:
@@ -432,6 +442,7 @@ ${hasInterviewAnswers ? `
    - insolvencyTrigger: 3. 지급불능에 이르게 된 결정적 계기 (연체, 한계 도달 시점)
    - resolution: 4. 반성과 향후 갱생 및 변제계획 수행 다짐
 2. 고객의 구어체("어...", "그니까요", 감정적 하소연)를 법원 실무에 적합한 단정하고 품격 있는 문장으로 정제하세요.
+   - «신청인», «인물_1», «주민번호» 같은 « » 표시는 개인정보를 가린 자리입니다. 표시를 그대로 쓰고 다른 이름이나 숫자로 바꾸거나 지어내지 마세요.
 3. [법률 안전 검증 (Safety Check)]: 
    - 고객의 원문 중 사기죄(대출 직전 허위 소득 증빙 등), 편파변제(친인척만 우선 변제), 재산은닉, 과도한 투기(코인/도박) 등 면책불허가 또는 형사적 위험이 있는 내용이 감지되면 safetyWarnings 배열에 경고 및 소명 권고 문구를 명시하세요.
 4. 반드시 유효한 JSON 형식으로만 응답하세요 (마크다운 백틱 없이 순수 JSON):
@@ -482,14 +493,15 @@ ${hasInterviewAnswers ? `
 
       if (candidateText) {
         const cleanJson = candidateText.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-        const parsed = JSON.parse(cleanJson);
+        const parsed = masker.unmaskDeep(JSON.parse(cleanJson));
         return res.status(200).json({
           ok: true,
           sections: parsed.sections,
           fullFormattedText: parsed.fullFormattedText,
           safetyWarnings: parsed.safetyWarnings || [],
           suggestedKeywords: parsed.suggestedKeywords || selectedKeywords,
-          source: 'gemini_ai'
+          source: 'gemini_ai',
+          masked: masker.count
         });
       }
     } catch (e) {

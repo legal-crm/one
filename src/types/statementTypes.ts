@@ -116,6 +116,8 @@ export interface CourtStatementData {
 // AI 생성 및 정제 요청 파라미터
 export interface GenerateStatementAiPayload {
   caseType: CourtStatementCaseType;
+  /** 외부 AI로 보내기 전에 가릴 이름·주소 (서버가 «인물_n»으로 바꿨다가 되돌림, P-2) */
+  maskTerms?: string[];
   applicantName?: string;
   rawVoiceOrText: string;                  // 고객의 음성 인식 텍스트 또는 거친 메모
   selectedKeywords?: string[];             // 선택된 원인 키워드

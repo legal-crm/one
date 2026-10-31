@@ -163,13 +163,13 @@ export default function ClientIntakeDetailModal({
   const legalActions: string[] = fp.legalActions || [];
 
   // 5. 의뢰인 전달 사연 및 메모
-  const title = clientRequest.title || '자가진단 상담 신청서';
+  const title = clientRequest.title || '상담 요청';
   const content = clientRequest.content || '';
   const clientNotes: string[] = fp.clientNotes || (fp.clientNote ? [fp.clientNote] : []);
 
   // 전체 요약문 클립보드 복사
   const handleCopySummary = () => {
-    const summaryText = `[${clientName}님 자가진단 종합 팩트시트]
+    const summaryText = `[${clientName}님 의뢰인 정리 자료 요약]
 • 성별/나이: ${gender} / 만 ${age || '-'}세 (${residence} • 관할: ${courtName})
 • 소득 구분: ${incomeTypeInfo.label} (세후 월 ${income.toLocaleString()}만원)
 • 최저 생계비: ${recognizedLiving.toLocaleString()}만원 (부양가족 ${totalDependents}명)
@@ -206,7 +206,7 @@ export default function ClientIntakeDetailModal({
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-base sm:text-lg font-black text-white tracking-tight truncate">
-                  {clientName}님의 사전 자가진단 전수 리포트
+                  {clientName}님의 정리 자료
                 </h2>
                 <span className={`text-xs font-bold px-2 py-0.5 rounded-md border ${incomeTypeInfo.badgeClass}`}>
                   {incomeTypeInfo.badgeLabel}
@@ -1245,7 +1245,7 @@ export default function ClientIntakeDetailModal({
 
                 {content && (
                   <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 text-xs space-y-2">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">자가진단 리포트 전문</span>
+                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">의뢰인이 쓴 내용</span>
                     <div className="text-slate-800 whitespace-pre-line leading-relaxed font-mono text-xs bg-white p-4 rounded-lg border border-slate-200 max-h-96 overflow-y-auto">
                       {content}
                     </div>

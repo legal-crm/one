@@ -7,10 +7,11 @@ import {
   Image as ImageIcon, Stamp
 } from 'lucide-react';
 import type { User, LawFirm, LawyerSealInfo } from '../../types';
-import { mockLawFirms } from '../../data';
 import LawyerSealManagerModal from './LawyerSealManagerModal';
 import { toast } from 'sonner';
 import { uploadLawyerPhoto } from '../../services/lawyers/lawyerPhotoService';
+import { CONSULT_MODE_LABEL, LAWYER_FIELD_OPTIONS, LAWYER_SIDO_OPTIONS, type ConsultMode } from '../client/lawyerDirectory';
+import { QNA_BASE_TERMS, findProhibitedExpressions, loadProhibitedExpressions } from '../../services/proposalCompliance';
 
 /**
  * 공개 프로필 저장 전 검사 — 문제가 있으면 안내 문구, 없으면 null
@@ -123,7 +124,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   };
 
   // ── 미리보기용 데이터 ──
-  const firm = mockLawFirms.find(f => f.id === form.lawFirmId);
+  // 미리보기도 변호사가 적은 사무소명만 (예시 법인명으로 채우지 않음, LD-5)
+  const firm = undefined as LawFirm | undefined;
   const displayName = form.name.replace(' 변호사', '');
   const previewAvatar = form.avatarData || form.avatar;
 
@@ -164,6 +166,59 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
   const addBtnCls = inline
     ? 'flex items-center gap-1 bg-brand/10 hover:bg-brand/20 text-brand px-2.5 py-1.5 rounded-xl text-xs font-bold transition-colors cursor-pointer whitespace-nowrap'
     : 'flex items-center gap-1 bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-400 px-3 py-2 rounded-xl text-sm font-bold transition-colors cursor-pointer whitespace-nowrap';
+
+  // ── 지역·분야·상담 방식: 고르기 (LD-4·LD-6) — 자유 입력이면 '변호사 찾기' 지역·분야로 찾을 수 없다 ──
+  const chipOnCls = inline ? 'bg-brand text-white border-brand' : 'bg-indigo-600 text-white border-indigo-500';
+  const chipOffCls = inline ? 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10';
+  const chipCls = 'min-h-[40px] px-3 rounded-xl border text-xs font-bold whitespace-nowrap active:scale-[0.98] cursor-pointer';
+  const regionKnown = (LAWYER_SIDO_OPTIONS as readonly string[]).includes(form.region || '');
+  const regionSelect = (
+    <select className={inputCls} value={form.region || ''} onChange={e => updateForm({ region: e.target.value })} aria-label="사무소 시·도">
+      <option value="">시·도 고르기</option>
+      {!regionKnown && form.region && <option value={form.region}>{form.region} (예전 값 · 시·도를 다시 골라 주세요)</option>}
+      {LAWYER_SIDO_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
+    </select>
+  );
+  const toggleField = (f: string) => {
+    const next = form.fields.includes(f) ? form.fields.filter(x => x !== f) : [...form.fields, f];
+    updateForm({ fields: next });
+    setFieldsText(next.join(', '));
+  };
+  const extraFields = form.fields.filter(f => !(LAWYER_FIELD_OPTIONS as readonly string[]).includes(f));
+  const fieldsPicker = (
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label="업무 분야 (1개 이상)">
+      {[...LAWYER_FIELD_OPTIONS, ...extraFields].map(f => {
+        const on = form.fields.includes(f);
+        return <button key={f} type="button" aria-pressed={on} onClick={() => toggleField(f)} className={`${chipCls} ${on ? chipOnCls : chipOffCls}`}>{f}</button>;
+      })}
+    </div>
+  );
+  const toggleMode = (m: ConsultMode) => {
+    const cur = form.consultModes || [];
+    updateForm({ consultModes: cur.includes(m) ? cur.filter(x => x !== m) : [...cur, m] });
+  };
+  const consultModesPicker = (
+    <div>
+      <span className={labelCls}>상담 방식</span>
+      <div className="flex flex-wrap gap-1.5" role="group" aria-label="상담 방식">
+        {(Object.keys(CONSULT_MODE_LABEL) as ConsultMode[]).map(m => {
+          const on = (form.consultModes || []).includes(m);
+          return <button key={m} type="button" aria-pressed={on} onClick={() => toggleMode(m)} className={`${chipCls} ${on ? chipOnCls : chipOffCls}`}>{CONSULT_MODE_LABEL[m]}</button>;
+        })}
+      </div>
+      <p className="text-xs text-slate-500 mt-1">전화·영상 상담을 고르면 의뢰인이 '비대면 가능'으로 찾을 수 있어요.</p>
+    </div>
+  );
+  // 소개 글 광고 규정 점검 (막지 않음, 승인된 변호사는 저장하면 운영팀이 다시 확인)
+  const copyHits = React.useMemo(
+    () => findProhibitedExpressions([form.bio, form.catchphrase, (form.specialties || []).join(' ')].filter(Boolean).join(' '), undefined, Array.from(new Set([...QNA_BASE_TERMS, ...loadProhibitedExpressions()]))),
+    [form.bio, form.catchphrase, form.specialties],
+  );
+  const copyWarning = copyHits.length > 0 ? (
+    <p className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2 mt-2" role="status">
+      광고 규정상 쓰기 어려운 표현이 있어요: {copyHits.join(', ')}. 그대로 저장하면 운영팀이 소개 문구를 다시 확인해요.
+    </p>
+  ) : null;
 
   // ── 사무소 정보 입력 필드 (모달·인라인 공용) — 입력한 항목만 의뢰인 공개 프로필에 노출 ──
   const officeFields = (
@@ -267,14 +322,10 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                   />
                 </div>
                 <div>
-                  <label className={labelCls}>활동 지역</label>
-                  <input
-                    className={inputCls}
-                    value={form.region}
-                    onChange={e => updateForm({ region: e.target.value })}
-                    placeholder="서울"
-                  />
+                  <label className={labelCls}>사무소 시·도</label>
+                  {regionSelect}
                 </div>
+                <div className="sm:col-span-2">{consultModesPicker}</div>
                 <div>
                   <label className={labelCls}>한줄 캐치프레이즈</label>
                   <input
@@ -377,20 +428,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
               </h3>
               <div className="space-y-4">
                 <div>
-                  <label className={labelCls}>주요 전문 분야 (콤마로 구분)</label>
-                  <input
-                    className={inputCls}
-                    value={fieldsText}
-                    onChange={e => handleFieldsChange(e.target.value)}
-                    placeholder="개인회생, 개인파산, 신용회복"
-                  />
-                  {form.fields.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mt-2">
-                      {form.fields.map(f => (
-                        <span key={f} className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs px-2.5 py-1 rounded-lg font-bold">#{f}</span>
-                      ))}
-                    </div>
-                  )}
+                  <span className={labelCls}>업무 분야 (1개 이상 고르기)</span>
+                  {fieldsPicker}
                 </div>
                 <div>
                   <label className={labelCls}>상세 전문 분야 (콤마로 구분)</label>
@@ -419,6 +458,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
                     onChange={e => updateForm({ bio: e.target.value })}
                     placeholder="변호사 소개글을 입력하세요..."
                   />
+                  {copyWarning}
                 </div>
                 <div>
                   <label className={labelCls}>경력 사항</label>
@@ -1052,7 +1092,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div><label className={labelCls}>변호사명</label><input className={inputCls} value={form.name} onChange={e => updateForm({ name: e.target.value })} placeholder="홍길동 변호사" /></div>
                 <div><label className={labelCls}>소속 법무법인명</label><input className={inputCls} value={form.firmName || ''} onChange={e => updateForm({ firmName: e.target.value })} placeholder="법무법인 한빛" /></div>
-                <div><label className={labelCls}>활동 지역</label><input className={inputCls} value={form.region} onChange={e => updateForm({ region: e.target.value })} placeholder="서울" /></div>
+                <div><label className={labelCls}>사무소 시·도</label>{regionSelect}</div>
+                <div className="sm:col-span-2">{consultModesPicker}</div>
                 <div><label className={labelCls}>한줄 캐치프레이즈</label><input className={inputCls} value={form.catchphrase || ''} onChange={e => updateForm({ catchphrase: e.target.value })} placeholder="빠르고 안전한 회생의 시작" /></div>
               </div>
             </div>
@@ -1079,9 +1120,8 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
               <h3 className={sectionTitleCls}><Scale className="w-4 h-4" /> 전문 분야</h3>
               <div className="space-y-3">
                 <div>
-                  <label className={labelCls}>주요 전문 분야 (콤마로 구분)</label>
-                  <input className={inputCls} value={fieldsText} onChange={e => handleFieldsChange(e.target.value)} placeholder="개인회생, 개인파산, 신용회복" />
-                  {form.fields.length > 0 && (<div className="flex flex-wrap gap-1 mt-1.5">{form.fields.map(f => (<span key={f} className={tagCls}>#{f}</span>))}</div>)}
+                  <span className={labelCls}>업무 분야 (1개 이상 고르기)</span>
+                  {fieldsPicker}
                 </div>
                 <div>
                   <label className={labelCls}>상세 전문 분야 (콤마로 구분)</label>
@@ -1094,7 +1134,7 @@ export default function LawyerProfileEditor({ lawyer, onSave, onClose, inline = 
             <div className={sectionCls}>
               <h3 className={sectionTitleCls}><BookOpen className="w-4 h-4" /> 소개 & 경력</h3>
               <div className="space-y-3">
-                <div><label className={labelCls}>변호사 소개글</label><textarea className={`${inputCls} min-h-[80px] resize-y`} value={form.bio} onChange={e => updateForm({ bio: e.target.value })} placeholder="변호사 소개글을 입력하세요..." /></div>
+                <div><label className={labelCls}>변호사 소개글</label><textarea className={`${inputCls} min-h-[80px] resize-y`} value={form.bio} onChange={e => updateForm({ bio: e.target.value })} placeholder="변호사 소개글을 입력하세요..." />{copyWarning}</div>
                 <div>
                   <label className={labelCls}>경력 사항</label>
                   <div className="space-y-1.5">

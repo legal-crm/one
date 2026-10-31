@@ -1262,6 +1262,8 @@ export interface User {
   role: UserRole;
   fields: string[];
   region: string;
+  /** 상담 방식 (방문·전화·영상). 전화·영상이 있으면 '비대면 가능'으로 찾을 수 있다 (LD-6) */
+  consultModes?: Array<'visit' | 'phone' | 'video'>;
   avatar: string;
   bio: string;
   recentActivity: string;

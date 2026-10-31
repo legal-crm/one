@@ -5,6 +5,7 @@ import type { BankruptcyFullCaseData } from '../../../types/bankruptcyTypes';
 import ModalPortal from '../../common/ModalPortal';
 import { getOfficeProfile } from '../../../services/lawyer/officeProfile';
 import { localYmd } from '../../../utils/localDate';
+import { unobtainableText } from '../../../services/court/bankruptcySubmissionList';
 import { BANKRUPTCY_OFFICIAL_QUESTIONS } from '../../../services/court/bankruptcyStatement';
 import { saveHtmlPdfToCase, wrapDomHtml } from '../../../services/court/casePdfSave';
 import { courtPdfFileName } from '../../../services/court/courtPdfService';
@@ -353,7 +354,7 @@ function PrintableBankruptcyPetitionModalInner({
                       </td>
                       <td className="border border-slate-300 p-2 text-center">
                         {item.isNonDischargeable ? (
-                          <span className="text-rose-600 font-bold">비면책(제566조)</span>
+                          <span className="text-rose-600 font-bold">비면책(제566조{item.nonDischargeableBasis ? ` 제${item.nonDischargeableBasis}호` : ''})</span>
                         ) : (
                           <span className="text-emerald-700">면책대상</span>
                         )}
@@ -677,8 +678,9 @@ function PrintableBankruptcyPetitionModalInner({
                     const isSubmitted = doc.status === 'SUBMITTED';
                     return (
                       <tr key={doc.id}>
-                        <td className="border border-slate-300 p-2 text-center font-mono font-bold">#{doc.itemNumber}</td>
+                        <td className="border border-slate-300 p-2 text-center font-mono font-bold">{doc.itemNumber}</td>
                         <td className="border border-slate-300 p-2">
+                          {doc.groupNo && <span className="text-slate-500 text-xs block">{doc.groupNo}. {doc.category}</span>}
                           <span className="font-bold text-slate-900">{doc.title}</span>
                           <span className="text-slate-500 text-xs block">{doc.detailDescription}</span>
                         </td>
@@ -695,7 +697,7 @@ function PrintableBankruptcyPetitionModalInner({
                           {isSubmitted ? (
                             <span className="text-slate-400 font-mono">첨부</span>
                           ) : doc.status === 'UNOBTAINABLE' ? (
-                            <span className="font-bold text-amber-900">{doc.unobtainableReason || '[미제출 사유 기재]'}</span>
+                            <span className="font-bold text-amber-900">{unobtainableText(doc) || '[미제출 사유 기재]'}</span>
                           ) : (
                             <span className="text-slate-400">-</span>
                           )}

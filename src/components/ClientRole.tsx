@@ -299,6 +299,8 @@ interface ClientRoleProps {
   messages: ConsultMessage[];
   setMessages: React.Dispatch<React.SetStateAction<ConsultMessage[]>>;
   lawyers: LawyerType[];
+  /** 서버에서 변호사 목록을 처음 받는 중 (변호사 찾기 스켈레톤) */
+  lawyersLoading?: boolean;
   /** 서버 저장까지 끝나면 true를 돌려준다 (void를 돌려주는 구현은 성공으로 본다) */
   onAddMessage: (reqId: string, text: string, sender: 'client' | 'lawyer' | 'system', senderId: string, name: string, targetLawyerId?: string) => void | Promise<boolean>;
   /** 전송 실패한 의뢰인 메시지를 같은 id로 다시 보낸다 */
@@ -325,12 +327,16 @@ interface ClientRoleProps {
   setLawyerInquiries?: React.Dispatch<React.SetStateAction<LawyerInquiry[]>>;
 }
 
+/** 체크 전에 고른 변호사 (이 탭 sessionStorage, LD-7) */
+const PENDING_LAWYER_KEY = 'mykim_pending_lawyer';
+
 export default function ClientRole({
   requests,
   setRequests,
   messages,
   setMessages,
   lawyers,
+  lawyersLoading = false,
   onAddMessage,
   onRetryMessage,
   newsArticles,
@@ -680,6 +686,14 @@ export default function ClientRole({
   const [pendingNewRequest, setPendingNewRequest] = useState<any>(null);
   // 특정 변호사 프로필·글에서 '상담 요청'으로 시작한 진단: 결과 화면의 상담 요청 버튼에서 그 변호사에게 동의 후 요청
   const [directIntent, setDirectIntent] = useState<{ requestId: string; lawyerId: string } | null>(null);
+  // 체크 전에 고른 변호사 이어 가기 (LD-7): 새로 고침·소셜 로그인 복귀 뒤에도 그 변호사에게 보낼지 묻는다
+  useEffect(() => {
+    try {
+      const id = sessionStorage.getItem(PENDING_LAWYER_KEY);
+      if (id && /^[A-Za-z0-9_-]{1,80}$/.test(id)) { setSelectedLawyerId(id); setRequestType('direct'); }
+    } catch { /* ignore */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 로그인한 의뢰인은 서버 계정 기준 쿨다운 (CT-Q5): 마지막 새 상담 요청 시각은 서버가 판단
   const [serverCooldownUntil, setServerCooldownUntil] = useState<number>(0);
@@ -878,6 +892,8 @@ export default function ClientRole({
     if (l) setTitle(`${getLawyerDisplayName(l)} 변호사 상담 요청`);
     setSelectedLawyerId(lawyerId);
     setRequestType('direct');
+    // 체크 도중 새로 고침·로그인으로 화면이 다시 열려도 고른 변호사를 이어 간다 (LD-7, 이 탭에서만)
+    try { sessionStorage.setItem(PENDING_LAWYER_KEY, lawyerId); } catch { /* ignore */ }
     setRequestStep(1);
     setActiveTab('request');
   };
@@ -1973,6 +1989,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
     setRequests(prev => [newRequest, ...prev]);
     setPendingNewRequest(newRequest);
     setDirectIntent(directIntentLawyerId ? { requestId: newRequest.id, lawyerId: directIntentLawyerId } : null);
+    try { sessionStorage.removeItem(PENDING_LAWYER_KEY); } catch { /* ignore */ }
     // 다음 진단에 이전 지명 상태가 남지 않도록 초기화
     setRequestType('open');
     setSelectedLawyerId('');
@@ -2535,6 +2552,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
             {activeTab === 'lawyers' && (
               <LawyersView
                 lawyers={directoryLawyers}
+                loading={lawyersLoading}
                 reviews={reviews}
                 onSelectLawyer={handleConsultLawyer}
                 selectionMode={lawyerSelectionMode}

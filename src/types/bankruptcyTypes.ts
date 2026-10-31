@@ -74,6 +74,10 @@ export interface BankruptcyStatement {
     pastDischargeWithinYears: boolean; // 6. 과거 면책 후 7년(파산) / 5년(회생) 미경과
     falseReportToTrustee: boolean;   // 7. 파산관재인에 대한 허위 진술 / 자료 거부
     creditTransactionBeforeFiling: boolean; // 8. 파산 직전 신용카드/대출 발생
+    /** 9. 이 법에 정한 채무자의 의무 위반 (제564조 제1항 제5호 관련, BK-4) */
+    dutyViolation?: boolean;
+    /** 10. 구인명령을 받고도 정당한 사유 없이 출석하지 않음 (제564조 제1항 제5호의2, 2024. 12. 20. 시행) */
+    noShowAfterSummons?: boolean;
   };
 
   screeningNotes: Record<string, string>; // 항목별 방어 논리 및 소명 메모
@@ -99,6 +103,20 @@ export interface BankruptcyStatement {
   };
 }
 
+/** 채무자회생법 제566조 비면책채권 (각 호). 7호는 '악의로 채권자목록에 적지 않은 청구권'이라 목록에 적는 채권에는 보통 쓰지 않는다 */
+export type NonDischargeableBasis = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9;
+export const NON_DISCHARGEABLE_BASIS_LABEL: Record<NonDischargeableBasis, string> = {
+  1: '1호 조세',
+  2: '2호 벌금·과료·형사소송비용·추징금·과태료',
+  3: '3호 고의로 가한 불법행위 손해배상',
+  4: '4호 중대한 과실로 생명·신체를 침해한 불법행위 손해배상',
+  5: '5호 근로자의 임금·퇴직금·재해보상금',
+  6: '6호 근로자의 임치금·신원보증금',
+  7: '7호 악의로 채권자목록에 적지 않은 청구권',
+  8: '8호 양육비·부양료',
+  9: '9호 취업 후 상환 학자금대출 원리금',
+};
+
 // 3. 채권자목록 & 소송/가압류 이력
 export interface BankruptcyCreditorItem {
   id: string;
@@ -109,6 +127,8 @@ export interface BankruptcyCreditorItem {
   principal: number;            // 원금
   interest: number;             // 이자
   isNonDischargeable: boolean;  // 비면책 채권 여부 (조세, 양육비, 벌금, 불법행위 손해배상)
+  /** 비면책 사유 = 채무자회생법 제566조 몇 호인지 (1~9). 비면책이면 하나 고른다 */
+  nonDischargeableBasis?: NonDischargeableBasis;
   lawsuitInfo?: {
     hasLawsuit: boolean;
     lawsuitType?: 'LOAN_LAWSUIT' | 'PAYMENT_ORDER' | 'SEIZURE_COLLECTION' | 'CHATTEL_SEIZURE' | 'AUCTION' | 'OTHER';
@@ -270,13 +290,17 @@ export interface BankruptcyAssetItem {
 // 7. 파산 15대 필수자료제출목록 체크리스트 (Required Documents)
 export interface BankruptcyRequiredDoc {
   id: string;
-  itemNumber: number;           // 1 ~ 15
+  itemNumber: number;           // 1 ~ n (화면·인쇄 연번)
+  /** 실무준칙 제407호 자료제출목록 분류 번호 (1 인적·주거 ~ 10 신용회복위원회 등) */
+  groupNo?: number;
   category: string;
   title: string;
   detailDescription: string;
   isMandatory: boolean;
   status: 'PREPARING' | 'SUBMITTED' | 'UNOBTAINABLE'; // 준비중, 제출완료, 발급불가(사유서대체)
   unobtainableReason?: string;  // 발급 불가 또는 일부 제출 사유 (리걸플로 실무 양식)
+  /** 제출 못한 이유 종류: 해당사항 없음·협조 거부·기타 (양식 칸) */
+  unobtainableKind?: 'not_applicable' | 'refused' | 'other';
   fileUrl?: string;
   fileName?: string;
 }

@@ -21,6 +21,8 @@ import type {
   ReturnedDepositItem,
   BankruptcyResidenceType
 } from '../../../types/bankruptcyTypes';
+import { NON_DISCHARGEABLE_BASIS_LABEL, type NonDischargeableBasis } from '../../../types/bankruptcyTypes';
+import { SUBMISSION_GROUPS, UNOBTAINABLE_KIND_LABEL, upgradeSubmissionList, type UnobtainableKind } from '../../../services/court/bankruptcySubmissionList';
 import type { ConsultRequest, CrmClientExtension } from '../../../types';
 import PrintableBankruptcyPetitionModal from './PrintableBankruptcyPetitionModal';
 import { BANKRUPTCY_OFFICIAL_QUESTIONS, bankruptcyCreditorsFromRepayment, questionPeriodText, unansweredCount } from '../../../services/court/bankruptcyStatement';
@@ -220,32 +222,9 @@ export default function BankruptcyManagementTab({
     };
   });
 
-  // 7. 파산 15대 필수자료제출목록 (미제출 사유 인라인 입력 지원)
-  const [requiredDocs, setRequiredDocs] = useState<BankruptcyRequiredDoc[]>(() => {
-    if (savedBk?.requiredDocs && savedBk.requiredDocs.length > 0) return savedBk.requiredDocs;
-    // 모든 서류는 '준비중'으로 시작 (이전: 12종을 '제출완료'로, 3종은 '부동산 없음'·'처분재산 없음'·'이혼 사실 없음' 같은
-    //  의뢰인 사실을 지어낸 미제출 사유로 채워 법원 제출용 자료제출목록에 인쇄)
-    const base: Array<[string, string, string, boolean]> = [
-      ['인적서류', '가족관계증명서 (상세)', '상세본 필수', true],
-      ['인적서류', '혼인관계증명서 (상세)', '이혼이력 포함', true],
-      ['인적서류', '주민등록초본 (말소/주소변동 전체 포함)', '과거 주소 변동 전체', true],
-      ['인적서류', '주민등록등본', '세대원 전체 표기', true],
-      ['세금서류', '지방세 세목별 과세증명서', '관할 법원 요구 기간 확인', true],
-      ['재산서류', '자동차등록원부 (갑/을부)', '해당 여부 확인', false],
-      ['재산서류', '부동산 등기사항전부증명서 (해당시)', '소유 또는 최근 매각분', false],
-      ['보험서류', '보험가입내역조회서 및 해약환급금확인서', '내보험다보여 등', true],
-      ['금융서류', '통장 입출금 거래내역서', '관할 법원 요구 기간 확인', true],
-      ['소득서류', '소득금액증명 또는 사실증명원', '소득 유무에 따라', true],
-      ['건보서류', '건강보험 자격득실확인서 및 납부확인서', '관할 법원 요구 기간 확인', true],
-      ['특수소명', '최근 처분재산 매매계약서 및 대금 사용처 자료', '해당 시', false],
-      ['주거서류', '임대차계약서 사본 또는 무상거주확인서', '현재 거주지 증명', true],
-      ['특수소명', '최근 이혼 관련 판결서 또는 재산분할 합의서', '해당 시', false],
-      ['대리서류', '소송위임장', '변호사 대리 선임용', true],
-    ];
-    return base.map(([category, title, detailDescription, isMandatory], i) => ({
-      id: `bd-${i + 1}`, itemNumber: i + 1, category, title, detailDescription, isMandatory, status: 'PREPARING' as const,
-    }));
-  });
+  // 7. 자료제출목록 (미제출 사유 인라인 입력 지원)
+  // 실무준칙 제407호 자료제출목록 10분류 (예전 15항목 저장분은 같은 이름의 제출 상태를 이어 받는다)
+  const [requiredDocs, setRequiredDocs] = useState<BankruptcyRequiredDoc[]>(() => upgradeSubmissionList(savedBk?.requiredDocs));
 
   // 총 환가 가치 (파산재단 가액) 계산: 기본 자산 + 퇴직금 환가액
   const totalLiquidationEstate = useMemo(() => {
@@ -756,6 +735,8 @@ export default function BankruptcyManagementTab({
               { key: 'pastDischargeWithinYears', label: '6. 과거 7년(파산) / 5년(회생) 이내 면책 이력', hint: '제4호 — 면책일 확인 필요' },
               { key: 'falseReportToTrustee', label: '7. 관재인·법원에 대한 허위 설명 또는 자료 제출 거부', hint: '제5호(채무자 의무 위반) 관련' },
               { key: 'creditTransactionBeforeFiling', label: '8. 신청 직전 신용카드·대출 이용', hint: '경위 소명 필요 (사유 해당 여부는 사실관계에 따라 판단)' },
+              { key: 'dutyViolation', label: '9. 설명·자료 제출·출석 등 채무자 의무 위반', hint: '제5호 관련 — 관재인·법원 요청에 응했는지 기록' },
+              { key: 'noShowAfterSummons', label: '10. 구인명령을 받고도 출석하지 않음', hint: '제5호의2(2024. 12. 20. 시행) — 정당한 사유가 있으면 소명' },
             ].map(item => {
               const isChecked = (statement.disallowanceScreening as any)[item.key];
               return (
@@ -861,7 +842,7 @@ export default function BankruptcyManagementTab({
 
                     {c.isNonDischargeable ? (
                       <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 border border-rose-300">
-                        🚫 비면책 채권
+                        비면책 채권{c.nonDischargeableBasis ? ` · 제566조 ${c.nonDischargeableBasis}호` : ' · 사유 고르기'}
                       </span>
                     ) : (
                       <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
@@ -876,12 +857,28 @@ export default function BankruptcyManagementTab({
                         checked={c.isNonDischargeable} 
                         onChange={(e) => {
                           const val = e.target.checked;
-                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, isNonDischargeable: val } : item));
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, isNonDischargeable: val, nonDischargeableBasis: val ? item.nonDischargeableBasis : undefined } : item));
                         }}
                         className="rounded text-rose-600"
                       />
                       <span title="제566조 각 호(조세·벌금 등, 고의 불법행위 손해배상, 임금·퇴직금, 양육비·부양료, 악의로 누락한 청구권 등)">비면책채권(제566조)</span>
                     </label>
+                    {c.isNonDischargeable && (
+                      <select
+                        aria-label="비면책 사유 (제566조)"
+                        value={c.nonDischargeableBasis || ''}
+                        onChange={(e) => {
+                          const v = Number(e.target.value) as NonDischargeableBasis;
+                          setCreditors(prev => prev.map(item => item.id === c.id ? { ...item, nonDischargeableBasis: v || undefined } : item));
+                        }}
+                        className="min-h-[36px] max-w-[14rem] rounded-xl border border-rose-200 bg-white px-2 text-xs text-slate-800"
+                      >
+                        <option value="">사유 고르기</option>
+                        {(Object.keys(NON_DISCHARGEABLE_BASIS_LABEL) as unknown as NonDischargeableBasis[]).map(k => (
+                          <option key={k} value={k}>{NON_DISCHARGEABLE_BASIS_LABEL[k]}</option>
+                        ))}
+                      </select>
+                    )}
                     <button 
                       onClick={() => setCreditors(prev => prev.filter(item => item.id !== c.id))}
                       className="text-slate-400 hover:text-rose-600 p-1 cursor-pointer"
@@ -1859,7 +1856,7 @@ export default function BankruptcyManagementTab({
           <div className="flex items-center justify-between border-b border-slate-100 pb-4">
             <div>
               <h4 className="font-bold text-sm text-slate-900">
-                개인파산 자료제출목록 (15항목) 및 미제출 사유
+                개인파산 자료제출목록 (실무준칙 제407호 10분류) 및 미제출 사유
               </h4>
               <p className="text-xs text-slate-500 mt-0.5">
                 관할 법원이 요구하는 자료 목록과 대조해 사용하세요. 미제출 사유는 사실대로 직접 작성해야 하며 초안 출력에 반영됩니다.
@@ -1871,10 +1868,14 @@ export default function BankruptcyManagementTab({
           </div>
 
           <div className="space-y-2.5 text-xs">
-            {requiredDocs.map(d => {
+            {requiredDocs.map((d, idx) => {
               const isSubmitted = d.status === 'SUBMITTED';
+              const groupHead = d.groupNo && (idx === 0 || requiredDocs[idx - 1].groupNo !== d.groupNo)
+                ? SUBMISSION_GROUPS.find(g => g.no === d.groupNo) : undefined;
               return (
-                <div key={d.id} className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                <React.Fragment key={d.id}>
+                {groupHead && <h5 className="pt-2 text-xs font-black text-slate-700">{groupHead.no}. {groupHead.label}</h5>}
+                <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
                       <span className="font-mono font-bold text-purple-600 w-6">#{d.itemNumber}</span>
@@ -1921,10 +1922,22 @@ export default function BankruptcyManagementTab({
 
                   {d.status === 'UNOBTAINABLE' && (
                     <div className="pt-2 border-t border-slate-200">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs font-bold text-amber-800 shrink-0">
-                          ⚠️ 제출 못하거나 일부만 제출한 사유:
+                          제출 못하거나 일부만 제출한 이유:
                         </span>
+                        <select
+                          aria-label="제출 못한 이유 종류"
+                          value={d.unobtainableKind || ''}
+                          onChange={(e) => {
+                            const v = (e.target.value || undefined) as UnobtainableKind | undefined;
+                            setRequiredDocs(prev => prev.map(x => x.id === d.id ? { ...x, unobtainableKind: v } : x));
+                          }}
+                          className="min-h-[32px] rounded-lg border border-amber-300 bg-white px-2 text-xs text-slate-900"
+                        >
+                          <option value="">종류 고르기</option>
+                          {(Object.keys(UNOBTAINABLE_KIND_LABEL) as UnobtainableKind[]).map(k => <option key={k} value={k}>{UNOBTAINABLE_KIND_LABEL[k]}</option>)}
+                        </select>
                         <input 
                           type="text" 
                           value={d.unobtainableReason || ''} 
@@ -1932,13 +1945,14 @@ export default function BankruptcyManagementTab({
                             const val = e.target.value;
                             setRequiredDocs(prev => prev.map(x => x.id === d.id ? { ...x, unobtainableReason: val } : x));
                           }}
-                          placeholder="구체적 미제출 사유를 입력하세요 (예: 해당 재산 일체 없어 미제출)"
+                          placeholder={d.unobtainableKind === 'other' ? '이유를 사실대로 적어 주세요 (기타는 필수)' : '더 적을 내용 (선택)'}
                           className="flex-1 bg-white border border-amber-300 rounded-lg px-2.5 py-1 text-xs focus:ring-1 focus:ring-amber-500 font-medium text-slate-900"
                         />
                       </div>
                     </div>
                   )}
                 </div>
+                </React.Fragment>
               );
             })}
           </div>

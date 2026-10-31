@@ -1108,7 +1108,8 @@ export default function LawyerRole({
             fields: [],
             region: '',
             email: account.authEmail || email || undefined,
-            avatar: user.user_metadata?.avatar_url || '',
+            // 공개 프로필 사진은 본인이 올린 사진만 (구글·카카오 계정 사진을 자동으로 쓰지 않음, LD-4)
+            avatar: '',
             bio: '',
             recentActivity: `${providerName} 소셜 계정 연결 (자격 심사 대기)`,
             matchedCount: 0,
@@ -2350,7 +2351,7 @@ export default function LawyerRole({
                   {[
                     { step: '01', title: '회원가입', desc: '변호사 등록증을 첨부하여 가입 신청', icon: '📝' },
                     { step: '02', title: '승인 완료', desc: '관리자가 자격을 확인하고 계정 활성화', icon: '✅' },
-                    { step: '03', title: '상담 요청 수신', desc: 'AI 진단 완료 의뢰인의 상담 요청이 도착', icon: '🔔' },
+                    { step: '03', title: '상담 요청 수신', desc: '내 상황 체크를 마친 의뢰인이 직접 고른 상담 요청이 도착', icon: '🔔' },
                     { step: '04', title: '솔루션 제안 & 수임', desc: '변제금·비용 제안서를 보내고 사건 수임', icon: '🤝' }
                   ].map((item, i) => (
                     <div key={i} className="bg-white rounded-2xl border border-slate-200 p-5 text-center space-y-3 hover:shadow-md hover:border-brand/20 transition-all">

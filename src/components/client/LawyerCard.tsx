@@ -3,7 +3,7 @@ import { Award, Briefcase, Check, Heart, MapPin, ShieldCheck } from 'lucide-reac
 import type { User } from '../../types';
 import { cn } from '../../utils/cn';
 import { Badge, Button } from './ui';
-import { getAffiliation, getAvatarSrc, getDisplayName, getExperienceYears, isLicenseVerified } from './lawyerDirectory';
+import { getAffiliation, getAvatarSrc, getDisplayName, getExperienceYears, isLicenseVerified, isRemoteAvailable } from './lawyerDirectory';
 
 /**
  * 변호사 카드 (변호사 찾기 전체에서 1종만 사용)
@@ -94,6 +94,7 @@ export default function LawyerCard({
               <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" aria-hidden="true" />
             )}
             <span className="shrink-0">{lawyer.region}</span>
+            {isRemoteAvailable(lawyer) && <span className="shrink-0 text-slate-500">· 비대면 가능</span>}
           </p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             {isAd && <Badge tone="neutral">광고</Badge>}

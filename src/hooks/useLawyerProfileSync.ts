@@ -70,6 +70,8 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
   const fetchSeqRef = useRef(0);
   const lastFetchRef = useRef(0);
   const [syncTick, setSyncTick] = useState(0);
+  /** 서버 목록을 한 번이라도 받았거나(실패 포함) 서버가 없음 — 변호사 찾기 로딩 표시용 */
+  const [loaded, setLoaded] = useState(!isSupabaseConfigured);
 
   const refresh = useCallback(async () => {
     if (!isSupabaseConfigured) return;
@@ -77,6 +79,7 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
     lastFetchRef.current = Date.now();
     const res = await fetchLawyersFromDb();
     if (seq !== fetchSeqRef.current) return; // 더 최근 요청이 있음
+    setLoaded(true);
     if (res.ok === false) return;
 
     const prevSynced = new Map(syncedRef.current);
@@ -193,4 +196,6 @@ export function useLawyerProfileSync({ lawyers, setLawyers, currentRole, seedIds
     const timer = setTimeout(() => { void flush(); }, PUSH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [lawyers, syncTick, currentRole, flush]);
+
+  return { loaded };
 }

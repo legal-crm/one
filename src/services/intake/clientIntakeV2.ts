@@ -58,6 +58,14 @@ export const INTAKE_FIELDS: FieldDef[] = [
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
 
+/** 챗봇 금액 질문 단계 → 변호사 자료 '확인 필요' 이름 */
+const UNKNOWN_STEP_LABEL: Record<string, string> = {
+  income_salary: '월 실수령액', income_business: '월 실수령액', rent_cost: '월세', deposit_amount: '보증금', deposit_loan_amount: '보증금 대출',
+  owned_value: '집 시세', owned_mortgage: '집 담보 대출', medical_amount: '월 의료비', education_amount: '월 교육비', special_education_amount: '특수교육비',
+  credit_card_amount: '카드 사용액', debt_amount_detail: '빚 금액', speculative_loss_amount: '투자·도박 손실', child_support_receive: '받는 양육비',
+  child_support_pay: '보내는 양육비', asset_retirement_value: '예상 퇴직금', prior_credit_recovery_amount: '신용회복 남은 금액',
+};
+
 /** 챗봇 입력(원 단위)에서 v2 자료를 만든다. 0원·빈 값은 그대로 두고 '확인 필요'는 답이 없는 칸만 */
 export function buildIntakeV2(input: Partial<RehabUserInput> & Record<string, any>, extra?: Partial<IntakeExtraFacts>, previous?: ClientIntakeV2 | null): ClientIntakeV2 {
   const answers: ClientIntakeV2['answers'] = {};
@@ -77,6 +85,12 @@ export function buildIntakeV2(input: Partial<RehabUserInput> & Record<string, an
     .filter(f => !['childSupportPaid', 'childSupportReceived', 'speculativeLoss', 'gamblingLoss', 'creditCardDebt', 'elderlyParentCount', 'medicalCost', 'educationCost', 'age', 'riskFactors'].includes(f.key))
     .map(f => f.label);
   if (answers.retirementPensionType === 'unknown') needCheck.push('퇴직연금 가입 여부');
+  // 챗봇에서 '모름'이라고 답한 금액 (I-3) — 0으로 저장돼 있어 칸만 보면 알 수 없으니 따로 표시
+  for (const step of Array.isArray(input.unknownSteps) ? (input.unknownSteps as string[]) : []) {
+    const label = UNKNOWN_STEP_LABEL[step] || (step.startsWith('spouse_asset') ? '배우자 재산 금액' : step.startsWith('asset_') ? '재산 금액' : '금액');
+    const text = `${label} (모름)`;
+    if (!needCheck.includes(text)) needCheck.push(text);
+  }
   const next: ClientIntakeV2 = { version: 2, answeredAt: new Date().toISOString(), units: 'won', answers, extra, needCheck };
   if (previous) {
     const changed = Object.keys(answers).filter(k => JSON.stringify(answers[k]) !== JSON.stringify(previous.answers?.[k]));

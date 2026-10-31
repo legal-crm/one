@@ -10,6 +10,7 @@
  * - 입력값 확인 단계
  */
 
+import { clearCheckDraft, loadCheckDraft, queueCheckDraft } from '../../../services/intake/checkDraftService';
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -256,6 +257,9 @@ const ASSET_BLOCK_OPTIONS = [
     { label: '퇴직금', value: 'retirementPay', icon: '💼' }
 ];
 
+/** 출생연도 '건너뛰기' (I-3) */
+const AGE_SKIP = '__age_skip__';
+
 const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     isOpen,
     onClose,
@@ -424,6 +428,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
     const handleCloseRequest = useCallback(() => {
         if (currentStep === 'intro' || currentStep === 'result' || showResult || stepHistory.length === 0) {
             sessionStorage.removeItem('roi_rehab_chatbot_session');
+            if (currentStep === 'result' || showResult) clearCheckDraft();
             onClose();
         } else {
             setShowExitConfirm(true);
@@ -578,6 +583,22 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             }
 
             if (!foundSession) {
+                void (async () => {
+                    const draft = disablePortal ? null : await loadCheckDraft().catch(() => null);
+                    if (draft && draft.currentStep && Array.isArray(draft.messages) && draft.messages.length > 0) {
+                        try { sessionStorage.setItem('roi_rehab_chatbot_session', JSON.stringify(draft)); } catch { /* ignore */ }
+                        setTimeout(() => {
+                            addBotMessage(
+                                `계정에 임시 저장해 둔 정리 내용이 있어요.\n이어서 진행할까요?`,
+                                [
+                                    { label: '이어서 하기', value: 'resume' },
+                                    { label: '처음부터 다시 하기', value: 'restart' }
+                                ],
+                                'buttons'
+                            );
+                        }, 300);
+                        return;
+                    }
                 setTimeout(() => {
                     // [DEFAULT] 기본 인트로 메시지
                     // 자동 정리 도구임을 밝힌다(변호사·상담사로 오인되지 않게). 소요 시간 표기는 사이트 전체 '약 3분'으로 통일
@@ -587,6 +608,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         'buttons'
                     );
                 }, 500);
+                })();
             }
         }
     }, [isOpen, characterName, disablePortal, shouldUseBlock]);
@@ -658,6 +680,8 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 savedAt: Date.now()
             };
             sessionStorage.setItem('roi_rehab_chatbot_session', JSON.stringify(sessionData));
+            // 로그인한 의뢰인은 계정에도 임시 저장 (다른 기기·새 창에서 이어 하기, I-5). 미리보기 화면은 저장 안 함
+            if (!disablePortal) queueCheckDraft(sessionData as unknown as Record<string, unknown>);
         }
     }, [
         currentStep,
@@ -844,6 +868,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 
                 sessionStorage.removeItem('roi_rehab_chatbot_session');
+                if (!disablePortal) clearCheckDraft();
                 goToStep('address');
                 addBotMessage(
                     '지금 **살고 계신 곳**이 어디인가요?\n\n(예: 서울 강남구, 수원시 영통구)',
@@ -874,16 +899,27 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 );
                 break;
 
-            case 'age':
+            case 'age': {
                 let age: number | undefined;
+                const thisYear = new Date().getFullYear();
+                const skipAge = value === AGE_SKIP;
                 const ageValue = typeof value === 'number' ? value : parseInt(value as string);
-                if (!isNaN(ageValue)) {
-                    // 4자리 숫자면 년생으로 간주
-                    if (ageValue >= 1940 && ageValue <= 2010) {
-                        age = 2026 - ageValue;
+                if (!skipAge && !isNaN(ageValue)) {
+                    // 4자리 숫자면 출생연도, 아니면 만 나이 (I-3)
+                    if (ageValue >= thisYear - 100 && ageValue <= thisYear - 18) {
+                        age = thisYear - ageValue;
                     } else if (ageValue >= 18 && ageValue <= 100) {
                         age = ageValue;
                     }
+                }
+                if (!skipAge && age === undefined) {
+                    // 범위 밖·숫자 아님 → 다시 묻는다 (이전: 나이를 빈 채로 진행)
+                    addBotMessage(
+                        `출생연도 4자리(예: 1985)나 만 나이를 숫자로 적어 주세요.\n말하고 싶지 않으면 '건너뛰기'라고 적어 주세요.`,
+                        undefined,
+                        'number'
+                    );
+                    break;
                 }
                 setUserInput(prev => ({ ...prev, age }));
                 goToStep('gender');
@@ -897,6 +933,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                     'buttons'
                 );
                 break;
+            }
 
             case 'gender':
                 // 답하지 않으면 비워 둔다 (지어낸 기본값 없음, I-3·I-4)
@@ -3667,6 +3704,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             setCurrentStep('result');
             setShowResult(true);
             sessionStorage.removeItem('roi_rehab_chatbot_session');
+            if (!disablePortal) clearCheckDraft();
 
             if (onComplete) {
                 onComplete(calculationResult, input);
@@ -3697,9 +3735,39 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
 
         // 입력값 파싱
         let value: string | number = inputValue;
+        const raw = inputValue.trim();
+        // 출생연도는 '건너뛰기'를 받는다 (I-3)
+        if (currentStep === 'age' && /^(건너뛰기|건너뛸게요|skip)$/i.test(raw)) {
+            addUserMessage(raw);
+            setInputValue('');
+            setTimeout(() => processStep(currentStep, AGE_SKIP), 300);
+            return;
+        }
+        // 금액을 모르면 '모름' (I-3): 0으로 넘기되 변호사 자료에 '확인 필요'로 남긴다
+        if (lastBotMessage?.inputType === 'money' && /^(모름|모르겠|잘 모르|몰라)/.test(raw)) {
+            addUserMessage('잘 모르겠어요');
+            setInputValue('');
+            setUserInput(prev => ({ ...prev, unknownSteps: Array.from(new Set([...(((prev as any).unknownSteps as string[]) || []), currentStep])) } as any));
+            setTimeout(() => processStep(currentStep, 0), 300);
+            return;
+        }
         if (lastBotMessage?.inputType === 'number' || lastBotMessage?.inputType === 'money') {
             // 쉼표 제거 후 파싱
             value = parseFloat(inputValue.replace(/,/g, ''));
+            const max = lastBotMessage?.inputType === 'money' ? 1_000_000 : 10_000;
+            if (!Number.isFinite(value) || value < 0 || value > max) {
+                // 숫자가 아니거나 범위 밖 → 다음 질문으로 넘어가지 않고 다시 묻는다 (이전: NaN·음수가 그대로 저장)
+                addUserMessage(inputValue);
+                setInputValue('');
+                addBotMessage(
+                    lastBotMessage?.inputType === 'money'
+                        ? '숫자로 다시 적어 주세요. 만 원 단위예요 (예: 250 = 250만 원). 모르면 \'모름\'이라고 적어도 돼요.'
+                        : '숫자로 다시 적어 주세요.',
+                    lastBotMessage?.options,
+                    lastBotMessage?.inputType
+                );
+                return;
+            }
         }
 
         // 사용자 메시지 표시 (돈 관련 입력이면 한글 포맷팅)
@@ -3716,7 +3784,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
         setTimeout(() => {
             processStep(currentStep, value);
         }, 300);
-    }, [inputValue, messages, addUserMessage, processStep, currentStep]);
+    }, [inputValue, messages, addUserMessage, addBotMessage, processStep, currentStep]);
 
     // 롤백 실행 함수 (스냅샷 기반 완전 복원)
     const executeRollback = useCallback((targetStep: ChatStep, targetMessageId: string, newValue?: string | number) => {
@@ -4076,7 +4144,9 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                         messages={messages.map(msg => ({
                             id: msg.id,
                             type: msg.type,
-                            content: msg.content,
+                            content: msg.type === 'bot' && msg.inputType === 'money' && !msg.isAnswered && !msg.content.includes('모름')
+                                ? `${msg.content}\n(모르면 '모름'이라고 적어도 돼요)`
+                                : msg.content,
                             options: msg.options?.map(opt => ({ label: opt.label, value: String(opt.value), selected: opt.selected })),
                             inputType: msg.inputType,
                             multiSelect: msg.multiSelect,
@@ -4280,7 +4350,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                 채무 정리를 그만할까요?
                             </h3>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                                지금 나가면 입력한 내용이 이 기기에서 지워집니다.
+                                지금 나가면 입력한 내용이 지워집니다. 로그인했다면 계정에 임시 저장한 내용도 지워져요.
                             </p>
                             <div className="flex gap-3">
                                 <button
@@ -4288,6 +4358,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                                     onClick={() => {
                                         setShowExitConfirm(false);
                                         sessionStorage.removeItem('roi_rehab_chatbot_session');
+                                        if (!disablePortal) clearCheckDraft();
                                         onClose();
                                     }}
                                     className="flex-1 min-h-11 py-3 px-4 rounded-xl border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 font-bold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer"

@@ -262,6 +262,18 @@ export function saveSalesLeads(leads: SalesLead[]): boolean {
         await syncSalesLeadsFromServer();
         return;
       }
+      // 담당자 없이 올린 리드는 서버가 자동 배정 규칙(RB-8)으로 담당자를 정할 수 있다 → 그 값을 받아 둔다
+      // (안 받으면 다음 저장 때 빈 담당자로 덮어쓴다)
+      const noAssignee = diff.upserts.filter(l => !l.assigneeUserId).map(l => l.id);
+      if (noAssignee.length > 0 && scope === salesLeadScope) {
+        const { data } = await supabase.from('sales_leads').select('id, assignee_user_id').eq('office_id', scope).in('id', noAssignee);
+        const assigned = new Map((data || []).filter((r: any) => r.assignee_user_id).map((r: any) => [r.id as string, r.assignee_user_id as string]));
+        if (assigned.size > 0 && scope === salesLeadScope) {
+          leadCache = leadCache.map(l => (assigned.has(l.id) && !l.assigneeUserId ? { ...l, assigneeUserId: assigned.get(l.id) } : l));
+          leadSnapshot = snapshotOf(leadCache);
+          emitLeads();
+        }
+      }
     }
     if (diff.deletes.length > 0) {
       const { error } = await supabase.from('sales_leads').update({ deleted_at: new Date().toISOString() }).eq('office_id', scope).in('id', diff.deletes);

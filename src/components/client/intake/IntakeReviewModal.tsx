@@ -17,6 +17,10 @@ export interface IntakeExtraFacts {
   tenure?: '' | 'under1y' | '1to3y' | 'over3y' | 'unknown';
   socialInsurance?: '' | 'yes' | 'no' | 'unknown';
   incomeDrop?: '' | 'no' | 'yes' | 'unknown';
+  /** 함께 사는 자녀 나이대 (여러 개, 부양가족 판단 자료 — I-3) */
+  childAges?: Array<'preschool' | 'elementary' | 'secondary' | 'college' | 'adult'>;
+  /** 자녀·부모 말고 부양하는 가족(장애 가족 등) */
+  otherDependents?: '' | 'yes' | 'no';
   /** 단축 사유 관련 사실 (판정 없음, 여러 개) */
   shortFacts?: Array<'severe_disability' | 'single_parent' | 'rent_fraud_decision' | 'low_wage_2y' | 'no_private_creditor'>;
   /** '중증 장애'(민감정보, 개인정보 보호법 제23조)를 변호사에게 보내는 별도 동의 시각 — 없으면 그 답은 보내지 않는다 */
@@ -28,12 +32,16 @@ export interface IntakeExtraFacts {
   goals?: Array<'stop_collection' | 'lower_payment' | 'keep_job' | 'keep_home' | 'protect_family' | 'fresh_start' | 'compare_options'>;
 }
 
-export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', shortFacts: [], consultMethod: '', consultTimes: [], goals: [] };
+export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', childAges: [], otherDependents: '', shortFacts: [], consultMethod: '', consultTimes: [], goals: [] };
 
 const GOAL_OPTIONS = [
   ['stop_collection', '독촉·추심 연락 멈추기'], ['lower_payment', '매달 갚는 부담 줄이기'], ['keep_job', '직장·자격 지키기'],
   ['keep_home', '사는 집 지키기'], ['protect_family', '가족에게 알려지지 않기'], ['fresh_start', '빚을 정리하고 새로 시작'],
   ['compare_options', '어떤 제도가 맞는지 알고 싶어요'],
+] as const;
+
+const CHILD_AGE_OPTIONS = [
+  ['preschool', '미취학'], ['elementary', '초등학생'], ['secondary', '중·고등학생'], ['college', '대학생'], ['adult', '성인(만 19세 이상)'],
 ] as const;
 
 const man = (v?: number) => (v ? `${Math.round(v).toLocaleString('ko-KR')}만 원` : '');
@@ -187,6 +195,27 @@ export default function IntakeReviewModal({
                 <option value="">선택</option><option value="yes">가입돼 있어요</option><option value="no">안 돼 있어요</option><option value="unknown">모르겠어요</option>
               </select>
             </label>
+            <fieldset className="space-y-1 sm:col-span-2">
+              <legend className="font-bold text-slate-700">함께 사는 자녀 나이대 (여러 개, 자녀가 없으면 비워 두세요)</legend>
+              <div className="flex flex-wrap gap-2">
+                {CHILD_AGE_OPTIONS.map(([v, l]) => {
+                  const on = (x.childAges || []).includes(v);
+                  return (
+                    <button key={v} type="button" aria-pressed={on}
+                      onClick={() => setX(p => ({ ...p, childAges: on ? (p.childAges || []).filter(k => k !== v) : [...(p.childAges || []), v] }))}
+                      className={`min-h-[44px] px-3 rounded-xl border text-sm font-bold whitespace-nowrap active:scale-[0.98] ${on ? 'bg-brand text-white border-brand' : 'bg-white text-slate-700 border-slate-200'}`}>
+                      {l}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <label className="space-y-1">
+              <span className="font-bold text-slate-700">자녀·부모 말고 부양하는 가족</span>
+              <select className={inputClass} value={x.otherDependents || ''} onChange={e => setX(p => ({ ...p, otherDependents: e.target.value as any }))}>
+                <option value="">선택</option><option value="no">없어요</option><option value="yes">있어요 (예: 장애가 있는 가족)</option>
+              </select>
+            </label>
             <label className="space-y-1">
               <span className="font-bold text-slate-700">원하는 상담 방식</span>
               <select className={inputClass} value={x.consultMethod || ''} onChange={e => setX(p => ({ ...p, consultMethod: e.target.value as any }))}>
@@ -314,6 +343,7 @@ export function extraFactsText(x: IntakeExtraFacts): string {
     `• 밀린 공과금: ${x.arrears.length ? x.arrears.map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
     `• 압류: ${x.seizure.length ? x.seizure.map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
     `• 출생연도: ${x.birthYear || '답 없음'} · 일한 기간: ${L[x.tenure || ''] || '답 없음'} · 4대보험: ${L[x.socialInsurance || ''] || '답 없음'} · 최근 소득 감소: ${L[x.incomeDrop || ''] || '답 없음'}`,
+    `• 자녀 나이대: ${(x.childAges || []).length ? (x.childAges || []).map(a => CHILD_AGE_OPTIONS.find(o => o[0] === a)?.[1] || a).join(', ') : '답 없음'} · 그 밖의 부양가족: ${x.otherDependents === 'yes' ? '있음' : x.otherDependents === 'no' ? '없음' : '답 없음'}`,
     `• 해당 사실(판정 아님): ${(x.shortFacts || []).length ? (x.shortFacts || []).map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
     `• 해결하고 싶은 것: ${(x.goals || []).length ? (x.goals || []).map(g => GOAL_OPTIONS.find(o => o[0] === g)?.[1] || g).join(', ') : '답 없음'}`,
     `• 원하는 상담 방식: ${L[x.consultMethod || ''] || '답 없음'} · 편한 때: ${(x.consultTimes || []).length ? (x.consultTimes || []).map(a => L[a]).join(', ') : '답 없음'}`,

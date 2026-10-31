@@ -96,22 +96,44 @@ export default function ServerNotificationSettings({ officeId, canViewTeam, canE
   return (
     <div className="space-y-4">
       <section className="bg-white border border-slate-200 p-4 rounded-2xl space-y-3" aria-label="내 알림 받기">
-        <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900"><Mail className="w-5 h-5 text-slate-700" />내 알림 받기 (이메일)</h3>
+        <h3 className="flex items-center gap-2 text-base font-extrabold text-slate-900"><Mail className="w-5 h-5 text-slate-700" />내 알림 받기</h3>
         <p className="text-sm text-slate-600 break-keep">
-          <Bell className="w-4 h-4 inline mr-1" aria-hidden="true" />화면 위 종 알림은 늘 옵니다. 이메일은 로그인한 계정 주소로 가고, 종류·건수·링크만 담깁니다(의뢰인 정보 없음). 같은 일은 읽기 전까지 한 번만 보냅니다.
+          <Bell className="w-4 h-4 inline mr-1" aria-hidden="true" />알림마다 어디로 받을지 고르세요. 화면 위 종 알림은 업무 기록이라 늘 남습니다. 이메일은 로그인한 계정 주소로 가고, 종류·건수·링크만 담깁니다(의뢰인 정보 없음). 같은 일은 읽기 전까지 한 번만 보냅니다.
         </p>
-        <label className="flex items-center gap-2 text-sm font-bold text-slate-900">
+        <label className="flex items-center gap-2 text-sm font-bold text-slate-900 min-h-[44px]">
           <input type="checkbox" checked={mine.emailEnabled} onChange={e => setMine({ ...mine, emailEnabled: e.target.checked })} className="h-4 w-4" />
-          이메일로도 받기
+          이메일 받기 (끄면 아래 이메일 칸이 모두 꺼져요)
         </label>
-        <fieldset disabled={!mine.emailEnabled} className="grid grid-cols-2 gap-2 disabled:opacity-50">
-          {OFFICE_NOTIFICATION_KINDS.map(k => (
-            <label key={k.kind} className="flex items-center gap-2 text-sm text-slate-800">
-              <input type="checkbox" checked={!mine.kindsOff.includes(k.kind)} onChange={e => setMine({ ...mine, kindsOff: e.target.checked ? mine.kindsOff.filter(x => x !== k.kind) : [...mine.kindsOff, k.kind] })} className="h-4 w-4" />
-              {k.label}
-            </label>
-          ))}
-        </fieldset>
+        <div className="overflow-x-auto border border-slate-200 rounded-xl">
+          <table className="w-full text-sm">
+            <caption className="sr-only">알림 종류별 받는 곳</caption>
+            <thead className="bg-slate-50 text-xs text-slate-600">
+              <tr>
+                <th scope="col" className="text-left font-bold px-3 py-2">알림</th>
+                <th scope="col" className="font-bold px-3 py-2 whitespace-nowrap">종 알림</th>
+                <th scope="col" className="font-bold px-3 py-2 whitespace-nowrap">이메일</th>
+                <th scope="col" className="font-bold px-3 py-2 whitespace-nowrap">업무폰 푸시</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {OFFICE_NOTIFICATION_KINDS.map(k => (
+                <tr key={k.kind}>
+                  <th scope="row" className="text-left font-normal text-slate-800 px-3 py-1.5">{k.label}</th>
+                  <td className="text-center px-3 py-1.5"><span className="text-xs font-bold text-slate-500">늘 받음</span></td>
+                  <td className="text-center px-3 py-1.5">
+                    <label className="inline-flex items-center justify-center min-h-[40px] min-w-[40px] cursor-pointer">
+                      <span className="sr-only">{k.label} 이메일</span>
+                      <input type="checkbox" disabled={!mine.emailEnabled} checked={mine.emailEnabled && !mine.kindsOff.includes(k.kind)}
+                        onChange={e => setMine({ ...mine, kindsOff: e.target.checked ? mine.kindsOff.filter(x => x !== k.kind) : [...mine.kindsOff, k.kind] })} className="h-4 w-4 disabled:opacity-40" />
+                    </label>
+                  </td>
+                  <td className="text-center px-3 py-1.5"><span className="text-xs text-slate-400">앱 연결 후</span></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-slate-500">업무폰 푸시는 '마이김변 업무폰' 앱을 연결하면 켤 수 있어요.</p>
         <div className="flex flex-wrap items-center gap-2 text-sm text-slate-800">
           <span>조용한 시간</span>
           <select aria-label="조용한 시간 시작" value={mine.quietStart} onChange={e => setMine({ ...mine, quietStart: Number(e.target.value) })} className={field}>

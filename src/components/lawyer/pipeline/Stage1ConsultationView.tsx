@@ -590,7 +590,7 @@ export default function Stage1ConsultationView({
               </span>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-slate-900 tracking-tight">
-                  사전 진단 요건 검토 계기판
+                  정리 자료 요건 확인
                 </span>
               <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-md bg-slate-100 text-slate-600">
                 {stealthName}

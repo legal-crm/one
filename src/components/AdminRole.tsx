@@ -13,6 +13,8 @@ import AccountsPanel from './admin/AccountsPanel';
 import ConsultMonitorPanel from './admin/ConsultMonitorPanel';
 import PrivacyRequestsPanel from './admin/PrivacyRequestsPanel';
 import OfficeClosurePanel from './admin/OfficeClosurePanel';
+import AdminActionsPanel from './admin/AdminActionsPanel';
+import { ContentStatusCell, ContentStatusSummary, useContentStatuses } from './admin/content/ContentStatusBar';
 import LegalDocumentsPanel from './admin/LegalDocumentsPanel';
 import CreditorRegistryPanel from './admin/CreditorRegistryPanel';
 import PlatformFeaturesPanel from './admin/PlatformFeaturesPanel';
@@ -215,6 +217,8 @@ export default function AdminRole({
   const [qaBadge, setQaBadge] = useState<string>('실시간 답변');
 
   // CRUD states for Success Reviews (채무 해결 성공후기)
+  // 후기·예시 글 게시 상태 (CT-3 일부: 초안은 공개 화면에 안 보임)
+  const reviewStatuses = useContentStatuses('success_reviews', reviews);
   const [editingReview, setEditingReview] = useState<SuccessReview | null>(null);
   const [isReviewCreateMode, setIsReviewCreateMode] = useState<boolean>(false);
   const [reviewTitle, setReviewTitle] = useState<string>('');
@@ -4161,18 +4165,20 @@ export default function AdminRole({
                   )}
 
                   {/* Reviews Data Grid */}
+                  <ContentStatusSummary table="success_reviews" map={reviewStatuses.map} onChanged={() => void reviewStatuses.reload()} />
                   <div className="bg-[#111622] rounded-xl border border-[#1E293B]/60 overflow-hidden">
                     <div className="overflow-x-auto">
                       <table className="w-full text-left text-sm border-collapse">
                         <thead>
                           <tr className="bg-[#161B26] text-slate-500 font-bold border-b border-[#1E293B]/60">
-                            <th className="p-3">후기 분류</th>
-                            <th className="p-3">성공후기 제목 헤드라인</th>
-                            <th className="p-3">채무 탕감 실적 (전/후)</th>
-                            <th className="p-3">수임 대리인</th>
-                            <th className="p-3">의뢰 가명</th>
-                            <th className="p-3">키워드 태그</th>
-                            <th className="p-3 text-right">콘텐츠 조율</th>
+                            <th className="p-3">분류</th>
+                            <th className="p-3">제목</th>
+                            <th className="p-3">게시</th>
+                            <th className="p-3">금액 기록 (내부)</th>
+                            <th className="p-3">변호사</th>
+                            <th className="p-3">작성자</th>
+                            <th className="p-3">태그</th>
+                            <th className="p-3 text-right">관리</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#1E293B]/30">
@@ -4194,8 +4200,11 @@ export default function AdminRole({
                                       : hasDebtFigures && <span className="text-xs text-slate-400 font-mono">내부 기록: 원금 약 {cutPct}% 감면 (공개 화면 미표시)</span>}
                                   </div>
                                 </td>
+                                <td className="p-3">
+                                  <ContentStatusCell table="success_reviews" id={rev.id} map={reviewStatuses.map} onChanged={() => void reviewStatuses.reload()} />
+                                </td>
                                 <td className="p-3 font-bold text-slate-200 font-mono">
-                                  {hasDebtFigures ? `${rev.originalDebt.toLocaleString()}만 ➔ ${rev.remainingDebt.toLocaleString()}만` : '—'}
+                                  {hasDebtFigures ? `${rev.originalDebt.toLocaleString()}만 → ${rev.remainingDebt.toLocaleString()}만` : '—'}
                                 </td>
                                 <td className="p-3 text-slate-350">{rev.lawyerName}</td>
                                 <td className="p-3 text-slate-450">{rev.author}</td>
@@ -5379,6 +5388,7 @@ export default function AdminRole({
           {activeTab === 'security' && (
             <div className="space-y-6 animate-fadeIn">
               <GlobalSessionMonitor currentAdminEmail={adminEmail} />
+              <AdminActionsPanel />
             </div>
           )}
 
