@@ -1,11 +1,11 @@
 import React from 'react';
 import {
-  X, Scale, Shield, AlertTriangle,
-  ArrowRight, Landmark, RefreshCw
+  X, ArrowRight, Scale, FileCheck2, HeartHandshake, UserCheck, Receipt, Handshake, Sprout, LifeBuoy, Wallet, Phone, ExternalLink,
 } from 'lucide-react';
+import { DEBT_PROGRAMS, type SolutionType } from './debtPrograms';
 
-// ─── Types ───────────────────────────────────────────────────────────────────
-export type SolutionType = 'rehab' | 'bankruptcy' | 'credit' | 'representation' | 'tax';
+// 제도 데이터는 debtPrograms.ts 한 곳 (NF-1: 공식 연락처·확인일, 판단 없음)
+export type { SolutionType } from './debtPrograms';
 
 interface SolutionDetailModalProps {
   solutionType: SolutionType;
@@ -14,87 +14,23 @@ interface SolutionDetailModalProps {
   onApplyConsult: (title: string, content: string) => void;
 }
 
-// ─── Icon Resolver ───────────────────────────────────────────────────────────
-const getIcon = (type: SolutionType) => {
-  const map: Record<SolutionType, string> = {
-    rehab: '⚖️', bankruptcy: '🔓', credit: '🏦', representation: '🛡️', tax: '📊',
-  };
-  return map[type];
+export const SOLUTION_ICON: Record<SolutionType, React.ElementType> = {
+  rehab: Scale, bankruptcy: FileCheck2, credit: HeartHandshake, representation: UserCheck, tax: Receipt,
+  direct_adjust: Handshake, new_leap: Sprout, legal_aid: LifeBuoy, living_account: Wallet,
 };
 
-// ─── Solution Data (간소화) ──────────────────────────────────────────────────
-const solutions: Record<SolutionType, {
-  title: string;
-  summary: string;
-  keyPoints: string[];
-  ctaTitle: string;
-  ctaContent: string;
-}> = {
-  rehab: {
-    title: '개인회생',
-    summary: '정기적 소득이 있는 분이 법원에 신청하는 채무조정 절차입니다. 3~5년간 일정 금액을 변제하면 나머지 채무가 면책될 수 있습니다.',
-    keyPoints: [
-      '무담보 10억, 담보 15억 이하 채무 대상 (채무자회생법 제579조)',
-      '매월 일정액 변제 → 나머지 면책 가능',
-      '재산을 유지하면서 진행 가능',
-    ],
-    ctaTitle: '개인회생 관련 상담 문의',
-    ctaContent: '개인회생 제도에 대한 정보를 확인한 후 상담을 문의합니다.',
-  },
-  bankruptcy: {
-    title: '개인파산',
-    summary: '소득이 없거나 매우 적어 갚을 능력이 없는 경우, 법원 심사를 거쳐 채무를 면책받을 수 있는 절차입니다.',
-    keyPoints: [
-      '소득이 없거나 극히 적은 경우 신청 가능',
-      '면책 결정 시 채무 책임 면제',
-      '세금·벌금 등 일부 비면책 채권 존재',
-    ],
-    ctaTitle: '개인파산 관련 상담 문의',
-    ctaContent: '개인파산 제도에 대한 정보를 확인한 후 상담을 문의합니다.',
-  },
-  credit: {
-    title: '신용회복',
-    summary: '신용회복위원회를 통해 은행·카드사 등 금융기관 채무의 이자 감면, 상환 기간 조정 등을 신청할 수 있는 제도입니다.',
-    keyPoints: [
-      '법원 절차 없이 진행 가능',
-      '접수 시 추심 중지 요청',
-      '사채 등 비금융 채무는 대상 제외',
-    ],
-    ctaTitle: '신용회복 관련 상담 문의',
-    ctaContent: '신용회복 제도에 대한 정보를 확인한 후 상담을 문의합니다.',
-  },
-  representation: {
-    title: '채무자대리',
-    summary: '변호사를 대리인으로 선임하면 채권자가 직접 연락할 수 없게 됩니다. 과도한 추심으로 고통받는 경우 활용할 수 있습니다.',
-    keyPoints: [
-      '대리인 선임 후 직접 추심 차단',
-      '불법 추심 시 법적 대응 가능',
-      '채무 자체의 감면은 별도 절차 필요',
-    ],
-    ctaTitle: '채무자대리 관련 상담 문의',
-    ctaContent: '채무자대리인 제도에 대한 정보를 확인한 후 상담을 문의합니다.',
-  },
-  tax: {
-    title: '세금체납',
-    summary: '체납 세금의 소멸시효, 압류 해제, 분할납부 등을 검토할 수 있습니다. 세금은 회생·파산으로 면책되지 않아 별도 대응이 필요합니다.',
-    keyPoints: [
-      '징수권 소멸시효 확인 가능',
-      '부당 압류 해제 요청 가능',
-      '납기 연장·분할납부 신청 가능',
-    ],
-    ctaTitle: '세금 체납 관련 상담 문의',
-    ctaContent: '세금 체납 관련 정보를 확인한 후 상담을 문의합니다.',
-  },
+const fmtDate = (ymd: string) => {
+  const [y, m, d] = ymd.split('-');
+  return `${y}. ${Number(m)}. ${Number(d)}.`;
 };
 
-// ─── Component ───────────────────────────────────────────────────────────────
 export default function SolutionDetailModal({
   solutionType,
   onClose,
   onStartDiagnosis,
-  onApplyConsult,
 }: SolutionDetailModalProps) {
-  const data = solutions[solutionType];
+  const data = DEBT_PROGRAMS[solutionType];
+  const Icon = SOLUTION_ICON[solutionType];
 
   return (
     <div
@@ -102,58 +38,66 @@ export default function SolutionDetailModal({
       onClick={onClose}
     >
       <div
-        className="relative max-w-md w-full bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[80vh]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="solution-title"
+        className="relative max-w-md w-full bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800 animate-in zoom-in-95 duration-200 flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
         <div className="relative p-5 bg-brand-deep text-white">
           <button
             onClick={onClose}
             aria-label="닫기"
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer"
+            className="absolute top-3 right-3 w-11 h-11 rounded-full bg-white/15 hover:bg-white/25 text-white transition-colors cursor-pointer flex items-center justify-center"
           >
             <X className="w-4 h-4" />
           </button>
-
-          <div className="flex items-center gap-3">
-            <div className="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center text-2xl backdrop-blur-sm shrink-0">
-              {getIcon(solutionType)}
+          <div className="flex items-center gap-3 pr-12">
+            <div className="w-11 h-11 bg-white/15 rounded-xl flex items-center justify-center shrink-0">
+              <Icon className="w-6 h-6" aria-hidden="true" />
             </div>
-            <h3 className="text-xl font-extrabold tracking-tight">{data.title}</h3>
+            <h3 id="solution-title" className="text-xl font-extrabold tracking-tight">{data.title}</h3>
           </div>
         </div>
 
-        {/* Body */}
         <div className="p-6 space-y-4 overflow-y-auto text-left flex-1">
           <p className="text-base text-slate-700 dark:text-slate-300 leading-relaxed font-medium">{data.summary}</p>
-
-          <div className="space-y-2.5">
+          <ul className="space-y-2.5">
             {data.keyPoints.map((point, i) => (
-              <div key={i} className="flex items-start gap-2.5">
-                <span className="w-2 h-2 rounded-full bg-secondary-hover mt-2 shrink-0" />
+              <li key={i} className="flex items-start gap-2.5">
+                <span className="w-2 h-2 rounded-full bg-secondary-hover mt-2 shrink-0" aria-hidden="true" />
                 <span className="text-sm sm:text-base text-slate-800 dark:text-slate-200 font-semibold">{point}</span>
-              </div>
+              </li>
             ))}
-          </div>
+          </ul>
+          {data.links.length > 0 && (
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 p-3 space-y-1.5">
+              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">공식 안내·상담</p>
+              {data.links.map(l => (
+                <div key={l.label} className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-slate-700 dark:text-slate-300">
+                  <span className="font-semibold">{l.label}</span>
+                  {l.phone && <a href={`tel:${l.phone}`} className="inline-flex items-center gap-1 underline underline-offset-2"><Phone className="w-3.5 h-3.5" aria-hidden="true" />{l.phone}</a>}
+                  {l.url && <a href={l.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2"><ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />누리집</a>}
+                </div>
+              ))}
+            </div>
+          )}
+          <p className="text-xs text-slate-500">내용 확인일 {fmtDate(data.checkedOn)} · 제도 기준은 바뀔 수 있어요. 공식 안내를 함께 확인해 주세요.</p>
         </div>
 
-        {/* Footer */}
-        <div className="p-4.5 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
+        <div className="p-4 border-t border-slate-100 dark:border-slate-800 flex items-center gap-3">
           <button
             onClick={onClose}
-            className="px-5 py-3 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="min-h-[44px] px-5 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer whitespace-nowrap"
           >
             닫기
           </button>
           <button
-            onClick={() => {
-              onClose();
-              onStartDiagnosis();
-            }}
-            className="flex-1 px-5 py-3.5 bg-brand hover:bg-brand-hover text-white rounded-xl text-base font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
+            onClick={() => { onClose(); onStartDiagnosis(); }}
+            className="flex-1 min-h-[48px] px-5 bg-brand hover:bg-brand-hover text-white rounded-xl text-base font-bold transition-all active:scale-[0.98] flex items-center justify-center gap-2 whitespace-nowrap shadow-sm cursor-pointer"
           >
-            채무 체크 시작하기
-            <ArrowRight className="w-4 h-4" />
+            내 상황 체크하기
+            <ArrowRight className="w-4 h-4" aria-hidden="true" />
           </button>
         </div>
 

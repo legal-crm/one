@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react';
 import { Modal, Button, Callout, inputClass } from '../ui';
+import { DEBT_PROGRAMS, DEBT_PROGRAM_ORDER } from '../debtPrograms';
 
 /** 정리 확인 화면에서 더 받는 사실 (I-3 일부) — 판정·결과 표시 없음 */
 export interface IntakeExtraFacts {
-  prevHistory: 'none' | 'rehab' | 'bankruptcy' | 'credit_recovery' | 'unknown';
+  prevHistory: 'none' | 'rehab' | 'bankruptcy' | 'credit_recovery' | 'direct_adjust' | 'unknown';
   prevHistoryYear: string;
   prevHistoryResult: 'discharged' | 'dismissed' | 'in_progress' | 'unknown' | '';
   creditorCountBand: '' | '1-3' | '4-6' | '7-10' | '11+' | 'unknown';
@@ -17,9 +18,12 @@ export interface IntakeExtraFacts {
   incomeDrop?: '' | 'no' | 'yes' | 'unknown';
   /** 단축 사유 관련 사실 (판정 없음, 여러 개) */
   shortFacts?: Array<'severe_disability' | 'single_parent' | 'rent_fraud_decision' | 'low_wage_2y' | 'no_private_creditor'>;
+  /** 희망 상담 방식·시간대 (NF-Q4, 예약 아님 — 변호사가 맞춰 연락) */
+  consultMethod?: '' | 'chat' | 'phone' | 'visit' | 'video' | 'any';
+  consultTimes?: Array<'weekday_day' | 'weekday_evening' | 'weekend'>;
 }
 
-export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', shortFacts: [] };
+export const EMPTY_EXTRA: IntakeExtraFacts = { prevHistory: 'none', prevHistoryYear: '', prevHistoryResult: '', creditorCountBand: '', overdueSince: '', arrears: [], seizure: [], birthYear: '', tenure: '', socialInsurance: '', incomeDrop: '', shortFacts: [], consultMethod: '', consultTimes: [] };
 
 const man = (v?: number) => (v ? `${Math.round(v).toLocaleString('ko-KR')}만 원` : '');
 
@@ -66,7 +70,7 @@ export default function IntakeReviewModal({
   ], [fp]);
   const needCheck = groups.flatMap(g => g.rows.filter(r => !r[1]).map(r => `${g.title} · ${r[0]}`));
 
-  const toggle = (k: 'arrears' | 'seizure' | 'shortFacts', v: string) =>
+  const toggle = (k: 'arrears' | 'seizure' | 'shortFacts' | 'consultTimes', v: string) =>
     setX(p => { const cur = ((p as any)[k] || []) as string[]; return { ...p, [k]: cur.includes(v) ? cur.filter(a => a !== v) : [...cur, v] }; });
   const thisYear = new Date().getFullYear();
   const birthBad = !!x.birthYear && (x.birthYear.length !== 4 || Number(x.birthYear) < thisYear - 100 || Number(x.birthYear) > thisYear - 18);
@@ -118,7 +122,7 @@ export default function IntakeReviewModal({
               <span className="font-bold text-slate-700">예전에 회생·파산·신용회복을 한 적</span>
               <select className={inputClass} value={x.prevHistory} onChange={e => setX(p => ({ ...p, prevHistory: e.target.value as any }))}>
                 <option value="none">없어요</option><option value="rehab">개인회생</option><option value="bankruptcy">개인파산</option>
-                <option value="credit_recovery">신용회복위원회 채무조정</option><option value="unknown">모르겠어요</option>
+                <option value="credit_recovery">신용회복위원회 채무조정</option><option value="direct_adjust">금융회사에 직접 채무조정 요청</option><option value="unknown">모르겠어요</option>
               </select>
             </label>
             {x.prevHistory !== 'none' && x.prevHistory !== 'unknown' && (
@@ -167,6 +171,20 @@ export default function IntakeReviewModal({
               </select>
             </label>
             <label className="space-y-1">
+              <span className="font-bold text-slate-700">원하는 상담 방식</span>
+              <select className={inputClass} value={x.consultMethod || ''} onChange={e => setX(p => ({ ...p, consultMethod: e.target.value as any }))}>
+                <option value="">선택</option><option value="chat">채팅</option><option value="phone">전화</option><option value="visit">사무소 방문</option><option value="video">화상</option><option value="any">상관없어요</option>
+              </select>
+            </label>
+            <fieldset className="space-y-1">
+              <legend className="font-bold text-slate-700">연락받기 편한 때 (여러 개)</legend>
+              <div className="flex flex-wrap gap-2">
+                {([['weekday_day', '평일 낮'], ['weekday_evening', '평일 저녁'], ['weekend', '주말']] as const).map(([v, l]) => (
+                  <label key={v} className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-slate-300 bg-white text-sm"><input type="checkbox" checked={(x.consultTimes || []).includes(v)} onChange={() => toggle('consultTimes', v)} />{l}</label>
+                ))}
+              </div>
+            </fieldset>
+            <label className="space-y-1">
               <span className="font-bold text-slate-700">최근 1년 안에 소득이 줄었나요</span>
               <select className={inputClass} value={x.incomeDrop || ''} onChange={e => setX(p => ({ ...p, incomeDrop: e.target.value as any }))}>
                 <option value="">선택</option><option value="no">아니요</option><option value="yes">줄었어요</option><option value="unknown">모르겠어요</option>
@@ -198,6 +216,29 @@ export default function IntakeReviewModal({
             </div>
           </fieldset>
         </section>
+        {/* 다른 제도 일반 안내 (NF-1) — 판단 없이 이름·공식 연락처만, 추천 순서 아님 */}
+        <details className="rounded-2xl border border-slate-200 bg-white p-4">
+          <summary className="cursor-pointer text-sm font-bold text-slate-900 min-h-10 flex items-center">회생·파산 말고 다른 제도도 있어요</summary>
+          <ul className="mt-2 space-y-2 text-sm">
+            {DEBT_PROGRAM_ORDER.filter(k => k !== 'rehab' && k !== 'bankruptcy').map(k => {
+              const p = DEBT_PROGRAMS[k];
+              const link = p.links[0];
+              return (
+                <li key={k} className="leading-relaxed">
+                  <span className="font-bold text-slate-900">{p.title}</span>
+                  <span className="text-slate-700"> · {p.summary}</span>
+                  {link && (
+                    <span className="block text-slate-600">
+                      {link.label}{link.phone ? ` ${link.phone}` : ''}
+                      {link.url && <> · <a href={link.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">누리집</a></>}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 text-xs text-slate-500">일반 정보이며 추천 순서가 아니에요. 어떤 제도가 맞는지는 상담에서 확인해요.</p>
+        </details>
       </div>
     </Modal>
   );
@@ -206,13 +247,15 @@ export default function IntakeReviewModal({
 /** 상담 요청 본문에 덧붙일 줄 (변호사 화면용 사실 목록) */
 export function extraFactsText(x: IntakeExtraFacts): string {
   const L: Record<string, string> = {
-    none: '없음', rehab: '개인회생', bankruptcy: '개인파산', credit_recovery: '신용회복위원회 채무조정', unknown: '모름',
+    none: '없음', rehab: '개인회생', bankruptcy: '개인파산', credit_recovery: '신용회복위원회 채무조정', direct_adjust: '금융회사 직접 채무조정 요청', unknown: '모름',
     discharged: '면책·완료', dismissed: '기각·폐지·중단', in_progress: '진행 중',
     '1-3': '1~3곳', '4-6': '4~6곳', '7-10': '7~10곳', '11+': '11곳 이상',
     under3m: '3개월 안', '3to6m': '3~6개월', '6to12m': '6개월~1년', over1y: '1년 넘음',
     tax: '세금', health: '건강보험료', pension: '국민연금', salary: '월급', account: '통장', property: '집·부동산', car: '자동차',
     under1y: '1년 안', '1to3y': '1~3년', over3y: '3년 넘음', yes: '예', no: '아니요',
     severe_disability: '중증 장애', single_parent: '한부모', rent_fraud_decision: '전세사기피해자 결정', low_wage_2y: '최근 2년 최저임금 수준 급여', no_private_creditor: '개인 채권자 없음',
+    chat: '채팅', phone: '전화', visit: '방문', video: '화상', any: '상관없음',
+    weekday_day: '평일 낮', weekday_evening: '평일 저녁', weekend: '주말',
   };
   const lines = [
     `• 과거 회생·파산·채무조정: ${L[x.prevHistory] || '없음'}${x.prevHistory !== 'none' && x.prevHistory !== 'unknown' ? ` (${x.prevHistoryYear || '연도 모름'}, ${L[x.prevHistoryResult] || '결과 모름'})` : ''}`,
@@ -222,6 +265,7 @@ export function extraFactsText(x: IntakeExtraFacts): string {
     `• 압류: ${x.seizure.length ? x.seizure.map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
     `• 출생연도: ${x.birthYear || '답 없음'} · 일한 기간: ${L[x.tenure || ''] || '답 없음'} · 4대보험: ${L[x.socialInsurance || ''] || '답 없음'} · 최근 소득 감소: ${L[x.incomeDrop || ''] || '답 없음'}`,
     `• 해당 사실(판정 아님): ${(x.shortFacts || []).length ? (x.shortFacts || []).map(a => L[a]).join(', ') : '없음 또는 답 없음'}`,
+    `• 원하는 상담 방식: ${L[x.consultMethod || ''] || '답 없음'} · 편한 때: ${(x.consultTimes || []).length ? (x.consultTimes || []).map(a => L[a]).join(', ') : '답 없음'}`,
   ];
   return `\n[5. 정리 확인 화면에서 더 답한 내용]\n${lines.join('\n')}`;
 }

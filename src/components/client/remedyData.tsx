@@ -3,30 +3,21 @@ import {
   AlertTriangle, CalendarCheck, DollarSign, FileCheck2, HeartHandshake, Landmark, Receipt, Scale, ShieldCheck,
   Smartphone, TrendingDown, UserCheck, Users,
 } from 'lucide-react';
-import type { SolutionType } from './SolutionDetailModal';
+import { SOLUTION_ICON, type SolutionType } from './SolutionDetailModal';
+import { DEBT_PROGRAMS, DEBT_PROGRAM_ORDER } from './debtPrograms';
 
 /**
  * 랜딩 '상황별 채무 정보'와 RemedyModal이 함께 쓰는 상황별 일반 정보.
  * (ClientRole.tsx에서 분리. preset 값은 구버전 입력 폼용이며 현재 챗봇에는 전달되지 않는다.)
  */
 
-// SolutionDetailModal의 SolutionType 키와 1:1 매칭되는 진입 카테고리 라벨
-export const SOLUTION_LABELS: Record<SolutionType, string> = {
-  rehab: '개인회생',
-  bankruptcy: '개인파산',
-  credit: '신용회복',
-  representation: '채무자대리',
-  tax: '세금체납',
-};
+// 제도 이름·순서는 debtPrograms.ts 한 곳 (NF-1, 추천 순서 아님)
+export const SOLUTION_LABELS: Record<SolutionType, string> = Object.fromEntries(
+  (Object.keys(DEBT_PROGRAMS) as SolutionType[]).map(k => [k, DEBT_PROGRAMS[k].title]),
+) as Record<SolutionType, string>;
 
 /** 랜딩 '제도별로 보기' 목록 (SolutionDetailModal로 연결) */
-export const SOLUTION_ITEMS: { type: SolutionType; icon: React.ElementType }[] = [
-  { type: 'rehab', icon: CalendarCheck },
-  { type: 'bankruptcy', icon: FileCheck2 },
-  { type: 'credit', icon: HeartHandshake },
-  { type: 'representation', icon: UserCheck },
-  { type: 'tax', icon: Receipt },
-];
+export const SOLUTION_ITEMS: { type: SolutionType; icon: React.ElementType }[] = DEBT_PROGRAM_ORDER.map(type => ({ type, icon: SOLUTION_ICON[type] }));
 
 export interface RemedyPreset {
   jobType: 'SALARIED' | 'BUSINESS' | 'DAILY' | 'FREELANCER';

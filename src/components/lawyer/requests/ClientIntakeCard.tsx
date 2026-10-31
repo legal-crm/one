@@ -2,13 +2,14 @@ import { AlertTriangle, PencilLine } from 'lucide-react';
 import { INTAKE_FIELDS, formatIntakeValue, type ClientIntakeV2 } from '../../../services/intake/clientIntakeV2';
 
 const EXTRA_LABEL: Record<string, string> = {
-  none: '없음', rehab: '개인회생', bankruptcy: '개인파산', credit_recovery: '신용회복 채무조정', unknown: '모름',
+  none: '없음', rehab: '개인회생', bankruptcy: '개인파산', credit_recovery: '신용회복 채무조정', direct_adjust: '금융회사 직접 채무조정 요청', unknown: '모름',
   discharged: '면책·완료', dismissed: '기각·폐지·중단', in_progress: '진행 중',
   '1-3': '1~3곳', '4-6': '4~6곳', '7-10': '7~10곳', '11+': '11곳 이상',
   under3m: '3개월 안', '3to6m': '3~6개월', '6to12m': '6개월~1년', over1y: '1년 넘음',
   tax: '세금', health: '건강보험료', pension: '국민연금', salary: '월급', account: '통장', property: '집·부동산', car: '자동차',
   under1y: '1년 안', '1to3y': '1~3년', over3y: '3년 넘음', yes: '예', no: '아니요',
   severe_disability: '중증 장애', single_parent: '한부모', rent_fraud_decision: '전세사기피해자 결정', low_wage_2y: '최근 2년 최저임금 수준', no_private_creditor: '개인 채권자 없음',
+  chat: '채팅', phone: '전화', visit: '방문', video: '화상', any: '상관없음', weekday_day: '평일 낮', weekday_evening: '평일 저녁', weekend: '주말',
 };
 
 /**
@@ -30,6 +31,7 @@ export default function ClientIntakeCard({ intake, updatedAt }: { intake?: Clien
     ['일한 기간 · 4대보험', [EXTRA_LABEL[x.tenure || ''], x.socialInsurance ? `4대보험 ${EXTRA_LABEL[x.socialInsurance] || ''}` : ''].filter(Boolean).join(' · ')],
     ['최근 소득 감소', EXTRA_LABEL[x.incomeDrop || ''] || ''],
     ['해당 사실 (판정 아님)', x.shortFacts?.length ? x.shortFacts.map(a => EXTRA_LABEL[a] || a).join(', ') : ''],
+    ['원하는 상담 방식 · 편한 때', [EXTRA_LABEL[x.consultMethod || ''], (x.consultTimes || []).map(a => EXTRA_LABEL[a] || a).join(', ')].filter(Boolean).join(' · ')],
   ];
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3" aria-label="의뢰인 정리 자료">

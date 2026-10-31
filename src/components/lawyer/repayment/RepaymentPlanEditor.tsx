@@ -1458,6 +1458,8 @@ export default function RepaymentPlanEditor({
                 </div>
 
                 <div className="flex items-center gap-2 flex-wrap">
+                  {/* 숨은 채무 조회는 시연 데이터만 있어 운영에서는 숨김 (CODEF 계약 전) */}
+                  {import.meta.env.DEV && (
                   <button
                     type="button"
                     onClick={() => setIsDiscoveryModalOpen(true)}
@@ -1465,8 +1467,9 @@ export default function RepaymentPlanEditor({
                     title="한국신용정보원, 국세청, 어카운트인포 간편인증 전수조회"
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
-                    <span>⚡ 간편인증 채무·체납 전수조회</span>
+                    <span>간편인증 채무·체납 조회 (시연)</span>
                   </button>
+                  )}
 
                   <button
                     type="button"
