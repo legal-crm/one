@@ -79,7 +79,8 @@ SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-8000-0000000
 SET LOCAL ROLE authenticated;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM my_pending_reconsent() WHERE version = 'tos-test-2099') THEN RAISE EXCEPTION 'FAIL reconsent pending'; END IF;
-  PERFORM record_my_consents('[{"kind":"terms","version":"tos-test-2099","source":"reconsent"}]'::jsonb);
+  -- 다시 동의할 문서 전부(시험 약관 + 실제 게시된 새 처리방침 등)에 동의
+  PERFORM record_my_consents((SELECT jsonb_agg(jsonb_build_object('kind', kind, 'version', version, 'source', 'reconsent')) FROM my_pending_reconsent()));
   IF EXISTS (SELECT 1 FROM my_pending_reconsent()) THEN RAISE EXCEPTION 'FAIL reconsent cleared'; END IF;
   BEGIN
     PERFORM admin_publish_legal_document('terms', 'x', 'x', '/tos.html', NULL, '2099-01-01', false);

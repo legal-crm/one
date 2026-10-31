@@ -101,7 +101,7 @@ export function initAnalytics(): void {
 }
 
 /** 전환 단계 (입력값 없음) */
-export type FunnelEvent = 'calculator_used' | 'check_started' | 'check_completed' | 'lawyer_list_viewed' | 'consult_request_sent';
+export type FunnelEvent = 'calculator_used' | 'calculator_to_full' | 'calculator_to_check' | 'check_started' | 'check_completed' | 'lawyer_list_viewed' | 'consult_request_sent';
 
 export function trackEvent(name: FunnelEvent): void {
   try { window.gtag?.('event', name); } catch { /* 무시 */ }

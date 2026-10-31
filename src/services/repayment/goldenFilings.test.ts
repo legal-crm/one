@@ -8,9 +8,10 @@ import { getLivingExpense } from './repaymentConstants2026';
  * 옮긴 값: 가구원수·적용 생계비 표 연도·월 평균 수입·신청서의 조정된 생계비·월 변제예정액 합계·회차·총 변제예정액.
  * OCR로 읽을 수 없었던 접수본(7건)은 C-1에서 원본을 보고 더한다.
  *
- * 확인된 차이 (원 단위): 접수본의 월 변제예정액 합계는 (수입 − 생계비)보다 5~9원 크다.
- * 전산 양식이 채권자별 월 변제액을 원 미만에서 올려 합계를 내기 때문이다(채권자 수만큼 최대 몇 원).
- * 우리 엔진은 채권자별 금액 합계 = 가용소득(최대잉여법)으로 맞춘다 → 법원 서식 출력 전에 이 차이를 C-1에서 사무소와 정한다.
+ * 접수본의 월 변제예정액 합계는 (수입 − 생계비)보다 5~9원 크다. 전산 양식이 채권자별 월 변제액을 원 미만에서
+ * 올리기 때문이다. C-1 결정(11-01)으로 우리 엔진(buildRepaymentPlan)도 채권자별 올림을 쓴다 (apportionCeilByWeights).
+ * 여기 정답 세트는 채권자 목록이 없어 계획 단위(가용소득)만 비교하고, 채권자별 올림은 repaymentRounding.test.ts에서 본다.
+ * 접수본 G1의 (N) 총 실제 가용소득 = 가용소득 × 36 = 11,332,512원, (F) 총 변제예정액 = 11,332,836원 (= 314,801 × 36).
  */
 const GOLDEN = [
   { id: 'G1', year: 2025, household: 1, income: 1_750_000, filedLiving: 1_435_208, filedMonthly: 314_801, months: 36, filedTotal: 11_332_836 },
@@ -28,6 +29,7 @@ describe('실제 접수본 정답 세트 (1차)', () => {
       });
       expect(est.recognizedLivingCost).toBe(g.filedLiving);
       expect(est.plan.months).toBe(g.months);
+      expect(est.plan.monthlyPayment).toBe(g.income - g.filedLiving);
       const diff = g.filedMonthly - est.plan.monthlyPayment;
       expect(diff).toBeGreaterThanOrEqual(0);
       expect(diff).toBeLessThanOrEqual(10);

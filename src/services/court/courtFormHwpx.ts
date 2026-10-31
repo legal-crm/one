@@ -159,7 +159,7 @@ function d5110(d: CourtFilingMasterData): HwpxEdit[] {
   const rowsFor = (c: any) => {
     const p = principal(c);
     const share = totalP > 0 ? p / totalP : 0;
-    const m = c.monthlyRepayment ?? Math.round(monthly * share);
+    const m = c.monthlyRepayment ?? Math.ceil(monthly * share);
     const undetermined = !!c.isUndetermined || !!c.isSecured;
     return [String(c.displayNumber || c.creditorNumber || ''), c.name || '',
       undetermined ? '' : won(p), undetermined ? won(p) : '',
@@ -173,7 +173,7 @@ function d5110(d: CourtFilingMasterData): HwpxEdit[] {
   const det = list.filter((c: any) => !(c.isUndetermined || c.isSecured));
   const und = list.filter((c: any) => c.isUndetermined || c.isSecured);
   const sumOf = (arr: any[], f: (c: any) => number) => arr.reduce((s, c) => s + f(c), 0);
-  const monthlyOf = (c: any) => c.monthlyRepayment ?? Math.round(monthly * (totalP > 0 ? principal(c) / totalP : 0));
+  const monthlyOf = (c: any) => c.monthlyRepayment ?? Math.ceil(monthly * (totalP > 0 ? principal(c) / totalP : 0));
   edits.push(
     { kind: 'cell', table: 7, row: sumRow, col: 2, text: won(sumOf(det, principal)), label: '합계 확정 원금' },
     { kind: 'cell', table: 7, row: sumRow, col: 3, text: won(sumOf(und, principal)), label: '합계 미확정 원금' },

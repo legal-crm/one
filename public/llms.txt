@@ -32,6 +32,7 @@ my김변(mykim.kr)은 김변호사(kimbyun.co.kr)와 별개의 서비스입니�
 - my김변(마이김변) — 채무 정보 정리 후 변호사를 직접 선택하세요: https://mykim.kr
 - 서비스 소개 | 채무 정보 정리 후 변호사 직접 선택: https://mykim.kr/about
 - 개인회생·파산 자주 묻는 질문 FAQ | 상황별 답변 예시: https://mykim.kr/faq
+- 변호사회원 이용약관 - my김변: https://mykim.kr/lawyer-terms
 - 변호사 상담 & 선택 | 회생·파산 사건을 다루는 변호사: https://mykim.kr/lawyers
 - 채무 관련 뉴스 & 판례: https://mykim.kr/news
 - 채무 고민상담 Q&A | 익명 질문과 답변 예시: https://mykim.kr/qna
@@ -63,7 +64,7 @@ my김변(mykim.kr)은 김변호사(kimbyun.co.kr)와 별개의 서비스입니�
 - 급여 압류 예정 통지서 받았을 때 즉시 해야 할 압류중지명령 신청법: https://mykim.kr/articles/wage-garnishment-defense.html
 
 ## 약관·정책
-- 법적 고지사항 - my김변: https://mykim.kr/legal
+- 법적 고지 - my김변: https://mykim.kr/legal
 - 개인정보 처리방침 - my김변: https://mykim.kr/privacy
 - 서비스 이용약관 - my김변: https://mykim.kr/tos
 

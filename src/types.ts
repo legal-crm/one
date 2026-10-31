@@ -64,6 +64,8 @@ export interface FinancialProfile {
   specialEducationCost?: number; // 월 특수교육비 (만 원)
   myAssets?: number;        // 본인 재산 총액 (만 원)
   specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud'; // 3년 미만 단축 검토
+  /** '중증 장애' 답을 변호사에게 보내는 별도 동의 시각 (민감정보) */
+  sensitiveConsentAt?: string;
   monthlyFixedExpenses?: number; // 월 고정지출 (통신비, 보험료 등)
   address?: string;         // 거주지 주소
   workLocation?: string;    // 근무지/사업장 주소

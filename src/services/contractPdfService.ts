@@ -286,7 +286,7 @@ function buildCourtPdfHtml(contract: ElectronicContract, qrCodeDataUrl: string):
           ${contract.successFee?.enabled ? `
             <p style="margin: 0 0 6px 0; color: #78350f;"><strong>제4조 (성공보수 약정)</strong> 갑은 [${contract.successFee.dueDateCondition || '면책 또는 인가결정 확정 시'}] 을에게 ${contract.successFee.type === 'reduction_rate' ? `탕감액의 ${contract.successFee.ratePercent || 5}%` : `약정금 ${(contract.successFee.amount || 500000).toLocaleString()}원`}의 성공보수를 지급하기로 약정한다.</p>
           ` : ''}
-          <p style="margin: 0 0 6px 0;"><strong>${contract.successFee?.enabled ? '제5조' : '제4조'} (성실의무 및 자료제출)</strong> 을은 변호사법에 따라 성실히 사건을 수행하며, 갑은 법원 제출용 소득 및 재산 증빙서류를 성실히 제출한다.</p>
+          <p style="margin: 0 0 6px 0;"><strong>${contract.successFee?.enabled ? '제5조' : '제4조'} (성실의무 및 자료제출)</strong> 을은 변호사법에 따라 성실히 사건을 수행하며, 갑은 법원 제출용 소득 및 재산 증빙서류를 성실히 제출한다. 을은 사건 처리와 기록을 위하여 갑과의 업무 통화를 녹음하고, 그 녹음을 업무용 대화록·요약으로 정리(자동 변환 도구 포함)할 수 있다. 이 기록은 위임 사무 처리에만 쓰며 개인정보 보호법에 따라 관리한다.</p>
           <p style="margin: 0;"><strong>${contract.successFee?.enabled ? '제6조' : '제5조'} (효력 발생)</strong> 본 계약은 양 당사자의 전자서명이 완료된 시점부터 효력이 발생한다.</p>
         </div>
 

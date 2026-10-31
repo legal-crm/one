@@ -100,6 +100,8 @@ export interface RehabUserInput {
 
     // 3년 미만 단축 사유
     specialCondition?: 'none' | 'basic_recipient' | 'severe_disability' | 'elderly' | 'single_parent' | 'rent_fraud';
+    /** '중증 장애' 답을 변호사에게 보내는 별도 동의 시각 (민감정보, 없으면 그 답을 보내지 않음) */
+    sensitiveConsentAt?: string;
 
     // 부양가족 호환성
     dependentsCount?: number;

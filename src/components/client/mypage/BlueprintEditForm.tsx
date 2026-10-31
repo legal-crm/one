@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ArrowLeft, Plus, RotateCcw, Save, Trash2, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { calculateKoreanAgeInfo } from '../../../services/documents/familyParserService';
@@ -13,6 +14,7 @@ export default function BlueprintEditForm({ vm }: { vm: MyPageModel }) {
     isCompact, isParsingClientFamilyDoc, onNavigateToChat, profile, setIsEditingBlueprint, setUserAlias,
     userAlias,
   } = vm;
+  const [askSensitive, setAskSensitive] = useState(false);
   if (!profile) return null;
   return (
     <div className="space-y-5 pt-3 border-t border-slate-200 dark:border-slate-800 animate-fadeIn text-left">
@@ -1036,8 +1038,14 @@ export default function BlueprintEditForm({ vm }: { vm: MyPageModel }) {
               <button
                 key={item.value}
                 type="button"
-                onClick={() => handleFieldChange('specialCondition', item.value)}
-                className={`min-h-11 py-2 px-1 rounded-xl border text-xs font-bold transition-all cursor-pointer ${
+                onClick={() => {
+                  // '중증 장애'는 민감정보(개인정보 보호법 제23조) — 아래 별도 동의를 받은 뒤에만 고른다
+                  if (item.value === 'severe_disability') { setAskSensitive(true); return; }
+                  setAskSensitive(false);
+                  handleFieldChange('sensitiveConsentAt' as any, undefined);
+                  handleFieldChange('specialCondition', item.value);
+                }}
+                className={`min-h-11 py-2 px-1 rounded-xl border text-xs font-bold transition-all cursor-pointer active:scale-[0.98] ${
                   (profile.specialCondition || 'none') === item.value
                   ? 'bg-brand border-brand text-white shadow-sm'
                   : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-900 text-slate-700 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900'
@@ -1047,6 +1055,21 @@ export default function BlueprintEditForm({ vm }: { vm: MyPageModel }) {
               </button>
             ))}
           </div>
+          {askSensitive && (
+            <div role="group" aria-label="민감정보 동의" className="mt-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-slate-800 leading-relaxed space-y-2">
+              <p>'장애의 정도가 심한 장애인'은 건강에 관한 민감정보예요. 상담을 요청한 변호사에게 변제기간 검토 자료로만 보내는 데 따로 동의하시나요? (선택)</p>
+              <div className="flex gap-2">
+                <button type="button" className="min-h-11 px-4 rounded-xl bg-brand text-white text-sm font-bold whitespace-nowrap active:scale-[0.98]"
+                  onClick={() => { handleFieldChange('sensitiveConsentAt' as any, new Date().toISOString()); handleFieldChange('specialCondition', 'severe_disability'); setAskSensitive(false); }}>
+                  동의하고 선택
+                </button>
+                <button type="button" className="min-h-11 px-4 rounded-xl border border-slate-300 bg-white text-sm font-bold whitespace-nowrap active:scale-[0.98]"
+                  onClick={() => setAskSensitive(false)}>
+                  답하지 않을게요
+                </button>
+              </div>
+            </div>
+          )}
           {profile.specialCondition && profile.specialCondition !== 'none' && (
             <span className="text-xs font-bold text-emerald-700 block mt-1">
               입력한 내용은 상담하는 변호사가 변제기간을 검토할 때 참고해요.

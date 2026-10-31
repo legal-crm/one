@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Modal, Button, Callout, inputClass } from '../ui';
 import { DEBT_PROGRAMS, visibleDebtPrograms, useDebtProgramsVersion } from '../debtPrograms';
+import { calcSeedFromProfile, type PublicCalcInput } from '../../../services/repayment/publicCalculator';
 
 /** 정리 확인 화면에서 더 받는 사실 (I-3 일부) — 판정·결과 표시 없음 */
 export interface IntakeExtraFacts {
@@ -18,6 +19,8 @@ export interface IntakeExtraFacts {
   incomeDrop?: '' | 'no' | 'yes' | 'unknown';
   /** 단축 사유 관련 사실 (판정 없음, 여러 개) */
   shortFacts?: Array<'severe_disability' | 'single_parent' | 'rent_fraud_decision' | 'low_wage_2y' | 'no_private_creditor'>;
+  /** '중증 장애'(민감정보, 개인정보 보호법 제23조)를 변호사에게 보내는 별도 동의 시각 — 없으면 그 답은 보내지 않는다 */
+  sensitiveConsentAt?: string;
   /** 희망 상담 방식·시간대 (NF-Q4, 예약 아님 — 변호사가 맞춰 연락) */
   consultMethod?: '' | 'chat' | 'phone' | 'visit' | 'video' | 'any';
   consultTimes?: Array<'weekday_day' | 'weekday_evening' | 'weekend'>;
@@ -40,7 +43,7 @@ const man = (v?: number) => (v ? `${Math.round(v).toLocaleString('ko-KR')}만 �
  * 어떤 제도가 맞는지·얼마를 갚는지는 보여 주지 않는다 (제109조).
  */
 export default function IntakeReviewModal({
-  open, profile, onClose, onRestart, onConfirm, onLearn,
+  open, profile, onClose, onRestart, onConfirm, onLearn, onOpenCalculator,
 }: {
   open: boolean;
   /** 상담 요청에 들어갈 financialProfile (만 원 단위) */
@@ -49,6 +52,8 @@ export default function IntakeReviewModal({
   onRestart: () => void;
   onConfirm: (extra: IntakeExtraFacts) => void;
   onLearn: () => void;
+  /** 제도 이해용 계산기를 켰을 때만 (CK-Q1: 의뢰인이 직접 누를 때만 입력 항목을 불러옴) */
+  onOpenCalculator?: (seed: Partial<PublicCalcInput>) => void;
 }) {
   const [x, setX] = useState<IntakeExtraFacts>(EMPTY_EXTRA);
   useDebtProgramsVersion();
@@ -97,8 +102,11 @@ export default function IntakeReviewModal({
           <div className="flex gap-2">
             <Button variant="ghost" onClick={onRestart}>처음부터 다시 정리</Button>
             <Button variant="ghost" onClick={onLearn}>제도 알아보기</Button>
+            {onOpenCalculator && (
+              <Button variant="ghost" onClick={() => onOpenCalculator(calcSeedFromProfile(fp, birthBad ? '' : x.birthYear))}>계산기로 직접 계산해 보기</Button>
+            )}
           </div>
-          <Button onClick={() => onConfirm(birthBad ? { ...x, birthYear: '' } : x)}>이대로 변호사 찾기</Button>
+          <Button onClick={() => onConfirm(withSensitiveConsent(birthBad ? { ...x, birthYear: '' } : x))}>이대로 변호사 찾기</Button>
         </div>
       }
     >
@@ -222,6 +230,13 @@ export default function IntakeReviewModal({
                 <label key={v} className="inline-flex items-center gap-1.5 min-h-10 px-3 rounded-xl border border-slate-300 bg-white text-sm"><input type="checkbox" checked={(x.shortFacts || []).includes(v)} onChange={() => toggle('shortFacts', v)} />{l}</label>
               ))}
             </div>
+            {(x.shortFacts || []).includes('severe_disability') && (
+              <label className="mt-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-slate-800 leading-relaxed">
+                <input type="checkbox" className="mt-1" checked={!!x.sensitiveConsentAt}
+                  onChange={e => setX(p => ({ ...p, sensitiveConsentAt: e.target.checked ? new Date().toISOString() : undefined }))} />
+                <span>{SENSITIVE_CONSENT_TEXT} <span className="block text-xs text-slate-600">동의하지 않으면 '중증 장애' 답은 보내지 않아요. 나머지는 그대로 보낼 수 있어요.</span></span>
+              </label>
+            )}
           </fieldset>
           <fieldset className="space-y-1">
             <legend className="text-sm font-bold text-slate-700">밀린 공과금 (여러 개)</legend>
@@ -266,6 +281,17 @@ export default function IntakeReviewModal({
       </div>
     </Modal>
   );
+}
+
+/** 민감정보 별도 동의 문구 (개인정보 처리방침 제3조와 같은 내용) */
+export const SENSITIVE_CONSENT_TEXT = "'중증 장애'는 건강에 관한 민감정보예요. 상담을 요청한 변호사에게 변제기간 검토 자료로만 보내는 데 따로 동의해요. (선택)";
+
+/** 동의가 없으면 민감정보 답을 뺀다 */
+export function withSensitiveConsent(x: IntakeExtraFacts): IntakeExtraFacts {
+  const facts = x.shortFacts || [];
+  if (!facts.includes('severe_disability')) return { ...x, sensitiveConsentAt: undefined };
+  if (x.sensitiveConsentAt) return x;
+  return { ...x, shortFacts: facts.filter(f => f !== 'severe_disability') };
 }
 
 /** 상담 요청 본문에 덧붙일 줄 (변호사 화면용 사실 목록) */

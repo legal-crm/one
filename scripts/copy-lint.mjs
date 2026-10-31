@@ -78,13 +78,10 @@ const RULE_ALLOW = {
 
 /**
  * 결정 사항 규칙을 아직 적용하지 않는 파일
- *  - 약관·처리방침·법적 고지 본문: 외부 자문(R6) 뒤 약관 개정 절차(공지·재동의)로 한 번에 고친다
  *  - 출시 범위에서 뺀 기능(진입 차단, 코드만 보존)
+ *  (약관·처리방침·법적 고지는 2026-11-01 개정으로 검사 대상에 다시 넣었다)
  */
 const DECISION_SKIP = new Set([
-  'public/tos.html',
-  'public/privacy.html',
-  'public/legal.html',
   'src/components/client/UnregisteredLawyerDocViewer.tsx',
 ]);
 const DECISION_IDS = new Set(DECISION_RULES.map(r => r.id));
@@ -98,7 +95,8 @@ function walk(rel, out) {
       if (name === 'node_modules' || name.startsWith('.')) continue;
       walk(path.posix.join(rel, name), out);
     }
-  } else if (EXTENSIONS.has(path.extname(rel)) && !SKIP_FILES.has(rel)) {
+  } else if (EXTENSIONS.has(path.extname(rel)) && !SKIP_FILES.has(rel) && !rel.startsWith('public/legal-archive/')) {
+    // public/legal-archive/: 이전 약관·처리방침 원문 보관본(검색 제외) — 시행 당시 그대로 둔다
     out.push(rel);
   }
 }

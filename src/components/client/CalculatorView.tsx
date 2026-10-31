@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Calculator } from 'lucide-react';
 import { FormField, MoneyInput, inputClass } from './ui';
 import CalcResultPanel from './calculator/CalcResultPanel';
 import {
-  computePublicRange, emptyPublicCalcInput, type HousingKind, type PublicCalcInput,
+  computePublicRange, emptyPublicCalcInput, type CourtKind, type HousingKind, type IncomeKind, type PublicCalcInput,
 } from '../../services/repayment/publicCalculator';
+import { trackEvent } from '../../services/marketing/attribution';
 import { REVIEW_REGION_LABEL, type ReviewRegion } from '../../services/cases/caseReviewCalc';
 
 /**
@@ -16,14 +17,20 @@ import { REVIEW_REGION_LABEL, type ReviewRegion } from '../../services/cases/cas
 interface CalculatorViewProps {
   /** 홈 빠른 계산기에서 넘어온 입력 (그대로 이어서 계산) */
   initial?: Partial<PublicCalcInput>;
+  /** 'intake' = 정리 확인 화면에서 직접 불러온 값 (안내 문구 표시) */
+  seedSource?: 'quick' | 'intake';
   onStartCheck: () => void;
   onFindLawyer: () => void;
 }
 
 const HOUSING_LABEL: Record<HousingKind, string> = { rent: '월세', jeonse: '전세', own: '자가', free: '무상 거주' };
+const INCOME_LABEL: Record<IncomeKind, string> = { salary: '급여', business: '영업(자영업)', freelance: '프리랜서·일용' };
+const COURT_LABEL: Record<CourtKind, string> = {
+  unknown: '모르겠어요', seoul_rehab: '서울회생법원', rehab_court: '수원·부산·대전·대구·광주회생법원', district: '그 밖의 지방법원',
+};
 const YEARS = [2025, 2026, 2027];
 
-export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: CalculatorViewProps) {
+export default function CalculatorView({ initial, seedSource, onStartCheck, onFindLawyer }: CalculatorViewProps) {
   const thisYear = new Date().getFullYear();
   const [v, setV] = useState<PublicCalcInput>(() => ({
     ...emptyPublicCalcInput(YEARS.includes(thisYear) ? thisYear : 2026),
@@ -36,6 +43,10 @@ export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: 
     if (!(v.monthlyIncome > 0) || !(v.totalDebt > 0)) return null;
     return computePublicRange(v).range;
   }, [v]);
+  const setFact = (k: keyof NonNullable<PublicCalcInput['shortFacts']>, on: boolean) => setV(prev => ({ ...prev, shortFacts: { ...(prev.shortFacts || {}), [k]: on } }));
+  // 방문 분석: 결과를 처음 본 때 한 번 (입력값은 보내지 않음)
+  const tracked = useRef(false);
+  useEffect(() => { if (result && !tracked.current) { tracked.current = true; trackEvent('calculator_used'); } }, [result]);
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 animate-fadeIn text-left">
@@ -51,6 +62,12 @@ export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: 
         </p>
       </header>
 
+      {seedSource === 'intake' && (
+        <p role="status" className="rounded-2xl border border-brand/20 bg-brand-light px-4 py-3 text-sm text-slate-700 break-keep">
+          '내 상황 체크하기'에서 정리한 내용에서 불러온 값이에요. 직접 바꿔 볼 수 있고, 여기서 바꾼 값과 결과는 저장하거나 변호사에게 보내지 않아요.
+        </p>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         <section aria-label="입력" className="lg:col-span-7 rounded-3xl border border-slate-200 bg-white p-5 md:p-6 space-y-5 shadow-sm">
           <fieldset className="space-y-4">
@@ -61,6 +78,13 @@ export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: 
               </FormField>
               <FormField label="총 채무" required hint="대출·카드·개인 빚 원금 합계">
                 {p => <MoneyInput {...p} value={v.totalDebt || null} onChange={money('totalDebt')} />}
+              </FormField>
+              <FormField label="소득 형태">
+                {p => (
+                  <select {...p} value={v.incomeKind || 'salary'} onChange={e => set('incomeKind', e.target.value as IncomeKind)} className={inputClass}>
+                    {(Object.keys(INCOME_LABEL) as IncomeKind[]).map(k => <option key={k} value={k}>{INCOME_LABEL[k]}</option>)}
+                  </select>
+                )}
               </FormField>
               <FormField label="그중 세금·4대보험 체납" optional>
                 {p => <MoneyInput {...p} value={v.priorityDebt || null} onChange={money('priorityDebt')} />}
@@ -92,6 +116,17 @@ export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: 
                   </select>
                 )}
               </FormField>
+              {v.householdSize > 1 && (
+                <FormField label="배우자 소득">
+                  {p => (
+                    <select {...p} value={v.spouseIncome || 'none'} onChange={e => set('spouseIncome', e.target.value as any)} className={inputClass}>
+                      <option value="none">없음 또는 배우자 없음</option>
+                      <option value="yes">있음</option>
+                      <option value="unknown">모르겠어요</option>
+                    </select>
+                  )}
+                </FormField>
+              )}
               <FormField label="사는 지역">
                 {p => (
                   <select {...p} value={v.region} onChange={e => set('region', e.target.value as ReviewRegion)} className={inputClass}>
@@ -145,17 +180,46 @@ export default function CalculatorView({ initial, onStartCheck, onFindLawyer }: 
             </div>
           </fieldset>
 
-          <label className="flex items-start gap-2.5 text-sm text-slate-700 leading-relaxed">
-            <input type="checkbox" className="mt-1 w-4 h-4" checked={v.shortPlanReason} onChange={e => set('shortPlanReason', e.target.checked)} />
-            <span className="break-keep">
-              65세 이상, 중증장애, 30세 미만, 미성년 자녀 2명 이상, 한부모, 전세사기 피해 중 하나에 해당해요
-              <span className="block text-xs text-slate-500">회생법원 실무준칙의 3년 미만 변제기간 검토 사유예요. 해당하는지는 변호사가 확인해요.</span>
-            </span>
-          </label>
+          <fieldset className="space-y-4">
+            <legend className="text-base font-extrabold text-slate-900">변제기간에 영향을 주는 사정 <span className="text-sm font-medium text-slate-500">(선택)</span></legend>
+            <p className="text-xs text-slate-500 leading-relaxed break-keep">
+              회생법원 실무준칙 제424호는 일부 사정이 있으면 3년보다 짧은 변제기간을 검토할 수 있게 해요. 입력하면 짧은 기간도 범위에 넣어 보여 드려요. 실제로 줄일지는 변호사가 서류를 보고 검토해요.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField label="출생연도" optional hint="만 65세 이상·만 30세 미만 확인용">
+                {p => (
+                  <input {...p} inputMode="numeric" maxLength={4} className={inputClass} placeholder="예: 1985"
+                    value={v.birthYear ? String(v.birthYear) : ''}
+                    onChange={e => { const n = Number(e.target.value.replace(/[^0-9]/g, '').slice(0, 4)); set('birthYear', n >= 1900 && n <= thisYear ? n : undefined); }} />
+                )}
+              </FormField>
+              <FormField label="관할 법원">
+                {p => (
+                  <select {...p} value={v.court || 'unknown'} onChange={e => set('court', e.target.value as CourtKind)} className={inputClass}>
+                    {(Object.keys(COURT_LABEL) as CourtKind[]).map(k => <option key={k} value={k}>{COURT_LABEL[k]}</option>)}
+                  </select>
+                )}
+              </FormField>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {([['severeDisability', '장애의 정도가 심한 장애인'], ['singleParent', '한부모 가족'], ['rentFraud', '전세사기피해자 결정을 받음']] as const).map(([k, label]) => (
+                <label key={k} className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm cursor-pointer">
+                  <input type="checkbox" checked={!!v.shortFacts?.[k]} onChange={e => setFact(k, e.target.checked)} />{label}
+                </label>
+              ))}
+              {v.court === 'seoul_rehab' && (
+                <label className="inline-flex items-center gap-1.5 min-h-11 px-3 rounded-xl border border-slate-300 bg-white text-sm cursor-pointer">
+                  <input type="checkbox" checked={!!v.shortFacts?.vulnerableSeoul} onChange={e => setFact('vulnerableSeoul', e.target.checked)} />
+                  최근 2년 급여가 최저임금 수준이고 채무 5천만 원 이하·개인 채권자 없음·1년 안 새 채무 없음
+                </label>
+              )}
+            </div>
+            <p className="text-xs text-slate-500">미성년 자녀 2명 이상은 위 가족 칸으로 확인해요. 여기 입력한 사정은 이 화면에서만 쓰고 저장하지 않아요.</p>
+          </fieldset>
         </section>
 
         <section aria-label="계산 결과" className="lg:col-span-5 lg:sticky lg:top-24">
-          <CalcResultPanel range={result} year={v.year} onStartCheck={onStartCheck} onFindLawyer={onFindLawyer} />
+          <CalcResultPanel range={result} year={v.year} onStartCheck={() => { trackEvent('calculator_to_check'); onStartCheck(); }} onFindLawyer={onFindLawyer} />
         </section>
       </div>
     </div>

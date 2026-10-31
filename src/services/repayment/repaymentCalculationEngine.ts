@@ -1,8 +1,9 @@
 /**
  * 2026년 기준 개인회생 핵심 계산 엔진 (Calculation Engine)
  * - 가용소득 산정 (중위소득 60% + 추가주거/의료/교육비)
- * - 채권자 안분 배분: 원 단위 내림 후 잔여 원을 소수점 큰 순서로 1원씩 배정(최대잉여법)
- *   → 채권자별 월 변제액 합계 = 월 가용소득(정확히 일치). 법원별 단수 처리 실무가 다를 수 있으므로 제출 전 확인 필요
+ * - 채권자 안분 배분: 채권자별 원 미만 올림
+ *   → 채권자별 월 변제액은 원 미만 올림 (C-1 결정, 실제 접수본·전산 양식과 같음). 그래서 합계는 월 가용소득보다
+ *     채권자 수 − 1원까지 많을 수 있다 (예: 가용소득 314,792원 → 변제예정액 합계 314,801원)
  * - 라이프니쯔 연 5% 복리할인 현가 검증 (36개월 33.3657 / 60개월 52.9907, rehabLegalCore 단일 표준)
  * - 전산양식 D5110 / D5111 자동 판정 및 상향 조정
  * - 실무자 수동 미세 조정(Fine-Tuning) 실시간 재계산 지원
@@ -44,8 +45,28 @@ export function securedShortageOf(c: Pick<RepaymentCreditor, 'isSecured' | 'unse
 }
 
 /**
+ * 채권자별 안분 (C-1 결정: 원 미만 올림). 각 몫 = ceil(total × 가중치 ÷ 가중치 합).
+ * 법원 전산 양식·실제 접수본과 같은 방식이라 합계는 total보다 (몫이 있는 채권자 수 − 1)원까지 클 수 있다.
+ * 큰 금액에서도 오차가 없게 정수(BigInt)로 계산한다.
+ */
+export function apportionCeilByWeights(total: number, weights: number[]): number[] {
+  const t = Math.max(0, Math.floor(total));
+  const ws = weights.map((w) => (Number.isFinite(w) ? Math.max(0, Math.round(w)) : 0));
+  const sumW = ws.reduce((s, w) => s + w, 0);
+  if (t <= 0 || sumW <= 0) return ws.map(() => 0);
+  const T = BigInt(t);
+  const S = BigInt(sumW);
+  return ws.map((w) => {
+    if (w <= 0) return 0;
+    const num = T * BigInt(w);
+    return Number((num + S - 1n) / S);
+  });
+}
+
+/**
  * 최대잉여법(largest remainder) 안분: 각 몫을 원 단위로 내림한 뒤
  * 남은 원을 소수점 이하가 큰 순서대로 1원씩 배정해 합계를 total과 정확히 맞춘다.
+ * (채권자 안분에는 쓰지 않는다 — C-1 결정으로 apportionCeilByWeights. 합계를 꼭 맞춰야 하는 다른 나눔용)
  */
 export function apportionByWeights(total: number, weights: number[]): number[] {
   const t = Math.max(0, Math.floor(total));
@@ -291,7 +312,7 @@ export function calculateTotalLiquidationValue(
 }
 
 // ══════════════════════════════════════════════════════════════════
-// STEP 3. 채권자별 안분 배분 엔진 (원 단위 최대잉여법, 합계 = 월 가용소득)
+// STEP 3. 채권자별 안분 배분 엔진 (채권자별 원 미만 올림, C-1)
 // ══════════════════════════════════════════════════════════════════
 
 export function allocateCreditorRepayments(
@@ -329,8 +350,8 @@ export function allocateCreditorRepayments(
 
   let calculatedMonthlyTotal = 0;
   const resultCreditors: RepaymentCreditor[] = [];
-  // 합계가 월 가용소득과 정확히 일치하도록 최대잉여법으로 원 단위 안분
-  const shares = apportionByWeights(
+  // 채권자별 원 미만 올림 (C-1). 합계는 가용소득보다 몇 원 클 수 있다
+  const shares = apportionCeilByWeights(
     monthlyDisposableIncome,
     creditors.map((c) => weightOf(c))
   );
@@ -369,7 +390,7 @@ export function allocateCreditorRepayments(
     });
   }
 
-  // 단수 처리 후 월 가용소득과의 차액 (최대잉여법이므로 원 단위 입력 시 0)
+  // 채권자별 올림으로 생긴 차액 (0 이상, 채권자 수 − 1원 이하)
   const roundingDifference = calculatedMonthlyTotal - monthlyDisposableIncome;
 
   return {
@@ -490,10 +511,10 @@ export function allocateTwoStageRepayments(
   const surplusForGeneralStage1 = Math.max(0, Math.floor(monthlyDisposableIncome) - actualPriorityMonthly);
   const priorityShortfall = Math.max(0, totalPriorityPrincipal - actualPriorityMonthly * s1);
 
-  // 원 단위 최대잉여법 안분 (합계 = 투입액)
-  const prioShares = apportionByWeights(actualPriorityMonthly, creditors.map((c) => (!c.isSecured && c.isPriority ? c.principal : 0)));
-  const genS1Shares = apportionByWeights(surplusForGeneralStage1, creditors.map((c) => generalWeight(c)));
-  const genS2Shares = apportionByWeights(monthlyDisposableIncome, creditors.map((c) => generalWeight(c)));
+  // 채권자별 원 미만 올림 (C-1)
+  const prioShares = apportionCeilByWeights(actualPriorityMonthly, creditors.map((c) => (!c.isSecured && c.isPriority ? c.principal : 0)));
+  const genS1Shares = apportionCeilByWeights(surplusForGeneralStage1, creditors.map((c) => generalWeight(c)));
+  const genS2Shares = apportionCeilByWeights(monthlyDisposableIncome, creditors.map((c) => generalWeight(c)));
 
   let stage1CalculatedTotal = 0;
   let stage2CalculatedTotal = 0;

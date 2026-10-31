@@ -167,6 +167,7 @@ type ChatStep =
     | 'risk'
     | 'speculative_loss_amount' // 1년 이내 주식/코인 손실 또는 도박 채무 금액 확인 (NEW)
     | 'short_plan_reason'    // 3년 미만 단축 사유 해당 여부 (기초수급자, 장애 등)
+    | 'sensitive_consent'    // '중증 장애' 답(민감정보)을 변호사에게 보내는 별도 동의
     | 'elderly_parent_check'  // 고령 부모님 부양가족 확인
     | 'elderly_parent_count'  // 고령 부모님 인원수
     | 'debt_types'            // V2.1: 채무 유형 분류
@@ -3362,12 +3363,38 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
                 }
                 break;
 
-            case 'short_plan_reason':
+            case 'short_plan_reason': {
+                // 장애 여부는 건강에 관한 민감정보(개인정보 보호법 제23조) → 따로 동의를 받는다
+                if (value === 'severe_disability') {
+                    goToStep('sensitive_consent');
+                    addBotMessage(
+                        "'장애의 정도가 심한 장애인'은 건강에 관한 민감정보예요.\n상담을 요청한 변호사에게 변제기간 검토 자료로만 보내는 데 따로 동의하시나요? (선택)",
+                        [
+                            { label: '동의하고 보내기', value: 'agree' },
+                            { label: '답하지 않을게요', value: 'decline' }
+                        ],
+                        'buttons'
+                    );
+                    break;
+                }
                 // 3년 미만 단축 사유 저장
-                const updatedInputWithSpecial = { ...userInput, specialCondition: value as any };
+                const updatedInputWithSpecial = { ...userInput, specialCondition: value as any, sensitiveConsentAt: undefined };
                 setUserInput(updatedInputWithSpecial);
                 goToClientNote(updatedInputWithSpecial as any);
                 break;
+            }
+
+            case 'sensitive_consent': {
+                const agreed = value === 'agree';
+                const nextInput = {
+                    ...userInput,
+                    specialCondition: (agreed ? 'severe_disability' : 'none') as any,
+                    sensitiveConsentAt: agreed ? new Date().toISOString() : undefined,
+                };
+                setUserInput(nextInput);
+                goToClientNote(nextInput as any);
+                break;
+            }
 
             case 'prior_rehab_detail':
                 goToClientNote();
@@ -3987,7 +4014,7 @@ const AIRehabChatbotV2: React.FC<AIRehabChatbotV2Props> = ({
             'prior_rehab': 91, 'prior_rehab_detail': 92,
             'prior_credit_recovery': 93, 'prior_credit_recovery_amount': 94, 'risk': 95, 'speculative_loss_amount': 95.1,
             'legal_actions': 95.2, 'monthly_expenses': 62,
-            'short_plan_reason': 95.5, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
+            'short_plan_reason': 95.5, 'sensitive_consent': 95.6, 'elderly_parent_check': 86, 'elderly_parent_count': 87,
             'result': 100
         };
         return stepOrder[currentStep] || 0;

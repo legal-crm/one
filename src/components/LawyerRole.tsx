@@ -28,6 +28,7 @@ import ServerTodayView from './lawyer/dashboard/ServerTodayView';
 import SalesLeadsTab from './lawyer/leads/SalesLeadsTab';
 import { loadSalesLeads, setSalesLeadScope } from '../services/leadService';
 import { claimLawyerAccount, getMyLawyerAccount, type LawyerAccount } from '../services/lawyerAccountService';
+import { stashLawyerConsent, commitPendingLawyerConsent } from '../services/clientConsentService';
 const ContractManagementTab = React.lazy(() => import('./lawyer/ContractManagementTab'));
 const FeeSettlementTab = React.lazy(() => import('./lawyer/FeeSettlementTab'));
 import { ConsultRequestManagementView } from './lawyer/requests';
@@ -265,6 +266,7 @@ export default function LawyerRole({
     return hasPendingOauth || hasOAuthReturn;
   });
   const [isStartingOAuth, setIsStartingOAuth] = useState<'kakao' | 'google' | null>(null);
+  const [agreeLawyerTerms, setAgreeLawyerTerms] = useState(false);
   const [isAuthSuccess, setIsAuthSuccess] = useState(false);
 
   // 세션 확인 무한 대기 방지 안전 타임아웃 (8초 후 자동 해제 → 로그인 화면)
@@ -1009,6 +1011,8 @@ export default function LawyerRole({
         const userStartedLawyerLogin = sessionStorage.getItem('pending_lawyer_oauth') === 'true';
 
         if (import.meta.env.DEV) console.log(`[LawyerRole] 세션 확인 (${source})`);
+        // 로그인 전에 고른 동의(변호사회원 이용약관·개인정보 처리방침)를 서버에 기록 — 실패해도 로그인은 계속
+        void commitPendingLawyerConsent();
 
         // 0. 사무소 초대 링크(officeInvite): 로그인한 계정으로 서버가 수락 처리 (RB-2: 변호사 가입 신청을 만들지 않음)
         const officeInviteToken = new URLSearchParams(window.location.search).get('officeInvite');
@@ -1313,7 +1317,9 @@ export default function LawyerRole({
       return;
     }
     try {
+      if (!agreeLawyerTerms) { setLoginError('변호사회원 이용약관과 개인정보 처리방침에 동의해 주세요.'); return; }
       setIsStartingOAuth('google');
+      stashLawyerConsent();
       sessionStorage.setItem('pending_lawyer_oauth', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -1343,7 +1349,9 @@ export default function LawyerRole({
       return;
     }
     try {
+      if (!agreeLawyerTerms) { setLoginError('변호사회원 이용약관과 개인정보 처리방침에 동의해 주세요.'); return; }
       setIsStartingOAuth('kakao');
+      stashLawyerConsent();
       sessionStorage.setItem('pending_lawyer_oauth', 'true');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'kakao',
@@ -2198,6 +2206,16 @@ export default function LawyerRole({
                 {loginError}
               </div>
             )}
+
+            {/* 동의 (변호사회원 이용약관 제10조 = 사건 데이터 개인정보 처리 위탁) */}
+            <label className="flex items-start gap-2 text-sm text-slate-700 leading-relaxed cursor-pointer">
+              <input type="checkbox" className="mt-1 w-4 h-4 shrink-0" checked={agreeLawyerTerms}
+                onChange={e => { setAgreeLawyerTerms(e.target.checked); if (e.target.checked) setLoginError(''); }} />
+              <span>
+                (필수) <a href="/lawyer-terms" target="_blank" rel="noopener noreferrer" className="font-bold text-brand underline underline-offset-2">변호사회원 이용약관</a>(사건 데이터 개인정보 처리 위탁 포함)과{' '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" className="font-bold text-brand underline underline-offset-2">개인정보 처리방침</a>에 동의합니다.
+              </span>
+            </label>
 
             {/* OAuth Buttons */}
             <div className="space-y-3 pt-1">

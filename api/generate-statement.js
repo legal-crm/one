@@ -239,6 +239,7 @@ async function handleCallSummary(req, res) {
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
         body: JSON.stringify({
           contents: [{ parts: [{ text: promptText }, { inlineData: { mimeType: safeMime, data: audioBase64 } }] }],
+          store: false, // 요청·응답을 Google 로그에 남기지 않음 (개인정보 처리방침 제8조)
           generationConfig: { temperature: 0.2, maxOutputTokens: 8192 },
         }),
         signal: AbortSignal.timeout(remaining),
@@ -460,6 +461,7 @@ ${hasInterviewAnswers ? `
             headers: { 'Content-Type': 'application/json', 'x-goog-api-key': geminiKey },
             body: JSON.stringify({
               contents: [{ parts: [{ text: prompt }] }],
+              store: false, // 요청·응답을 Google 로그에 남기지 않음 (개인정보 처리방침 제8조)
               generationConfig: {
                 temperature: 0.3,
                 response_mime_type: 'application/json'

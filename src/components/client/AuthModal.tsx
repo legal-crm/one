@@ -73,7 +73,7 @@ export default function AuthModal({ onClose, onLoginSuccess: _onLoginSuccess }: 
 
   const consentItems: Array<{ id: string; label: string; href: string; checked: boolean; onChange: (v: boolean) => void; ref: React.RefObject<HTMLInputElement | null> }> = [
     { id: 'auth-consent-terms', label: '서비스 이용약관 동의', href: '/tos.html', checked: agreeTerms, onChange: setAgreeTerms, ref: termsRef },
-    { id: 'auth-consent-privacy', label: '개인정보 수집·이용 동의', href: '/privacy.html', checked: agreePrivacy, onChange: setAgreePrivacy, ref: privacyRef },
+    { id: 'auth-consent-privacy', label: '개인정보 수집·이용 동의', href: '/privacy.html#signup-consent', checked: agreePrivacy, onChange: setAgreePrivacy, ref: privacyRef },
   ];
 
   // z-70: 결과 리포트 등 다른 모달(60) 위에서 로그인을 요청할 수 있다

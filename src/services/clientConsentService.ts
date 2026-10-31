@@ -10,9 +10,15 @@ import { rpcErrorMessage } from './office/rpcResult';
    ───────────────────────────────────────────── */
 
 export const CONSENT_VERSIONS = {
-  terms: 'tos-2026-09-30',
-  privacy: 'privacy-2026-09-30',
+  terms: 'tos-2026-11-01',
+  privacy: 'privacy-2026-11-01',
   thirdParty: 'third-party-2026-09-30',
+} as const;
+
+/** 변호사·사무소 직원 로그인 때 동의 (변호사회원 이용약관에 개인정보 처리 위탁 조항 포함) */
+export const LAWYER_CONSENT_VERSIONS = {
+  lawyerTerms: 'lawyer-terms-2026-11-01',
+  privacy: CONSENT_VERSIONS.privacy,
 } as const;
 
 export type ConsentKind = 'terms' | 'privacy' | 'third_party' | 'lawyer_terms';
@@ -43,6 +49,28 @@ export interface PendingReconsent {
 }
 
 const PENDING_LOGIN_KEY = 'legal_crm_pending_login_consent';
+const PENDING_LAWYER_KEY = 'legal_crm_pending_lawyer_consent';
+
+/** 변호사 로그인 버튼을 누르기 직전: 동의를 이 기기에 보관 (OAuth 이동 후 서버에 기록) */
+export function stashLawyerConsent(): void {
+  try {
+    localStorage.setItem(PENDING_LAWYER_KEY, JSON.stringify({ lawyerTerms: LAWYER_CONSENT_VERSIONS.lawyerTerms, privacy: LAWYER_CONSENT_VERSIONS.privacy, at: new Date().toISOString() }));
+  } catch { /* ignore */ }
+}
+
+/** 변호사 로그인 세션이 생긴 뒤: 보관한 동의를 서버에 기록 (같은 버전이 이미 있으면 서버가 건너뜀) */
+export async function commitPendingLawyerConsent(): Promise<void> {
+  let pending: { lawyerTerms?: string; privacy?: string } | null = null;
+  try { pending = JSON.parse(localStorage.getItem(PENDING_LAWYER_KEY) || 'null'); } catch { pending = null; }
+  if (!pending || !isSupabaseConfigured) return;
+  const items = [
+    pending.lawyerTerms ? { kind: 'lawyer_terms', version: pending.lawyerTerms } : null,
+    pending.privacy ? { kind: 'privacy', version: pending.privacy } : null,
+  ].filter(Boolean);
+  const { error } = await supabase.rpc('record_my_consents', { p_items: items });
+  if (!error) { try { localStorage.removeItem(PENDING_LAWYER_KEY); } catch { /* ignore */ } }
+  else console.warn('[consent] lawyer record failed', error.message);
+}
 const OLD_LOCAL_KEY = 'legal_crm_client_consents';
 
 /** 로그인 버튼을 누르기 직전: 필수 동의를 이 기기에 보관 (OAuth 이동 후 돌아와서 서버에 기록) */

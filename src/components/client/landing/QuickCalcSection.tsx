@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { trackEvent } from '../../../services/marketing/attribution';
 import { FormField, MoneyInput, SectionHeader, inputClass, Button } from '../ui';
 import CalcResultPanel from '../calculator/CalcResultPanel';
 import { computePublicRange, emptyPublicCalcInput, type HousingKind, type PublicCalcInput } from '../../../services/repayment/publicCalculator';
@@ -21,6 +22,9 @@ export default function QuickCalcSection({
   const [v, setV] = useState<PublicCalcInput>(() => emptyPublicCalcInput(new Date().getFullYear()));
   const set = <K extends keyof PublicCalcInput>(k: K, val: PublicCalcInput[K]) => setV(p => ({ ...p, [k]: val }));
   const range = useMemo(() => (v.monthlyIncome > 0 && v.totalDebt > 0 ? computePublicRange(v, true).range : null), [v]);
+  // 방문 분석: 결과를 처음 본 때 한 번 (입력값은 보내지 않음)
+  const tracked = useRef(false);
+  useEffect(() => { if (range && !tracked.current) { tracked.current = true; trackEvent('calculator_used'); } }, [range]);
 
   return (
     <section id="quick-calculator" aria-labelledby="quick-calc-title" className="bg-white py-14 md:py-20 border-t border-slate-100 scroll-mt-20">
@@ -67,8 +71,8 @@ export default function QuickCalcSection({
             <CalcResultPanel
               range={range}
               year={v.year}
-              onStartCheck={onStartCheck}
-              extraAction={<Button onClick={() => onOpenFull({ monthlyIncome: v.monthlyIncome, totalDebt: v.totalDebt, householdSize: v.householdSize, housing: v.housing })}>자세히 계산하기</Button>}
+              onStartCheck={() => { trackEvent('calculator_to_check'); onStartCheck(); }}
+              extraAction={<Button onClick={() => { trackEvent('calculator_to_full'); onOpenFull({ monthlyIncome: v.monthlyIncome, totalDebt: v.totalDebt, householdSize: v.householdSize, housing: v.housing }); }}>자세히 계산하기</Button>}
             />
           </div>
         </div>

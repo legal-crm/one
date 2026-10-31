@@ -49,7 +49,7 @@ export const CLIENT_TAB_LABELS: Record<ClientTab, string> = {
   lawyers: '변호사 찾기',
   // '내 사건' 한 곳 안의 '상담' 영역 (MY-1: 이전 '내 관리방'·'마이페이지' 두 이름을 '내 사건'·'내 정보'로 정리)
   chat: '상담',
-  calculator: '변제금 계산기',
+  calculator: '변제금 계산기(참고용)',
   reviews: '이용 후기',
   qna: '상담 사례',
   mypage: '내 사건',

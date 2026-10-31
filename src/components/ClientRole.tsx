@@ -1240,7 +1240,8 @@ export default function ClientRole({
   // 홈 빠른 계산기 → 전체 계산기로 넘기는 입력값 (브라우저 메모리에만, B-7·1-G)
   const [calcSeed, setCalcSeedState] = useState<Partial<PublicCalcInput> | null>(null);
   const [calcSeedKey, setCalcSeedKey] = useState(0);
-  const setCalcSeed = (seed: Partial<PublicCalcInput>) => { setCalcSeedState(seed); setCalcSeedKey(k => k + 1); };
+  const [calcSeedSource, setCalcSeedSource] = useState<'quick' | 'intake' | undefined>(undefined);
+  const setCalcSeed = (seed: Partial<PublicCalcInput>, source: 'quick' | 'intake' = 'quick') => { setCalcSeedState(seed); setCalcSeedSource(source); setCalcSeedKey(k => k + 1); };
   const [entryCategory, setEntryCategory] = useState<{ type: 'debt_type' | 'solution' | 'general'; id: string; label: string } | null>(null);
 
   // Reviews page state
@@ -1758,6 +1759,8 @@ export default function ClientRole({
       depositLoan: input.depositLoan,
       age: age,
       specialCondition: input.specialCondition || (input.age && input.age >= 65 ? 'elderly' : (input.specialCondition as any) || 'none'),
+      // 민감정보('중증 장애') 별도 동의 시각 — 동의하지 않으면 챗봇이 'none'으로 바꿔 보낸다
+      ...(input.specialCondition === 'severe_disability' && input.sensitiveConsentAt ? { sensitiveConsentAt: input.sensitiveConsentAt } : {}),
       monthlyFixedExpenses: input.monthlyFixedExpenses || ((input.rentCost || 0) + (input.medicalCost || 0) + (input.educationCost || 0) + (input.specialEducationCost || 0)),
       spouseAsset: input.spouseAssets || 0,
       consultationLogs
@@ -2285,7 +2288,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                 />
               </div>
             )}
-            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView key={calcSeedKey} initial={calcSeed || undefined} onStartCheck={handleStartDiagnosisClick} onFindLawyer={() => setActiveTab('lawyers')} />)}
+            {activeTab === 'calculator' && platformFeatures.features.calculatorVisible && (<CalculatorView key={calcSeedKey} initial={calcSeed || undefined} seedSource={calcSeedSource} onStartCheck={handleStartDiagnosisClick} onFindLawyer={() => setActiveTab('lawyers')} />)}
 
 
             {/* TAB: SUCCESS TESTIMONIALS/REVIEWS */}
@@ -2493,6 +2496,9 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                     onClose={() => setIntakeReviewOpen(false)}
                     onRestart={() => { setIntakeReviewOpen(false); forceStartNewDiagnosis(); }}
                     onLearn={() => { setIntakeReviewOpen(false); setActiveTab('guide'); window.scrollTo({ top: 0 }); }}
+                    onOpenCalculator={platformFeatures.features.calculatorVisible
+                      ? (seed) => { setIntakeReviewOpen(false); setCalcSeed(seed, 'intake'); setActiveTab('calculator'); window.scrollTo({ top: 0 }); }
+                      : undefined}
                     onConfirm={(extra) => {
                       // 더 답한 사실을 상담 요청에 붙인다 (변호사에게는 동의 뒤 공개)
                       const fp = {
@@ -2501,7 +2507,7 @@ ${(intakeData.clientNotes && intakeData.clientNotes.length > 0) ? `
                         creditorCountBand: extra.creditorCountBand || undefined, overdueSince: extra.overdueSince || undefined,
                         arrearsKinds: extra.arrears, seizureTargets: extra.seizure,
                         ...(extra.birthYear ? { age: new Date().getFullYear() - Number(extra.birthYear) } : {}),
-                        shortPlanFacts: extra.shortFacts, tenureBand: extra.tenure || undefined, socialInsurance: extra.socialInsurance || undefined, recentIncomeDrop: extra.incomeDrop || undefined,
+                        shortPlanFacts: extra.shortFacts, ...(extra.sensitiveConsentAt ? { sensitiveConsentAt: extra.sensitiveConsentAt } : {}), tenureBand: extra.tenure || undefined, socialInsurance: extra.socialInsurance || undefined, recentIncomeDrop: extra.incomeDrop || undefined,
                       };
                       const prevIntake = pendingNewRequest.intake || null;
                       const intake = pendingChatbotData ? buildIntakeV2(pendingChatbotData.input as any, extra, null) : (prevIntake ? { ...prevIntake, extra } : undefined);

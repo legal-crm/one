@@ -70,7 +70,7 @@ export default function ConsentStatusList() {
   const latestOf = (kind: 'terms' | 'privacy') => rows.find(r => r.kind === kind && !r.withdrawnAt);
   const accountItems = [
     { kind: 'terms' as const, title: '서비스 이용약관', href: '/tos.html' },
-    { kind: 'privacy' as const, title: '개인정보 수집·이용', href: '/privacy.html' },
+    { kind: 'privacy' as const, title: '개인정보 수집·이용', href: '/privacy.html#signup-consent' },
   ];
   const thirdParty = rows.filter(r => r.kind === 'third_party');
 

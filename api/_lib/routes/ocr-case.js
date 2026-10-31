@@ -126,6 +126,7 @@ async function handler(req, res) {
                   ]
                 }
               ],
+              store: false, // 요청·응답을 Google 로그에 남기지 않음 (개인정보 처리방침 제8조)
               generationConfig: {
                 temperature: 0.1,
                 response_mime_type: 'application/json'

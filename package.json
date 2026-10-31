@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
-    "prebuild": "node scripts/columns-build.mjs && node scripts/debt-programs-build.mjs && node scripts/seo-build.mjs && node scripts/copy-lint.mjs",
+    "prebuild": "node scripts/columns-build.mjs && node scripts/debt-programs-build.mjs && node scripts/feature-pages-build.mjs && node scripts/seo-build.mjs && node scripts/copy-lint.mjs",
     "build": "vite build",
     "seo:build": "node scripts/seo-build.mjs",
     "preview": "vite preview",

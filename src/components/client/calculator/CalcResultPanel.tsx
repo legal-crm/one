@@ -41,7 +41,7 @@ export default function CalcResultPanel({
         </Callout>
       ) : (
         <div className="rounded-2xl border border-brand/20 bg-brand-light p-5 space-y-3">
-          <p className="text-xs font-bold text-brand">공개 기준 참고 범위 ({year}년 기준표)</p>
+          <p className="text-xs font-bold text-brand">공개 기준 참고 범위 ({year}년 기준표{range.source?.tableVersion ? ` · 게시 기준표 v${range.source.tableVersion}` : ''})</p>
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <dt className="text-sm text-slate-600">월 변제금</dt>
@@ -56,6 +56,22 @@ export default function CalcResultPanel({
               </dd>
             </div>
           </dl>
+          {range.monthlyHigh > 0 && (
+            <div aria-hidden="true" className="pt-1">
+              <div className="relative h-2 rounded-full bg-white/80">
+                <div
+                  className="absolute inset-y-0 rounded-full bg-brand/70 transition-all duration-500 motion-reduce:transition-none"
+                  style={{
+                    left: `${Math.round((range.monthlyLow / (range.monthlyHigh * 1.25)) * 100)}%`,
+                    width: `${Math.max(4, Math.round(((range.monthlyHigh - range.monthlyLow) / (range.monthlyHigh * 1.25)) * 100))}%`,
+                  }}
+                />
+              </div>
+              <div className="mt-1 flex justify-between text-[11px] text-slate-500 tabular-nums">
+                <span>0원</span><span>{formatMan(Math.round(range.monthlyHigh * 1.25))}</span>
+              </div>
+            </div>
+          )}
           <p className="text-sm text-slate-700">
             이 기간 동안 갚는 돈은 모두 약 {range.totalLow === range.totalHigh ? formatMan(range.totalLow) : `${formatMan(range.totalLow)} ~ ${formatMan(range.totalHigh)}`}이에요.
           </p>
@@ -86,7 +102,7 @@ export default function CalcResultPanel({
               ))}
             </ol>
             <p className="text-xs text-slate-500 leading-relaxed">
-              근거: 보건복지부 기준 중위소득 고시(생계비는 개시신청 당시 기준, 회생법원 실무준칙 제405호), 각 회생법원 생계비 검토 위원회 의결(추가 생계비), 민사집행법 시행령(압류금지 예금·보험 환급금 250만 원), 채무자회생법(변제기간 3년 원칙·최장 5년).
+              근거: {range.source?.medianNotice || '보건복지부 기준 중위소득 고시'}의 60%(생계비는 개시신청 당시 기준, 회생법원 실무준칙 제405호), {range.source?.additionalBasis || '각 회생법원 생계비 검토 위원회 의결'}(추가 생계비), 민사집행법 시행령(압류금지 예금·보험 해약환급금 각 250만 원 합산), 채무자회생법 제611조(변제기간 3년 원칙·최장 5년), 회생법원 실무준칙 제424호(3년 미만 단축 사유).
             </p>
           </div>
         )}
