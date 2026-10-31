@@ -461,8 +461,9 @@ export default function App() {
           const lawyerId = sessionStorage.getItem('legal_crm_lawyer_session') || undefined;
           dbRequests = await loadConsultRequests({ lawyerId, includeOpen: true });
         } else if (currentRole === 'admin') {
-          // [ANTI-BOLA] 관리자 화면이 활성일 때만 조회 — 실제 반환 범위는 RLS(is_platform_admin: role=admin AND aal2)가 결정
-          if (readAdminMarker()) {
+          // 관리자는 상담 요청 원문을 받지 않는다 (OP-5, 20261031002600: RLS에서 관리자 제외).
+          // 의뢰인 모니터링은 admin_consult_overview(운영 정보만)를 쓰고, 서버가 없는 개발 환경만 예전처럼 읽는다.
+          if (readAdminMarker() && !isSupabaseConfigured) {
             dbRequests = await loadConsultRequests({ isAdmin: true });
           }
         }

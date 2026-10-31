@@ -9,6 +9,8 @@ import { secureGetItem, secureSetItem, secureRemoveItem } from '../utils/secureS
 import AdminTodayPanel from './admin/AdminTodayPanel';
 import LawyerReviewQueue from './admin/LawyerReviewQueue';
 import AccountsPanel from './admin/AccountsPanel';
+import ConsultMonitorPanel from './admin/ConsultMonitorPanel';
+import PrivacyRequestsPanel from './admin/PrivacyRequestsPanel';
 import { 
   BarChart2, Users, Briefcase, CreditCard, CheckCircle2, AlertTriangle, 
   Trash2, EyeOff, Check, X, ShieldAlert, ShieldCheck, Sparkles, ExternalLink,
@@ -1393,8 +1395,9 @@ export default function AdminRole({
             />
           )}
 
-          {/* TAB 2: CLIENT MONITORING */}
-          {activeTab === 'clients' && (
+          {/* TAB 2: CLIENT MONITORING — 서버 기준 운영 정보만 (OP-5). 옛 화면(원문·연락처를 받던 브라우저 사본)은 서버가 없는 개발 환경에서만 */}
+          {activeTab === 'clients' && isSupabaseConfigured && <ConsultMonitorPanel />}
+          {activeTab === 'clients' && !isSupabaseConfigured && (
             <div className="space-y-6 animate-fadeIn">
               {/* Summary Stats Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -5405,7 +5408,12 @@ export default function AdminRole({
 
           {/* TAB 7: MEMBER MANAGEMENT & ACTIVITY MONITORING */}
           {/* 계정 관리 (서버 기준, OP-9·OP-10). 옛 회원 모니터링(관리자 브라우저 사본)은 서버가 없는 개발 환경에서만 */}
-          {activeTab === 'members' && isSupabaseConfigured && <AccountsPanel />}
+          {activeTab === 'members' && isSupabaseConfigured && (
+            <div className="space-y-6">
+              <AccountsPanel />
+              <PrivacyRequestsPanel />
+            </div>
+          )}
           {activeTab === 'members' && !isSupabaseConfigured && (() => {
             const totalClientsCount = members.filter(m => m.role === 'CLIENT').length;
             const totalPartnersCount = members.filter(m => m.role === 'LAWYER' || m.role === 'STAFF').length;

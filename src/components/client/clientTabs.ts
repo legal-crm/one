@@ -37,6 +37,7 @@ export const CLIENT_PATH_TAB_MAP: Record<string, ClientTab> = {
   '/news': 'news',
   '/companion': 'companion',
   '/company': 'company',
+  '/my': 'mypage',
 };
 
 /** 명칭 사전 */
@@ -90,6 +91,8 @@ export function readInitialClientTab(): ClientTab {
   if (typeof window === 'undefined') return 'landing';
   const mapped = CLIENT_PATH_TAB_MAP[window.location.pathname];
   if (mapped) return mapped;
+  // 알림톡 버튼 주소 https://mykim.kr/my, /my/… → 마이페이지('내 사건') (MY-2, 이전: 미등록 주소라 홈으로 갔다)
+  if (/^\/my(\/|$)/.test(window.location.pathname)) return 'mypage';
   const tabParam = new URLSearchParams(window.location.search).get('tab');
   return isClientTab(tabParam) ? tabParam : 'landing';
 }

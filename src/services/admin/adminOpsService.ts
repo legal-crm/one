@@ -15,6 +15,8 @@ function errorMessage(error: any, fallback: string): string {
   if (m.includes('only approved')) return '승인된 변호사만 정지할 수 있어요.';
   if (m.includes('cannot change own')) return '내 계정은 여기서 바꿀 수 없어요.';
   if (m.includes('until must be')) return '정지 기한은 지금 이후로 정해 주세요.';
+  if (m.includes('only for open reports')) return '원문은 열린 신고가 있는 요청만 볼 수 있어요.';
+  if (m.includes('too many reports')) return '오늘 보낼 수 있는 신고 수(10건)를 넘었어요.';
   if (m.includes('not found')) return '대상을 찾지 못했어요. 목록을 새로 고쳐 주세요.';
   return fallback;
 }
@@ -194,4 +196,77 @@ export async function loadMyLawyerReviewState(): Promise<MyLawyerReviewState | n
   if (error || !data) return null;
   const d = data as any;
   return { lawyerId: d.lawyer_id, approved: !!d.approved, status: d.status, reason: d.reason || undefined, updatedAt: d.updated_at || undefined, submittedAt: d.submitted_at || undefined };
+}
+
+// ── 상담 관제 (OP-5): 운영 정보만. 원문은 열린 신고가 있을 때 사유를 남기고만 본다 ──
+export interface ConsultOverviewRow {
+  id: string; alias: string; status: string; adminHidden: boolean; adminHiddenReason: string | null;
+  createdAt: string; updatedAt: string | null; lawyerCount: number; proposalCount: number; messageCount: number;
+  lastMessageAt: string | null; seats: Record<string, number>; overdueSeats: number; openReports: number; source: string | null; hasSummary: boolean;
+}
+export interface ConsultOverview { total: number; rows: ConsultOverviewRow[]; counts: Record<string, number> }
+
+export async function loadConsultOverview(opts: { status?: string; search?: string; limit?: number; offset?: number }): Promise<Result<ConsultOverview>> {
+  const r = await rpc<any>('admin_consult_overview', {
+    p_status: opts.status && opts.status !== 'all' ? opts.status : null, p_search: opts.search?.trim() || null,
+    p_limit: opts.limit ?? 50, p_offset: opts.offset ?? 0,
+  }, '상담 현황을 불러오지 못했어요.');
+  if (r.ok === false) return r;
+  const d = r.data || {};
+  return {
+    ok: true,
+    data: {
+      total: Number(d.total) || 0,
+      counts: d.counts || {},
+      rows: (d.rows || []).map((x: any) => ({
+        id: x.id, alias: x.alias || '의뢰인', status: x.status, adminHidden: !!x.admin_hidden, adminHiddenReason: x.admin_hidden_reason ?? null,
+        createdAt: x.created_at, updatedAt: x.updated_at ?? null, lawyerCount: Number(x.lawyer_count) || 0, proposalCount: Number(x.proposal_count) || 0,
+        messageCount: Number(x.message_count) || 0, lastMessageAt: x.last_message_at ?? null, seats: x.seats || {}, overdueSeats: Number(x.overdue_seats) || 0,
+        openReports: Number(x.open_reports) || 0, source: x.source ?? null, hasSummary: !!x.has_summary,
+      })),
+    },
+  };
+}
+
+export interface ConsultReport {
+  id: string; consultRequestId: string; alias: string; reporterRole: 'client' | 'office'; category: string; detail: string | null;
+  status: 'open' | 'resolved' | 'dismissed'; resolution: string | null; createdAt: string; resolvedAt: string | null;
+}
+
+export async function listConsultReports(status: 'open' | 'resolved' | 'dismissed' | null = 'open'): Promise<Result<ConsultReport[]>> {
+  const r = await rpc<any[]>('admin_list_consult_reports', { p_status: status }, '신고 목록을 불러오지 못했어요.');
+  if (r.ok === false) return r;
+  return {
+    ok: true,
+    data: (r.data || []).map((x: any) => ({
+      id: x.id, consultRequestId: x.consult_request_id, alias: x.alias || '의뢰인', reporterRole: x.reporter_role, category: x.category,
+      detail: x.detail ?? null, status: x.status, resolution: x.resolution ?? null, createdAt: x.created_at, resolvedAt: x.resolved_at ?? null,
+    })),
+  };
+}
+
+export async function resolveConsultReport(id: string, decision: 'resolved' | 'dismissed', resolution: string): Promise<Result<null>> {
+  const r = await rpc<any>('admin_resolve_consult_report', { p_id: id, p_decision: decision, p_resolution: resolution }, '신고를 처리하지 못했어요.');
+  return r.ok === false ? r : { ok: true, data: null };
+}
+
+export interface ConsultDetailForReview { alias: string; title: string; content: string; messages: Array<{ senderType: string; message: string; createdAt: string }> }
+
+export async function openConsultDetail(id: string, reason: string): Promise<Result<ConsultDetailForReview>> {
+  const r = await rpc<any>('admin_open_consult_detail', { p_id: id, p_reason: reason }, '원문을 열지 못했어요. 열린 신고가 있는 요청만 열 수 있어요.');
+  if (r.ok === false) return r;
+  const d = r.data || {};
+  return {
+    ok: true,
+    data: {
+      alias: d.alias || '의뢰인', title: d.title || '', content: d.content || '',
+      messages: (d.messages || []).map((m: any) => ({ senderType: m.sender_type, message: m.message, createdAt: m.created_at })),
+    },
+  };
+}
+
+/** 의뢰인·사무소: 상담 요청 신고 (스팸·부적절) */
+export async function reportConsultRequest(requestId: string, category: 'spam' | 'abuse' | 'fraud' | 'privacy' | 'other', detail?: string): Promise<Result<null>> {
+  const r = await rpc<any>('report_consult_request', { p_request_id: requestId, p_category: category, p_detail: detail?.trim() || null }, '신고를 보내지 못했어요. 잠시 후 다시 시도해 주세요.');
+  return r.ok === false ? r : { ok: true, data: null };
 }

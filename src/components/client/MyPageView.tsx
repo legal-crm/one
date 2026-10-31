@@ -11,6 +11,8 @@ import MyPageNotificationsPanel from './mypage/MyPageNotificationsPanel';
 import MyCaseDetails from './mypage/MyCaseDetails';
 import MyPageModals from './mypage/MyPageModals';
 import MyServerCasesCard from './mypage/MyServerCasesCard';
+import PrivacyRequestCard from './mypage/PrivacyRequestCard';
+import { isSupabaseConfigured } from '../../supabaseClient';
 
 /**
  * 마이페이지 (탭: 내 사건 · 회생동행 · 알림·설정)
@@ -95,6 +97,7 @@ export default function MyPageView(props: MyPageViewProps) {
 
       {/* ═══ 탭 3: 알림 수신함 & 설정 ═══ */}
       {mypageTab === 'settings' && !isCompact && <MyPageNotificationsPanel vm={vm} />}
+      {mypageTab === 'settings' && !isCompact && isSupabaseConfigured && <PrivacyRequestCard />}
 
       {/* ═══ 탭 2: 채무 진단 & 맞춤 제안서 / 법원 서류 제출 ═══ */}
       {mypageTab === 'diagnosis' && (

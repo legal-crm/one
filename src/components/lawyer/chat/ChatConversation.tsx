@@ -11,6 +11,7 @@ import { useDismiss } from './chatHooks';
 import { ChatAvatar, ConsultStatusChip, IconButton } from './ChatPrimitives';
 import ChatTimeline from './ChatTimeline';
 import ChatComposer from './ChatComposer';
+import ReportConsultButton from '../../common/ReportConsultButton';
 
 export type ChatLayout = 'single' | 'drawer' | 'wide';
 
@@ -187,6 +188,7 @@ export default function ChatConversation({
             <Scale className="w-3.5 h-3.5 text-amber-300" />
             <span>수임 진행</span>
           </button>
+          <ReportConsultButton requestId={request.id} />
 
           {!single && onOpenQuickDock && (
             <button

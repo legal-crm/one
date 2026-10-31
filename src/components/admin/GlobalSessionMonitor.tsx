@@ -232,9 +232,10 @@ export default function GlobalSessionMonitor({ currentAdminEmail }: GlobalSessio
               <span className="text-xs font-bold text-slate-500">실시간 활성 세션</span>
               <div className="flex items-baseline justify-between">
                 <span className="text-2xl font-black text-slate-900">{totalActiveCount}</span>
-                <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  정상 운영
+                {/* 서버가 표시한 이상 징후(해외 접속·짧은 시간 여러 IP) 기준 (이전: '정상 운영' 고정 표시) */}
+                <span className={`text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1 ${suspiciousCount > 0 ? 'text-rose-700 bg-rose-50' : 'text-emerald-700 bg-emerald-50'}`}>
+                  <span className={`w-1.5 h-1.5 rounded-full ${suspiciousCount > 0 ? 'bg-rose-500' : 'bg-emerald-500'}`} />
+                  {suspiciousCount > 0 ? `이상 징후 ${suspiciousCount}건` : '이상 징후 없음'}
                 </span>
               </div>
             </div>

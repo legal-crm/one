@@ -13,6 +13,7 @@ import {
   type ConsultRoomStage,
 } from './consultFlow';
 import { Button, Modal, SegmentedTabs } from './ui';
+import ReportConsultButton from '../common/ReportConsultButton';
 import { cn } from '../../utils/cn';
 import { ConsultRequest, ConsultMessage, ConsultProposal, FinancialProfile, User as UserType } from '../../types';
 import { purgeConsultationRecord, clientSetConsultChoice, clientWithdrawConsultLawyer } from '../../services/consultService';
@@ -591,6 +592,7 @@ export default function ChatView({
               전화상담 요청
             </Button>
           )}
+          {chatAvailable && currentRequest && <ReportConsultButton requestId={currentRequest.id} />}
         </div>
 
         {/* 여러 변호사와 대화 중이면 대화 상대 고르기 */}
