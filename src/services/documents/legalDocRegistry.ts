@@ -2127,7 +2127,7 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%EC%B1%84%EA%B6%8C%EC%9E%90%20%EB%AA%85%EC%9D%98%EB%B3%80%EA%B2%BD%20%EC%8B%A0%EC%B2%AD%EC%84%9C(%EC%B1%84%EA%B6%8C%EC%96%91%EB%8F%84%EC%96%91%EC%88%98)(D5129).hwpx',
     officialSourceNote: '대법원 전산양식 D5129',
     priorityLevel: 'HIGH',
-    description: '원채권자의 대부업체 매각 및 채권양도통지에 따른 채권자 명의 정정 신청서 (대법원 전산양식 D5129)'
+    description: '원채권자가 채권을 넘긴(양도) 경우 채권자 명의를 바꾸는 신청서. 신청인은 새 채권자(채권양수인)라 사무소가 채워 내는 서식이 아니에요. 채권자에게 안내할 때 빈 공식 양식을 쓰세요. (대법원 전산양식 D5129)'
   },
   {
     docCode: 'D5130',
@@ -2143,7 +2143,7 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%EC%B1%84%EA%B6%8C%EC%9E%90%20%EB%AA%85%EC%9D%98%EB%B3%80%EA%B2%BD%20%EC%8B%A0%EC%B2%AD%EC%84%9C(%EC%A0%84%EB%B6%80%EC%9D%BC%EB%B6%80%20%EB%8C%80%EC%9C%84%EB%B3%80%EC%A0%9C)(D5130).hwpx',
     officialSourceNote: '대법원 전산양식 D5130',
     priorityLevel: 'HIGH',
-    description: '신용보증재단, 서울보증보험 등의 대위변제로 인한 수계 채권자 명의변경 (대법원 전산양식 D5130)'
+    description: '보증기관 등이 대신 갚은(대위변제) 경우 채권자 명의를 바꾸는 신청서. 신청인은 대위변제자라 사무소가 채워 내는 서식이 아니에요. 채권자에게 안내할 때 빈 공식 양식을 쓰세요. (대법원 전산양식 D5130)'
   },
   {
     docCode: 'D5131',
@@ -2159,7 +2159,7 @@ export const ALL_LEGAL_DOC_REGISTRY: LegalDocItem[] = [
     downloadUrl: '/court-forms/hwpx/%EC%B1%84%EA%B6%8C%EC%9E%90%20%EB%AA%85%EC%9D%98%EB%B3%80%EA%B2%BD%20%EC%8B%A0%EC%B2%AD%EC%84%9C(%EC%B1%84%EA%B6%8C%EC%9E%90%EC%83%81%ED%98%B8%EB%B3%80%EA%B2%BD)(D5131).hwpx',
     officialSourceNote: '대법원 전산양식 D5131',
     priorityLevel: 'NORMAL',
-    description: '금융기관 법인 합병 또는 상호 변경에 따른 채권자 명의 갱신 신청서 (대법원 전산양식 D5131)'
+    description: '채권자 회사의 합병·분할·상호 변경에 따라 채권자 명의를 바꾸는 신청서. 신청인은 상호가 바뀐 채권자라 사무소가 채워 내는 서식이 아니에요. 채권자에게 안내할 때 빈 공식 양식을 쓰세요. (대법원 전산양식 D5131)'
   },
   {
     docCode: 'D5132',
