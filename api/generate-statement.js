@@ -12,6 +12,7 @@ import { fixCompliance, scanCompliance } from './_lib/marketing-compliance.js';
 import { buildStatementMasker } from './_lib/statement-masking.js';
 import { handleCallTranscript } from './_lib/routes/call-transcript.js';
 import { handleGeoCheck } from './_lib/routes/geo-check.js';
+import { refreshKeywordTrends } from './_lib/routes/keyword-trend.js';
 
 // ─────────────────────────────────────────────────────────────
 // [PART 3-7] 관리자 마케팅 칼럼 생성 (mode: 'marketing' | 'marketing-ping')
@@ -102,7 +103,7 @@ async function handleMarketing(req, res) {
 // 데일리 오토파일럿 (mode: 'mk-*') — 관리자(2단계 인증) 전용
 //   엔진: api/_lib/marketing-engine.js
 // ─────────────────────────────────────────────────────────────
-const MK_MODES = new Set(['mk-status', 'mk-news', 'mk-context', 'mk-generate', 'mk-save', 'mk-list', 'mk-get', 'mk-update', 'mk-publish', 'mk-image', 'mk-tts', 'mk-stats']);
+const MK_MODES = new Set(['mk-status', 'mk-news', 'mk-context', 'mk-generate', 'mk-save', 'mk-list', 'mk-get', 'mk-update', 'mk-publish', 'mk-image', 'mk-tts', 'mk-stats', 'mk-keyword-trend']);
 
 async function handleAutopilot(req, res) {
   let user = null;
@@ -162,6 +163,9 @@ async function handleAutopilot(req, res) {
         return res.status(200).json({ ok: true, ...(await mk.generateSpeech(typeof b.text === 'string' ? b.text : '', b.voice, deadline)) });
       case 'mk-stats':
         return res.status(200).json({ ok: true, ...(await mk.marketingStats(90)) });
+      // 키워드 은행 추세 새로고침 (M-7, 네이버 데이터랩)
+      case 'mk-keyword-trend':
+        return res.status(200).json({ ok: true, ...(await refreshKeywordTrends(b.ids, deadline)) });
       default:
         return res.status(400).json({ ok: false, error: '알 수 없는 요청입니다.' });
     }

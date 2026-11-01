@@ -13,6 +13,7 @@ import { Share2 } from 'lucide-react';
 import { listIndexNowLog, loadSeoState, saveSeoState } from '../../services/marketing/seoAdminService';
 import SocialChannelsPanel from './marketing/SocialChannelsPanel';
 import GeoCitationPanel from './marketing/GeoCitationPanel';
+import KeywordBankPanel from './marketing/KeywordBankPanel';
 
 // ============================================================
 // [SEO/GEO] 통합 관제센터
@@ -29,7 +30,7 @@ import GeoCitationPanel from './marketing/GeoCitationPanel';
 //  - 검색엔진 콘솔 내부 상태(제출·색인 수)는 외부에서 알 수 없으므로 관리자 체크리스트로 기록 (서버 admin_seo_state, 2026-10-31 M0)
 // ============================================================
 
-type TabId = 'health' | 'portals' | 'geo' | 'onpage' | 'indexing' | 'channels';
+type TabId = 'health' | 'portals' | 'geo' | 'onpage' | 'indexing' | 'channels' | 'keywords';
 type PortalId = 'google' | 'naver' | 'bing';
 
 interface PortalStep { id: string; title: string; desc: string; checkId?: string }
@@ -338,6 +339,7 @@ export default function SeoGeoManager() {
     { id: 'channels', label: 'SNS 채널·유입', Icon: Share2 },
     { id: 'portals', label: '검색엔진 등록 (구글/네이버/빙)', Icon: Search },
     { id: 'geo', label: 'GEO (AI 검색) 최적화', Icon: Bot },
+    { id: 'keywords', label: '키워드 은행', Icon: Key },
     { id: 'onpage', label: '온페이지 & SERP 미리보기', Icon: Eye },
     { id: 'indexing', label: '즉시 색인 (IndexNow)', Icon: Send },
   ];
@@ -615,6 +617,9 @@ export default function SeoGeoManager() {
       )}
 
       {tab === 'channels' && <SocialChannelsPanel />}
+
+      {/* 키워드 은행 (M-7) */}
+      {tab === 'keywords' && <KeywordBankPanel pages={pages.map(p => ({ url: p.url, title: p.title, description: p.description }))} />}
 
       {/* ───────────── TAB: GEO ───────────── */}
       {tab === 'geo' && (
