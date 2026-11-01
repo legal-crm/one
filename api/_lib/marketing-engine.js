@@ -9,6 +9,21 @@ import {
   MARKETING_DISCLAIMER, MARKETING_DISCLAIMER_SHORT, setExtraComplianceTerms,
 } from './marketing-compliance.js';
 import { PLATFORM_FACTS_LINES } from './compliance-terms.js';
+import {
+  AUTOMATION_OFF, normalizeAutomationConfig, autoApprovalDecision, autoHoldMessage, manualApprovalCheck, kstClock, dueAutoChannels,
+} from './marketing-automation.js';
+
+// 자동화 수준 (M-1): platform_config 'marketing_automation'. 읽지 못하면 L1(자동 승인·자동 게시 없음)로 동작
+export async function automationConfig() {
+  try {
+    const { data, error } = await supabase.rpc('marketing_automation_config');
+    if (error) throw error;
+    return normalizeAutomationConfig(data);
+  } catch (e) {
+    console.warn('[marketing] automation config not loaded, automatic actions off:', e?.message || e);
+    return { ...AUTOMATION_OFF, unavailable: true };
+  }
+}
 
 // 통합어드민이 더한 금지어 (platform_config 'compliance_terms') — 5분 캐시. 읽지 못하면 기본 규칙만으로 검사
 let extraTermsLoadedAt = 0;
@@ -744,6 +759,10 @@ export async function saveCampaign({ ctx, channels, candidates, models, source =
     models: models || {},
     source,
     status: 'ready',
+    approval_kind: null,
+    approval_note: null,
+    approved_by: null,
+    approved_at: null,
     created_by: userId,
     updated_at: new Date().toISOString(),
   };
@@ -763,7 +782,7 @@ export async function listCampaigns(month) {
   const end = new Date(Date.UTC(y, mo, 1)).toISOString().slice(0, 10);
   const { data, error } = await supabase
     .from(CAMPAIGNS)
-    .select('id,campaign_date,day_theme_code,news_title,status,compliance_score,source,created_at,updated_at')
+    .select('id,campaign_date,day_theme_code,news_title,status,compliance_score,source,approval_kind,approval_note,created_at,updated_at')
     .gte('campaign_date', start).lt('campaign_date', end)
     .order('campaign_date', { ascending: true });
   if (error) throw new AiError(`조회 실패: ${error.message}`, 500);
@@ -786,11 +805,12 @@ export async function getCampaign({ id, date }) {
   return { ...data, posts: posts || [] };
 }
 
-export async function updateCampaign({ id, status, channels, userId }) {
+export async function updateCampaign({ id, status, channels, userId, userEmail = null, reason }) {
   await refreshExtraComplianceTerms();
   const { data: cur, error: e1 } = await supabase.from(CAMPAIGNS).select('*').eq('id', id).maybeSingle();
   if (e1 || !cur) throw new AiError('캠페인을 찾을 수 없습니다.', 404);
-  const patch = { updated_at: new Date().toISOString() };
+  const now = new Date().toISOString();
+  const patch = { updated_at: now };
   if (channels && typeof channels === 'object') {
     const merged = { ...cur.channels };
     for (const k of ['blog', 'shorts', 'tiktok', 'cardnews', 'threads', 'facebook']) if (channels[k]) merged[k] = channels[k];
@@ -800,17 +820,48 @@ export async function updateCampaign({ id, status, channels, userId }) {
     patch.compliance_score = patch.compliance.score;
     // 수정되면 재승인 필요 (이전: 이미 게시된 캠페인은 고쳐도 'published'로 남아 다른 채널에 바로 게시됐다)
     if (cur.status === 'approved' || cur.status === 'published') { patch.status = 'ready'; patch.approved_by = null; patch.approved_at = null; }
+    // 자동 승인·권고 승인 표시와 보류 메모도 고친 내용에는 맞지 않으므로 지운다
+    patch.approval_kind = null;
+    patch.approval_note = null;
   }
+  let advisory = null;
   if (status) {
     if (!STATUSES.includes(status)) throw new AiError('잘못된 상태입니다.', 400);
     const comp = patch.compliance || cur.compliance;
-    if (status === 'approved' && comp?.highCount > 0) {
-      throw new AiError(`고위험 표현 ${comp.highCount}건이 남아 있어 승인할 수 없습니다. 수정 후 다시 승인하세요.`, 409);
+    if (status === 'approved') {
+      // 엄격 모드: 고위험이 남으면 승인 불가 / 권고 모드: 사유를 받고 승인(조치 기록). 설정을 못 읽으면 엄격으로 본다
+      const check = manualApprovalCheck(comp, await automationConfig(), reason);
+      if (!check.ok) throw new AiError(check.error, check.status);
+      patch.approved_by = userId;
+      patch.approved_at = now;
+      patch.approval_kind = check.kind;
+      patch.approval_note = check.note;
+      if (check.kind === 'advisory') advisory = check;
+    } else if (status === 'ready' || status === 'rejected') {
+      patch.approved_by = null;
+      patch.approved_at = null;
+      patch.approval_kind = null;
+      patch.approval_note = null;
     }
     patch.status = status;
-    if (status === 'approved') { patch.approved_by = userId; patch.approved_at = new Date().toISOString(); }
   }
-  const { data, error } = await supabase.from(CAMPAIGNS).update(patch).eq('id', id).select('id,status,compliance_score,compliance').single();
+  if (advisory) {
+    // 사유 승인은 조치 기록이 남아야만 진행한다
+    const comp = patch.compliance || cur.compliance;
+    const highIssues = Object.entries(comp?.byChannel || {})
+      .flatMap(([ch, r]) => (r?.issues || []).filter(i => i.severity === 'high').map(i => ({ channel: ch, label: i.label, match: String(i.match || '').slice(0, 80) })))
+      .slice(0, 20);
+    const { error: logErr } = await supabase.from('admin_actions').insert({
+      actor_user_id: userId || null, actor_email: userEmail || null, action: 'marketing.approve_advisory',
+      target_type: 'marketing_campaign', target_id: id,
+      before_value: { status: cur.status, campaignDate: cur.campaign_date, highCount: advisory.high, highIssues },
+      after_value: { status: 'approved', approvalKind: 'advisory' },
+      reason: advisory.reason,
+    });
+    if (logErr) throw new AiError('조치 기록을 남기지 못해 승인하지 않았습니다. 잠시 후 다시 시도하세요.', 500);
+  }
+  const { data, error } = await supabase.from(CAMPAIGNS).update(patch).eq('id', id)
+    .select('id,status,compliance_score,compliance,approval_kind,approval_note').single();
   if (error) throw new AiError(`수정 실패: ${error.message}`, 500);
   return data;
 }
@@ -888,7 +939,10 @@ export async function publishChannel({ campaignId, channel, manualUrl, userId })
   if (!cur) throw new AiError('캠페인을 찾을 수 없습니다.', 404);
   if (!['approved', 'published'].includes(cur.status)) throw new AiError('승인된 캠페인만 게시할 수 있습니다.', 409);
   const chComp = cur.compliance?.byChannel?.[channel];
-  if (chComp && chComp.issues?.some(i => i.severity === 'high')) throw new AiError('이 채널에 고위험 표현이 남아 있습니다.', 409);
+  // 권고 모드에서 사유를 적고 승인한 캠페인만 고위험 표시가 남은 채널을 사람이 올릴 수 있다 (자동 게시는 이런 채널을 건너뜀)
+  if (chComp && chComp.issues?.some(i => i.severity === 'high') && cur.approval_kind !== 'advisory') {
+    throw new AiError('이 채널에 고위험 표현이 남아 있습니다.', 409);
+  }
   const payload = cur.channels?.[channel];
   if (!payload) throw new AiError('해당 채널 콘텐츠가 없습니다.', 404);
 
@@ -934,8 +988,60 @@ export async function marketingStats(days = 90) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 10. 크론: 매일 아침 한 번에 전 과정 수행 (사람 승인 전까지 게시하지 않음)
+// 10. 크론: 매일 아침 한 번에 전 과정 수행
+//   L1: 초안만 저장 (사람 승인 전까지 게시하지 않음)
+//   L2: 고위험·수정 권고 0건이고 점수가 기준 이상이면 자동 승인 → 낮 자동 게시(autoPublishDue)가 표시 없는 API 채널만 올림
 // ─────────────────────────────────────────────────────────────
+
+/** 아침 자동 생성분 자동 승인 (L2). 보류하면 이유를 approval_note 에 남겨 승인함에 보여 준다 */
+async function applyAutoApproval(id, compliance) {
+  const cfg = await automationConfig();
+  const decision = autoApprovalDecision(compliance, cfg);
+  const now = new Date().toISOString();
+  if (!decision.approve) {
+    const message = autoHoldMessage(decision, cfg);
+    if (cfg.level === 'L2' && message) {
+      await supabase.from(CAMPAIGNS).update({ approval_note: `자동 승인 보류: ${message}`.slice(0, 300), updated_at: now }).eq('id', id).eq('status', 'ready');
+    }
+    return { approved: false, reason: decision.reason, message };
+  }
+  const { error } = await supabase.from(CAMPAIGNS)
+    .update({ status: 'approved', approval_kind: 'auto', approval_note: decision.note, approved_by: null, approved_at: now, updated_at: now })
+    .eq('id', id).eq('status', 'ready');
+  if (error) {
+    console.warn('[marketing] auto approval not saved:', error.message);
+    return { approved: false, reason: 'error', message: '자동 승인을 저장하지 못했어요.' };
+  }
+  return { approved: true, note: decision.note };
+}
+
+/**
+ * 낮 자동 게시 (L2, pg_cron 12:35·14:05 KST): 오늘 승인된 캠페인에서 시간표 시각이 지난 API 채널 중
+ * 서버 키가 있고 아직 게시하지 않았고 고위험·수정 권고 표시가 없는 채널만 올린다.
+ */
+export async function autoPublishDue({ now = Date.now() } = {}) {
+  const cfg = await automationConfig();
+  if (cfg.level !== 'L2') return { skipped: true, reason: cfg.unavailable ? '자동화 설정을 읽지 못했습니다.' : '자동화 수준이 L1입니다.' };
+  const today = kstToday(now);
+  const cur = await getCampaign({ date: today.date });
+  if (!cur) return { skipped: true, reason: '오늘 캠페인이 없습니다.', date: today.date };
+  if (!['approved', 'published'].includes(cur.status)) return { skipped: true, reason: '오늘 캠페인이 승인되지 않았습니다.', date: today.date };
+  const due = dueAutoChannels({
+    config: cfg, schedule: GOLDEN_SCHEDULE, clock: kstClock(now), connected: publisherStatus(),
+    posts: cur.posts, channels: cur.channels, compliance: cur.compliance,
+  });
+  const results = [];
+  for (const channel of due) {
+    try {
+      const post = await publishChannel({ campaignId: cur.id, channel, userId: null });
+      results.push({ channel, ok: true, url: post?.external_post_url || null });
+    } catch (e) {
+      results.push({ channel, ok: false, error: e?.message || '게시 실패' });
+    }
+  }
+  return { date: today.date, campaignId: cur.id, published: results };
+}
+
 export async function runDailyAutopilot({ deadline = Date.now() + 55000 } = {}) {
   const today = kstToday();
   const { data: exist } = await supabase.from(CAMPAIGNS).select('id,status').eq('campaign_date', today.date).maybeSingle();
@@ -952,7 +1058,8 @@ export async function runDailyAutopilot({ deadline = Date.now() + 55000 } = {}) 
   });
   if (!Object.keys(channels).length) throw new AiError(`생성 실패: ${errors.join(' / ')}`, 502);
   const saved = await saveCampaign({ ctx, channels, candidates, models: { ...models, errors }, source: 'cron', overwrite: false });
-  return { ...saved, date: today.date, theme: ctx.theme.code, news: ctx.news.title, errors };
+  const autoApproval = saved.skipped ? null : await applyAutoApproval(saved.id, saved.compliance);
+  return { ...saved, date: today.date, theme: ctx.theme.code, news: ctx.news.title, errors, autoApproval };
 }
 
 export { AiError, scanCompliance, MARKETING_DISCLAIMER_SHORT };

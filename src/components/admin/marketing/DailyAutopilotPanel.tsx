@@ -12,9 +12,11 @@ import JSZip from 'jszip';
 import {
   autopilotApi, AutopilotStatus, CampaignChannels, CampaignStatus, ChannelId, ChannelPost, DailyContext, GroupId, GROUP_CHANNELS,
   NewsItem, RotationTheme, Scene, scanChannelsLocal, channelPlainText, blogTextToHtml, explainAutopilotError,
-  toDataUrl, MARKETING_DISCLAIMER_SHORT, CampaignRow, ComplianceIssue,
+  toDataUrl, MARKETING_DISCLAIMER_SHORT, CampaignRow, ComplianceIssue, ApprovalKind,
 } from '../../../services/marketingAutopilotService';
 import ShortsVideoRenderer from './ShortsVideoRenderer';
+// @ts-ignore — 서버·브라우저 공용 순수 JS 모듈 (자동화 수준 판단)
+import { kstClock, nextAutoRun } from '../../../../api/_lib/marketing-automation.js';
 import { drawBlogImage, drawCardSlide, ensureFonts, loadImage, canvasToBlob, downloadBlob } from './canvasArt';
 
 const CHANNEL_META: Record<ChannelId, { name: string; icon: React.ElementType; color: string }> = {
@@ -102,15 +104,22 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
     blog: { s: 'idle' }, shortform: { s: 'idle' }, social: { s: 'idle' },
   });
   const [models, setModels] = useState<Record<string, unknown>>({});
-  const [campaign, setCampaign] = useState<{ id: string; status: CampaignStatus; source: string; posts: ChannelPost[] } | null>(null);
+  const [campaign, setCampaign] = useState<{ id: string; status: CampaignStatus; source: string; posts: ChannelPost[]; approvalKind?: ApprovalKind | null; approvalNote?: string | null } | null>(null);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [active, setActive] = useState<ChannelId>('blog');
+  // 권고 모드 사유 승인 (M-1): 고위험 표현을 남긴 채 승인할 때만 쓰는 사유
+  const [advisoryReason, setAdvisoryReason] = useState('');
 
   const themes = info?.themes || [];
   const theme: RotationTheme | undefined = ctx?.theme || themes.find(t => t.code === themeCode);
   const compliance = useMemo(() => scanChannelsLocal(channels, ctx || undefined), [channels, ctx]);
   const hasChannels = Object.keys(channels).length > 0;
+  // 자동화 수준 (M-1): 서버 mk-status 가 함께 준다. 못 받으면 엄격·L1로 본다(서버도 같은 방식)
+  const automation = info?.automation;
+  const advisoryMode = automation?.checkMode === 'advisory';
+  const autoPublishReady = automation?.level === 'L2' && automation.autoChannels.some(ch => info?.status.publishers[ch]);
+  const reasonOk = advisoryReason.replace(/\s+/g, ' ').trim().length >= 5;
 
   const hydrate = useCallback((row: CampaignRow & { posts: ChannelPost[] }, allThemes: RotationTheme[]) => {
     const th = allThemes.find(t => t.code === row.day_theme_code) || allThemes[0];
@@ -123,7 +132,8 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
     setCandidates(row.context?.candidates || []);
     setChannels(row.channels || {});
     setModels(row.models || {});
-    setCampaign({ id: row.id, status: row.status, source: row.source, posts: row.posts || [] });
+    setCampaign({ id: row.id, status: row.status, source: row.source, posts: row.posts || [], approvalKind: row.approval_kind ?? null, approvalNote: row.approval_note ?? null });
+    setAdvisoryReason('');
     setGroupState({ blog: { s: row.channels?.blog ? 'done' : 'idle' }, shortform: { s: row.channels?.shorts ? 'done' : 'idle' }, social: { s: row.channels?.cardnews ? 'done' : 'idle' } });
     setDirty(false);
   }, []);
@@ -225,9 +235,9 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
     try {
       if (campaign) {
         const r = await autopilotApi.update(campaign.id, { channels });
-        setCampaign(c => c && { ...c, status: r.campaign.status });
+        setCampaign(c => c && { ...c, status: r.campaign.status, approvalKind: r.campaign.approval_kind ?? null, approvalNote: r.campaign.approval_note ?? null });
         setDirty(false);
-        toast.success('변경 내용을 저장했습니다.');
+        toast.success(campaign.status === 'approved' || campaign.status === 'published' ? '변경 내용을 저장했습니다. 고친 내용은 다시 승인해야 게시돼요.' : '변경 내용을 저장했습니다.');
         return campaign.id;
       }
       const r = await autopilotApi.save(ctx, channels, candidates, models);
@@ -243,13 +253,17 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
     }
   };
 
-  const setStatus = async (status: CampaignStatus) => {
+  const setStatus = async (status: CampaignStatus, reason?: string) => {
     const id = dirty || !campaign ? await save() : campaign.id;
     if (!id) return;
     try {
-      const r = await autopilotApi.update(id, { status });
-      setCampaign(c => c && { ...c, status: r.campaign.status });
-      toast.success(status === 'approved' ? '승인했습니다. 채널별로 게시하세요.' : '반려했습니다.');
+      const r = await autopilotApi.update(id, { status, reason });
+      setCampaign(c => c && { ...c, status: r.campaign.status, approvalKind: r.campaign.approval_kind ?? null, approvalNote: r.campaign.approval_note ?? null });
+      if (status === 'approved') setAdvisoryReason('');
+      const autoPart = autoPublishReady ? ' 표시 없는 API 채널은 시간표대로 자동 게시돼요.' : '';
+      toast.success(status === 'approved'
+        ? (r.campaign.approval_kind === 'advisory' ? `사유를 기록하고 승인했습니다.${autoPart}` : `승인했습니다. 채널별로 게시하세요.${autoPart}`)
+        : '반려했습니다. 이 캠페인은 자동 게시하지 않아요.');
     } catch (e) {
       toast.error(explainAutopilotError(e));
     }
@@ -282,6 +296,19 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
 
   const scheduleFor = (ch: ChannelId) => info?.schedule.find(s => s.channel === ch)?.time || '';
 
+  // 자동화 L2 낮 자동 게시 안내 (서버 dueAutoChannels 와 같은 조건)
+  const autoNoteFor = (ch: ChannelId): string => {
+    if (!automation || automation.level !== 'L2' || !automation.autoChannels.includes(ch) || !info?.status.publishers[ch]) return '';
+    if (!campaign || dirty || !(campaign.status === 'approved' || campaign.status === 'published')) return '';
+    if (campaign.posts.some(p => p.channel === ch && (p.publish_status === 'published' || p.publish_status === 'published_manual'))) return '';
+    if (ctx?.date !== info.today.date) return '';
+    if (compliance.byChannel[ch]?.issues.some(i => i.severity === 'high' || i.severity === 'medium')) {
+      return '표시가 남아 있어 자동 게시하지 않아요. 확인한 뒤 직접 게시하세요.';
+    }
+    const run = nextAutoRun(scheduleFor(ch), kstClock()) as string | null;
+    return run ? `자동화 L2: 오늘 ${run}에 자동으로 게시돼요. 지금 직접 올려도 돼요.` : '오늘 자동 게시 시각이 지났어요. 직접 게시하세요.';
+  };
+
   return (
     <div className="space-y-6">
       {/* 헤더: 날짜·테마·상태 */}
@@ -294,8 +321,18 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
                 {STATUS_LABEL[campaign.status]}{campaign.source === 'cron' ? ' · 아침 자동 생성' : ''}
               </span>
             )}
+            {campaign && (campaign.status === 'approved' || campaign.status === 'published') && campaign.approvalKind === 'auto' && (
+              <span className="text-xs px-2 py-1 rounded-lg border bg-indigo-500/10 text-indigo-200 border-indigo-500/30">자동 승인(L2)</span>
+            )}
+            {campaign && (campaign.status === 'approved' || campaign.status === 'published') && campaign.approvalKind === 'advisory' && (
+              <span className="text-xs px-2 py-1 rounded-lg border bg-amber-500/10 text-amber-200 border-amber-500/30">권고 모드 사유 승인</span>
+            )}
+            {automation && (
+              <span className="text-xs text-slate-400">자동화 {automation.level} · {automation.checkMode === 'strict' ? '엄격' : '권고'}{automation.unavailable ? ' (설정을 읽지 못해 자동 동작 꺼짐)' : ''}</span>
+            )}
             {dirty && <span className="text-xs text-amber-300">저장하지 않은 변경</span>}
           </div>
+          {campaign?.approvalNote && <p className="text-xs text-slate-300">{campaign.approvalNote}</p>}
           {ctx ? (
             <h2 className="text-xl font-bold text-white">{theme?.emoji} {theme?.title} — {ctx.news.title}</h2>
           ) : (
@@ -315,7 +352,21 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
               {hasChannels ? `${compliance.score}/100` : '—'}
             </span>
           </div>
-          {hasChannels && compliance.highCount > 0 && <p className="text-xs text-red-300">고위험 표현 {compliance.highCount}건 — 수정 전에는 승인할 수 없습니다.</p>}
+          {hasChannels && compliance.highCount > 0 && !advisoryMode && <p className="text-xs text-red-300">고위험 표현 {compliance.highCount}건 — 수정 전에는 승인할 수 없습니다 (엄격 모드).</p>}
+          {hasChannels && compliance.highCount > 0 && advisoryMode && campaign?.status !== 'approved' && campaign?.status !== 'published' && (
+            <div className="space-y-1.5">
+              <p className="text-xs text-amber-200">고위험 표현 {compliance.highCount}건 — 권고 모드: 사유를 적으면 승인할 수 있어요. 사유는 조치 기록에 남고, 이 채널들은 자동 게시하지 않아요.</p>
+              <label htmlFor="mk-advisory-reason" className="sr-only">고위험 표현을 남긴 채 승인하는 사유</label>
+              <textarea
+                id="mk-advisory-reason"
+                className={`${input} min-h-[64px]`}
+                maxLength={500}
+                value={advisoryReason}
+                onChange={e => setAdvisoryReason(e.target.value)}
+                placeholder="승인 사유 (5자 이상) 예: 뉴스 원문에 있는 수치라 그대로 둠"
+              />
+            </div>
+          )}
           <div className="flex gap-2">
             <button type="button" className={`${btnGhost} flex-1`} disabled={!hasChannels || saving || (!dirty && !!campaign)} onClick={save}>
               <Save size={16} />{campaign ? '변경 저장' : '저장'}
@@ -323,8 +374,13 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
             {ctx && <button type="button" className={btnGhost} onClick={resetAll} aria-label="처음부터 다시"><RefreshCcw size={16} /></button>}
           </div>
           <div className="flex gap-2">
-            <button type="button" className={`${btnPrimary} flex-1`} disabled={!hasChannels || saving || compliance.highCount > 0 || campaign?.status === 'approved' || campaign?.status === 'published'} onClick={() => setStatus('approved')}>
-              <CheckCircle size={16} />승인
+            <button
+              type="button"
+              className={`${btnPrimary} flex-1`}
+              disabled={!hasChannels || saving || (compliance.highCount > 0 && !(advisoryMode && reasonOk)) || campaign?.status === 'approved' || campaign?.status === 'published'}
+              onClick={() => setStatus('approved', compliance.highCount > 0 && advisoryMode ? advisoryReason : undefined)}
+            >
+              <CheckCircle size={16} />{compliance.highCount > 0 && advisoryMode ? '사유 적고 승인' : '승인'}
             </button>
             <button type="button" className={btnGhost} disabled={!campaign || saving} onClick={() => setStatus('rejected')} aria-label="반려">
               <XCircle size={16} />
@@ -517,7 +573,8 @@ export default function DailyAutopilotPanel({ loadDate }: { loadDate?: string | 
                 campaign={campaign}
                 dirty={dirty}
                 autoAvailable={Boolean(info?.status.publishers[active])}
-                blocked={Boolean(compliance.byChannel[active]?.issues.some(i => i.severity === 'high'))}
+                blocked={Boolean(compliance.byChannel[active]?.issues.some(i => i.severity === 'high')) && campaign?.approvalKind !== 'advisory'}
+                autoNote={autoNoteFor(active)}
                 onPublished={onPublished}
               />
             </aside>
@@ -538,9 +595,9 @@ const MANUAL_GUIDE: Partial<Record<ChannelId, string>> = {
   facebook: 'META_PAGE_ID / META_PAGE_ACCESS_TOKEN 을 서버에 설정하면 페이지에 API로 게시합니다.',
 };
 
-function PublishBox({ channel, campaign, dirty, autoAvailable, blocked, onPublished }: {
+function PublishBox({ channel, campaign, dirty, autoAvailable, blocked, autoNote, onPublished }: {
   channel: ChannelId; campaign: { id: string; status: CampaignStatus; posts: ChannelPost[] } | null; dirty: boolean;
-  autoAvailable: boolean; blocked: boolean; onPublished: (p: ChannelPost) => void;
+  autoAvailable: boolean; blocked: boolean; autoNote?: string; onPublished: (p: ChannelPost) => void;
 }) {
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
@@ -571,6 +628,7 @@ function PublishBox({ channel, campaign, dirty, autoAvailable, blocked, onPublis
       <h4 className="text-sm font-bold text-white">게시</h4>
       <p className="text-xs text-slate-400 leading-relaxed">{MANUAL_GUIDE[channel]}</p>
       {disabledReason && <p className="text-xs text-amber-200">{disabledReason}</p>}
+      {autoNote && <p className="text-xs text-indigo-200">{autoNote}</p>}
       {autoAvailable && (
         <button type="button" className={`${btnPrimary} w-full`} disabled={!!disabledReason || busy} onClick={() => run(false)}>
           <Send size={16} />{busy ? '게시 중…' : 'API로 지금 게시'}

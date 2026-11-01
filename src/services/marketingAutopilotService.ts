@@ -49,7 +49,17 @@ export interface ChannelCompliance { issues: ComplianceIssue[]; score: number; h
 export interface CampaignCompliance { byChannel: Partial<Record<ChannelId, ChannelCompliance>>; score: number; highCount: number; publishable: boolean }
 export type CampaignStatus = 'ready' | 'approved' | 'rejected' | 'published';
 export interface ChannelPost { id?: string; campaign_id: string; channel: ChannelId; publish_status: string; external_post_url: string | null; published_at: string | null; error_message?: string | null }
-export interface CampaignSummary { id: string; campaign_date: string; day_theme_code: string; news_title: string; status: CampaignStatus; compliance_score: number; source: 'manual' | 'cron'; posts: ChannelPost[] }
+/** manual 사람 승인 / auto 자동화 L2 자동 승인 / advisory 권고 모드 사유 승인 (M-1) */
+export type ApprovalKind = 'manual' | 'auto' | 'advisory';
+export interface CampaignSummary {
+  id: string; campaign_date: string; day_theme_code: string; news_title: string; status: CampaignStatus; compliance_score: number;
+  source: 'manual' | 'cron'; posts: ChannelPost[];
+  approval_kind?: ApprovalKind | null; approval_note?: string | null;
+}
+/** 자동화 수준 (서버 mk-status 가 함께 돌려준다) */
+export interface AutomationInfo {
+  level: 'L1' | 'L2'; checkMode: 'strict' | 'advisory'; minScore: number; autoChannels: ChannelId[]; updatedAt: string | null; unavailable?: boolean;
+}
 export interface CampaignRow extends CampaignSummary {
   news: NewsItem; context: { facts: string[]; bridge: DailyContext['bridge']; angle: string; reason: string; candidates: NewsItem[] };
   channels: CampaignChannels; compliance: CampaignCompliance; models: Record<string, unknown>;
@@ -66,6 +76,7 @@ export interface AutopilotStatus {
   today: { date: string; dayOfWeek: number };
   themes: RotationTheme[];
   schedule: { channel: ChannelId; label: string; time: string }[];
+  automation?: AutomationInfo;
 }
 
 export class AutopilotError extends Error {
@@ -102,8 +113,9 @@ export const autopilotApi = {
     call<{ id: string; compliance: CampaignCompliance }>('mk-save', { ctx, channels, candidates, models }),
   list: (month: string) => call<{ campaigns: CampaignSummary[] }>('mk-list', { month }),
   get: (p: { id?: string; date?: string }) => call<{ campaign: (CampaignRow & { posts: ChannelPost[] }) | null }>('mk-get', p),
-  update: (id: string, p: { status?: CampaignStatus; channels?: CampaignChannels }) =>
-    call<{ campaign: { id: string; status: CampaignStatus; compliance_score: number; compliance: CampaignCompliance } }>('mk-update', { id, ...p }),
+  /** reason: 권고 모드에서 고위험 표현을 남긴 채 승인할 때 사유(5자 이상, 조치 기록) */
+  update: (id: string, p: { status?: CampaignStatus; channels?: CampaignChannels; reason?: string }) =>
+    call<{ campaign: { id: string; status: CampaignStatus; compliance_score: number; compliance: CampaignCompliance; approval_kind?: ApprovalKind | null; approval_note?: string | null } }>('mk-update', { id, ...p }),
   publish: (id: string, channel: ChannelId, manualUrl?: string) => call<{ post: ChannelPost }>('mk-publish', { id, channel, manualUrl }),
   image: (prompt: string, aspectRatio: '1:1' | '9:16' | '16:9' | '4:3') => call<{ dataUrl: string; model: string }>('mk-image', { prompt, aspectRatio }),
   tts: (text: string, voice = 'Kore') => call<{ mimeType: string; data: string; model: string }>('mk-tts', { text, voice }),

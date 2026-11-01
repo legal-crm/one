@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Key, Calendar as CalendarIcon, BarChart3, Edit3, AlertTriangle,
+  Key, Calendar as CalendarIcon, BarChart3, Edit3, AlertTriangle, Gauge,
   RefreshCcw, Image as ImageIcon, Video, Target,
   Copy, CheckCheck, ShieldCheck, Sparkles, Download, Loader2, UploadCloud, Layers
 } from 'lucide-react';
@@ -8,11 +8,12 @@ import { toast } from 'sonner';
 import html2canvas from 'html2canvas';
 import JSZip from 'jszip';
 import { DDOK_BLOG_PRESETS_DATA, generateBlogContentWithGemini, testMarketingAiConnection, BlogContentData } from '../../services/marketingAiService';
-import { MARKETING_DISCLAIMER_SHORT, type ChannelCompliance } from '../../services/marketingAutopilotService';
+import { MARKETING_DISCLAIMER_SHORT, autopilotApi, type ChannelCompliance } from '../../services/marketingAutopilotService';
 // @ts-ignore — 순수 JS 모듈 (서버·브라우저 공용 규칙 검사기)
 import { scanCompliance } from '../../../api/_lib/marketing-compliance.js';
 import DailyAutopilotPanel from './marketing/DailyAutopilotPanel';
 import { AutopilotCalendar, AutopilotAnalytics, AutopilotKeyStatus } from './marketing/AutopilotInsights';
+import AutomationSettingsCard from './marketing/AutomationSettingsCard';
 
 /** 서버와 같은 규칙으로 화면에서 바로 검사한다 (법률 검토를 대신하지 않는다) */
 const scanCopy = scanCompliance as unknown as (text: string, opts?: { skipDisclaimerCheck?: boolean }) => ChannelCompliance;
@@ -142,6 +143,7 @@ export default function MarketingAutopilotHub() {
 
   const tabs = [
     { id: '오늘의 오토파일럿', icon: RefreshCcw },
+    { id: '자동화 설정', icon: Gauge },
     { id: 'AI 키·연동 상태', icon: Key },
     { id: '프리셋 스튜디오', icon: Edit3 },
     { id: '365일 캘린더', icon: CalendarIcon },
@@ -154,7 +156,7 @@ export default function MarketingAutopilotHub() {
       <div className="mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-white mb-2">마케팅 오토파일럿 허브</h1>
-          <p className="text-slate-400 text-sm">매일 뉴스 → 요일 테마 → 6채널 초안 생성 → 광고 규정 검사 → 관리자 승인 → 게시. 승인 전에는 어떤 채널에도 게시하지 않습니다.</p>
+          <p className="text-slate-400 text-sm">매일 뉴스 → 요일 테마 → 6채널 초안 생성 → 광고 규정 검사 → 승인 → 게시. 승인 전에는 어떤 채널에도 게시하지 않습니다. 자동화 L2에서는 표시가 없는 아침 초안만 자동 승인하고 스레드·페이스북에 시간표대로 올립니다.</p>
         </div>
       </div>
 
@@ -179,6 +181,7 @@ export default function MarketingAutopilotHub() {
       {/* Content Area */}
       <div className="animate-fadeIn">
         {activeTab === '오늘의 오토파일럿' && <DailyAutopilotPanel loadDate={openDate} />}
+        {activeTab === '자동화 설정' && <TabAutomation />}
         {activeTab === 'AI 키·연동 상태' && (
           <div className="space-y-6">
             <AutopilotKeyStatus />
@@ -199,6 +202,19 @@ export default function MarketingAutopilotHub() {
       </div>
     </div>
   );
+}
+
+// --- 자동화 설정 (M-1): 채널 연결 상태는 서버 상태에서 읽어 함께 보여 준다 ---
+function TabAutomation() {
+  const [publishers, setPublishers] = useState<{ threads?: boolean; facebook?: boolean } | undefined>(undefined);
+  useEffect(() => {
+    let alive = true;
+    autopilotApi.status()
+      .then(r => { if (alive) setPublishers({ threads: r.status.publishers.threads, facebook: r.status.publishers.facebook }); })
+      .catch(() => { /* 연결 상태 표시만 빠진다 — 설정 카드는 따로 읽는다 */ });
+    return () => { alive = false; };
+  }, []);
+  return <AutomationSettingsCard publishers={publishers} />;
 }
 
 // --- TAB 2: AI 키 관리 ---

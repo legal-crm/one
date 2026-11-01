@@ -116,7 +116,7 @@ async function handleAutopilot(req, res) {
   try {
     switch (b.mode) {
       case 'mk-status':
-        return res.status(200).json({ ok: true, status: mk.aiKeyStatus(), today: mk.kstToday(), themes: mk.ROTATION_THEMES, schedule: mk.GOLDEN_SCHEDULE });
+        return res.status(200).json({ ok: true, status: mk.aiKeyStatus(), today: mk.kstToday(), themes: mk.ROTATION_THEMES, schedule: mk.GOLDEN_SCHEDULE, automation: await mk.automationConfig() });
       case 'mk-news': {
         const today = mk.kstToday();
         const theme = mk.themeByCode(b.themeCode) || mk.themeForDay(today.dayOfWeek);
@@ -154,7 +154,13 @@ async function handleAutopilot(req, res) {
       case 'mk-get':
         return res.status(200).json({ ok: true, campaign: await mk.getCampaign({ id: clipText(b.id, 40), date: clipText(b.date, 10) }) });
       case 'mk-update':
-        return res.status(200).json({ ok: true, campaign: await mk.updateCampaign({ id: clipText(b.id, 40), status: b.status, channels: b.channels, userId: user.id }) });
+        return res.status(200).json({
+          ok: true,
+          campaign: await mk.updateCampaign({
+            id: clipText(b.id, 40), status: b.status, channels: b.channels, userId: user.id, userEmail: user.email || null,
+            reason: typeof b.reason === 'string' ? clipText(b.reason, 500) : undefined,
+          }),
+        });
       case 'mk-publish':
         return res.status(200).json({ ok: true, post: await mk.publishChannel({ campaignId: clipText(b.id, 40), channel: clipText(b.channel, 20), manualUrl: typeof b.manualUrl === 'string' ? clipText(b.manualUrl, 600) : undefined, userId: user.id }) });
       case 'mk-image':
@@ -176,7 +182,25 @@ async function handleAutopilot(req, res) {
   }
 }
 
-/** Vercel Cron (GET, Authorization: Bearer CRON_SECRET) — 매일 아침 캠페인 초안 생성. 게시는 관리자 승인 후 */
+/**
+ * 자동화 L2 낮 자동 게시 (M-1): pg_cron(12:35·14:05 KST) → pg_net → POST {mode:'mk-auto-publish'}, 헤더 x-mykim-cron(vault 토큰).
+ * 오늘 승인된 캠페인에서 시간표가 지난 API 채널 중 표시 없는 것만 올린다 (엔진 autoPublishDue)
+ */
+async function handleAutoPublish(req, res) {
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return res.status(500).json({ ok: false, error: 'server key missing' });
+  const token = String(req.headers['x-mykim-cron'] || '');
+  const { data: okToken, error } = await supabase.rpc('check_cron_token', { p_token: token });
+  if (error || okToken !== true) return res.status(401).json({ ok: false, error: 'unauthorized' });
+  try {
+    const result = await mk.autoPublishDue();
+    return res.status(200).json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[marketing-auto-publish] failed:', e?.message);
+    return res.status(500).json({ ok: false, error: e?.message || 'auto publish failed' });
+  }
+}
+
+/** Vercel Cron (GET, Authorization: Bearer CRON_SECRET) — 매일 아침 캠페인 초안 생성. L2면 검사 통과분 자동 승인(게시는 낮 자동 게시) */
 async function handleMarketingCron(req, res) {
   const secret = process.env.CRON_SECRET;
   if (!secret || req.headers.authorization !== `Bearer ${secret}`) {
@@ -296,6 +320,10 @@ async function handler(req, res) {
   // [GEO] AI 검색 인용 점검 (M-5): 주간 정기 호출(cron 토큰) · 관리자 '지금 점검'
   if (req.body?.mode === 'geo-cron' || req.body?.mode === 'geo-check') {
     return handleGeoCheck(req, res);
+  }
+  // [마케팅] 자동화 L2 낮 자동 게시 (M-1): pg_cron 토큰 호출만
+  if (req.body?.mode === 'mk-auto-publish') {
+    return handleAutoPublish(req, res);
   }
 
   // [SECURITY] 인증 및 봇 방어 검증 (Bearer 세션 토큰 또는 Turnstile 토큰 필수)
