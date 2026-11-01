@@ -16,6 +16,7 @@ import {
   defaultSlotInput, loadConsultBookings, localInputToIso, officeProposeBooking, respondBooking, updateBookingDetails, validateSlots,
   type BookingMethod, type ConsultBooking,
 } from '../../../services/consult/consultBookingService';
+import { loadOpenSlots, type OpenSlots } from '../../../services/consult/consultHoursService';
 
 const input = 'w-full min-h-[44px] rounded-xl border border-slate-300 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/30';
 const smallBtn = 'inline-flex items-center gap-1 h-8 pointer-coarse:h-11 px-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-colors active:scale-[0.98] disabled:opacity-50';
@@ -34,6 +35,18 @@ function ProposeModal({ requestId, initialMethod, onClose, onDone }: {
   const [note, setNote] = useState('');
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
+  // 우리 사무소가 열어 둔 상담 가능 시간 (설정 › 사무소 설정 › 상담 가능 시간)
+  const [open, setOpen] = useState<OpenSlots>({ enabled: false, slots: [] });
+  useEffect(() => {
+    let alive = true;
+    void loadOpenSlots(requestId).then(o => {
+      if (!alive) return;
+      setOpen(o);
+      if (o.enabled && o.slots.length) setSlots(['']);
+      if (o.methods?.length) setMethod(m => (o.methods!.includes(m) ? m : o.methods![0]));
+    });
+    return () => { alive = false; };
+  }, [requestId]);
 
   const submit = async () => {
     const iso = slots.map(localInputToIso).filter(Boolean);
@@ -61,7 +74,11 @@ function ProposeModal({ requestId, initialMethod, onClose, onDone }: {
             <button type="button" onClick={onClose} aria-label="닫기" className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-slate-100 flex items-center justify-center"><X className="w-5 h-5" /></button>
           </div>
           <div className="p-5 space-y-4 text-sm">
-            <BookingSlotsFields idPrefix="office-booking" method={method} onMethodChange={setMethod} slots={slots} onSlotsChange={setSlots} />
+            <BookingSlotsFields idPrefix="office-booking" method={method} onMethodChange={setMethod} slots={slots} onSlotsChange={setSlots}
+              openSlots={open.enabled ? open.slots : undefined} allowedMethods={open.enabled ? open.methods : undefined} />
+            {!open.enabled && (
+              <p className="text-xs text-slate-500">설정 › 사무소 설정 › '상담 가능 시간'을 열어 두면 여기서 바로 고를 수 있어요.</p>
+            )}
             <label className="block space-y-1 font-bold text-slate-700">상담 시간
               <select className={input} value={duration} onChange={e => setDuration(Number(e.target.value))}>
                 {[20, 30, 40, 60, 90].map(m => <option key={m} value={m}>{m}분</option>)}

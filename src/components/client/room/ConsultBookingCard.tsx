@@ -13,6 +13,7 @@ import {
   defaultSlotInput, loadConsultBookings, localInputToIso, respondBooking, updateBookingDetails, validateSlots,
   type BookingMethod, type ConsultBooking,
 } from '../../../services/consult/consultBookingService';
+import { loadOpenSlots, type OpenSlots } from '../../../services/consult/consultHoursService';
 
 const field = 'w-full min-h-[44px] rounded-xl border border-slate-300 px-3 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand/30';
 const PHONE_RE = /^0\d{1,2}-?\d{3,4}-?\d{4}$/;
@@ -51,6 +52,20 @@ export default function ConsultBookingCard({
   const [busy, setBusy] = useState(false);
   const [pick, setPick] = useState<{ booking: ConsultBooking; slot: string } | null>(null);
   const [pickPhone, setPickPhone] = useState('');
+  // 사무소가 열어 둔 상담 가능 시간 (보내기 창을 열 때 읽음)
+  const [open, setOpen] = useState<OpenSlots>({ enabled: false, slots: [] });
+
+  useEffect(() => {
+    if (!proposeOpen || !lawyerId) return;
+    let alive = true;
+    void loadOpenSlots(requestId, lawyerId).then(o => {
+      if (!alive) return;
+      setOpen(o);
+      if (o.enabled && o.slots.length) setSlots(s => (s.length === 1 && s[0] === defaultSlotInput(new Date(), 1) ? [''] : s));
+      if (o.methods?.length) setMethod(m => (o.methods!.includes(m) ? m : o.methods![0]));
+    });
+    return () => { alive = false; };
+  }, [proposeOpen, requestId, lawyerId]);
 
   const reload = useCallback(async () => {
     const res = await loadConsultBookings(requestId);
@@ -218,7 +233,8 @@ export default function ConsultBookingCard({
           <p className="text-sm text-slate-700 leading-relaxed break-keep">
             {who}에게 편한 시간을 보내요. 변호사가 하나를 고르면 예약이 확정되고, 전날과 1시간 전에 알려 드려요. 상담 비용이 있다면 사무소와 직접 정해요.
           </p>
-          <BookingSlotsFields idPrefix="client-booking" method={method} onMethodChange={setMethod} slots={slots} onSlotsChange={setSlots} />
+          <BookingSlotsFields idPrefix="client-booking" method={method} onMethodChange={setMethod} slots={slots} onSlotsChange={setSlots}
+            openSlots={open.enabled ? open.slots : undefined} allowedMethods={open.enabled ? open.methods : undefined} />
           {method === 'phone' && <PhoneField id="client-booking-phone" value={phone} onChange={setPhone} />}
           <label className="block space-y-1 text-sm font-bold text-slate-700">
             변호사에게 남길 말 (선택)
