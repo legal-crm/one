@@ -62,9 +62,60 @@ const ACADEMY_LESSONS = [
   }
 ];
 
-export default function RecoveryAcademyTab({ caseInfo }: { caseInfo?: { courtName?: string; caseNumber?: string; source?: DischargeSource; caseKey?: string } } = {}) {
+// 개인파산·면책 사건용 가이드 (BK-8): 일반 정보만, 날짜는 법원·관재인 안내문이 기준
+const BANKRUPTCY_LESSONS = [
+  {
+    id: 'bk-lesson-1',
+    month: '선고 직후',
+    title: '파산선고 뒤 1~2주: 누락 서류와 면제재산 신청',
+    category: '기한 지키기',
+    readTime: '2분',
+    summary: '파산이 선고되면 파산관재인이 안내하는 서류를 기한 안에 내야 해요(보통 선고일부터 1주). 생활에 꼭 필요한 재산은 선고일부터 14일 안에 면제재산 결정을 신청할 수 있어요(채무자회생법 제383조). 날짜는 법원·관재인 안내문을 기준으로 하세요.',
+    keyPoints: ['관재인 안내문의 제출 목록과 기한 확인', '주거용 임차보증금 일부·생계비 같은 면제재산 신청 여부를 담당자와 상의', "제출한 서류 이름과 날짜를 '제출 서류 기록'에 남기기"],
+  },
+  {
+    id: 'bk-lesson-2',
+    month: '선고 후 2주~1달',
+    title: '파산관재인 면담 준비',
+    category: '면담 준비',
+    readTime: '2분',
+    summary: '관재인은 재산·소득·빚이 생긴 경위를 확인해요. 통장 거래내역, 보험, 차량, 임대차계약서 같은 자료를 미리 정리해 두면 면담이 빨라요. 재산을 숨기거나 빠뜨리면 면책에 불리할 수 있어요.',
+    keyPoints: ['최근 거래내역·보험·차량·임대차 자료 정리', '재산을 팔거나 넘기기 전에 반드시 관재인과 상의', '연락처·주소가 바뀌면 바로 알리기'],
+  },
+  {
+    id: 'bk-lesson-3',
+    month: '채권자집회',
+    title: '채권자집회와 면책심문기일에 출석하기',
+    category: '출석',
+    readTime: '1분',
+    summary: '법원이 정한 날에 출석해야 해요. 출석하지 않으면 절차가 늦어지거나 면책에 불리할 수 있어요. 갈 수 없는 사정이 생기면 미리 법원이나 담당자에게 알리세요.',
+    keyPoints: ['기일 통지서의 날짜·시간·법정 확인', '신분증 챙기기', '관재인이 요청한 자료를 그 전에 내기'],
+  },
+  {
+    id: 'bk-lesson-4',
+    month: '면책 결정 뒤',
+    title: '면책 결정 확정과 면책되지 않는 채무',
+    category: '면책 이해',
+    readTime: '2분',
+    summary: '면책 결정은 공고된 뒤 즉시항고 기간(공고일부터 14일)이 지나면 확정돼요. 세금·벌금, 고의로 남에게 준 손해의 배상, 양육비 같은 일부 채무는 면책되지 않아요(채무자회생법 제566조).',
+    keyPoints: ['면책 결정문과 확정 여부 확인', '면책되지 않는 채무가 남았는지 담당자와 확인', '채권자에게서 연락이 오면 면책 결정 사실을 알리기'],
+  },
+  {
+    id: 'bk-lesson-5',
+    month: '면책 확정 뒤',
+    title: '복권과 생활 재정비',
+    category: '생활 재정비',
+    readTime: '2분',
+    summary: '면책 결정이 확정되면 법에 따라 복권돼요(채무자회생법 제574조). 내 신용정보는 한국신용정보원 크레딧포유에서 무료로 확인할 수 있어요. 새 대출·카드 발급 기준은 금융회사마다 달라요.',
+    keyPoints: ['크레딧포유에서 본인 신용정보 확인', '자격·직업 제한이 풀렸는지 해당 기관에 확인', '매달 고정 지출부터 다시 정리하기'],
+  },
+];
+
+export default function RecoveryAcademyTab({ caseInfo, caseType = 'rehab' }: { caseInfo?: { courtName?: string; caseNumber?: string; source?: DischargeSource; caseKey?: string }; caseType?: 'rehab' | 'bankruptcy' } = {}) {
   const [selectedLesson, setSelectedLesson] = useState<any | null>(null);
   const [writerOpen, setWriterOpen] = useState(false);
+  const isBankruptcy = caseType === 'bankruptcy';
+  const lessons = isBankruptcy ? BANKRUPTCY_LESSONS : ACADEMY_LESSONS;
 
   // 빈 양식 대신 작성기 (H-0): 값을 채우고 서명·도장까지 넣은 PDF·HWPX. 빈 양식은 작성기 마지막 화면에 남김
   const handleDownloadForm = () => setWriterOpen(true);
@@ -77,7 +128,7 @@ export default function RecoveryAcademyTab({ caseInfo }: { caseInfo?: { courtNam
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold bg-blue-500/10 text-blue-700 dark:text-blue-400 px-2.5 py-0.5 rounded-full">
-              회생 완주 & 신용 리스타트
+              {isBankruptcy ? '파산·면책 절차 & 생활 재정비' : '회생 완주 & 신용 리스타트'}
             </span>
             <span className="text-xs bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-2.5 py-0.5 rounded-full font-bold">
               짧은 가이드
@@ -87,11 +138,21 @@ export default function RecoveryAcademyTab({ caseInfo }: { caseInfo?: { courtNam
             마이김변 회복 아카데미
           </h2>
           <p className="text-xs text-slate-500 max-w-lg leading-relaxed">
-            3~5년 변제 기간에 알아 두면 좋은 금융 지식과 법률 정보, 완납 후 신용 회복 과정을 정리했습니다.
+            {isBankruptcy
+              ? '파산선고부터 면책 확정까지 지켜야 할 기한과 준비할 일, 면책 뒤 생활을 다시 꾸리는 방법을 정리했습니다. 날짜는 법원·관재인 안내문이 기준이에요.'
+              : '3~5년 변제 기간에 알아 두면 좋은 금융 지식과 법률 정보, 완납 후 신용 회복 과정을 정리했습니다.'}
           </p>
         </div>
 
-        {/* 36회 완납 고객 전용 면책 서식 다운로드 배너 */}
+        {isBankruptcy ? (
+          <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shrink-0 w-full md:w-72 space-y-1.5">
+            <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block">면책신청서</span>
+            <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed break-keep">
+              파산과 면책을 함께 신청했다면 면책신청서를 따로 내지 않아요. 파산만 먼저 신청했다면 담당 변호사나 법원 안내를 확인하세요.
+            </p>
+          </div>
+        ) : (
+        /* 36회 완납 고객 전용 면책 서식 다운로드 배너 */
         <div className="bg-slate-50 dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shrink-0 w-full md:w-72 space-y-2">
           <span className="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider block">
             변제 완료 후 참고 자료
@@ -108,9 +169,11 @@ export default function RecoveryAcademyTab({ caseInfo }: { caseInfo?: { courtNam
             <span>면책신청서 작성하기</span>
           </button>
         </div>
+        )}
       </div>
 
-      {/* 12개월 신용 리스타트 로드맵 */}
+      {/* 12개월 신용 리스타트 로드맵 (개인회생) */}
+      {!isBankruptcy && (
       <div className="bg-gradient-to-r from-blue-50 to-blue-50 dark:from-blue-950/30 dark:to-blue-950/30 border border-blue-100 dark:border-blue-900/40 rounded-3xl p-6 shadow-md space-y-4">
         <div className="flex items-center gap-2 text-blue-900 dark:text-blue-200">
           <Sparkles className="w-5 h-5 text-blue-600 dark:text-blue-400" aria-hidden="true" />
@@ -161,16 +224,17 @@ export default function RecoveryAcademyTab({ caseInfo }: { caseInfo?: { courtNam
           </div>
         </div>
       </div>
+      )}
 
-      {/* 월별 아카데미 카드 그리드 */}
+      {/* 단계별 가이드 카드 그리드 */}
       <div className="space-y-3">
         <h3 className="text-sm font-black text-slate-900 dark:text-white flex items-center gap-2">
           <BookOpen className="w-4 h-4 text-brand" />
-          <span>월간 회생동행 필수 가이드북</span>
+          <span>{isBankruptcy ? '파산·면책 단계별 가이드' : '월간 회생동행 필수 가이드북'}</span>
         </h3>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {ACADEMY_LESSONS.map((lesson) => (
+          {lessons.map((lesson) => (
             // 카드 전체를 누를 수 있게: 제목 버튼의 ::after가 카드를 덮는다(이전: div onClick이라 키보드로 열 수 없었음)
             <div
               key={lesson.id}

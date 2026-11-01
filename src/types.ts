@@ -2797,6 +2797,13 @@ export interface BankruptcyCompanionCase {
   documents: Array<{ id: string; name: string; uploadedAt: string; status: 'reviewed' | 'pending' }>;
   notificationLevel: 'basic' | 'detailed' | 'inapp_only';
   createdAt: string;
+  /** 법원·관재인 안내문에서 옮겨 적은 주요 날짜 (BK-8) — 법정 기한 계산에만 쓴다 */
+  keyDates?: {
+    declaredOn?: string;
+    creditorsMeetingOn?: string;
+    dischargeDecidedOn?: string;
+    dischargeResult?: 'granted' | 'denied' | 'partial';
+  };
 }
 
 // ============================================================

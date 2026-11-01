@@ -5,6 +5,7 @@ import { Badge, Button, buttonClassName } from '../ui';
 import { toast } from 'sonner';
 import { validateUploadFile } from '../../../utils/fileSecurity';
 import CourtCaseModal from './CourtCaseModal';
+import BankruptcyKeyDates from './BankruptcyKeyDates';
 import { saveBankruptcyCase } from '../../../services/companionService';
 import { parseLocalYmd } from '../../../utils/localDate';
 
@@ -56,7 +57,7 @@ export default function BankruptcyCompanionDashboard({
       uploadedAt: new Date().toISOString().split('T')[0],
       status: 'pending' as const
     };
-    // 목록(파일명·날짜)만 이 기기에 기록 — 파일은 관재인·사무소에 자동 제출되지 않음 (기존: '등록되었습니다' 안내 후 새로고침하면 사라짐)
+    // 목록(파일명·날짜)만 회생동행 기록에 남김(로그인하면 서버) — 파일은 올리지 않고 관재인·사무소에 자동 제출되지 않음
     const updated = { ...caseData, documents: [newDoc, ...uploadedFiles] };
     saveBankruptcyCase(updated, clientId);
     onCaseUpdated?.(updated);
@@ -108,6 +109,9 @@ export default function BankruptcyCompanionDashboard({
           )}
         </div>
       </section>
+
+      {/* 주요 날짜와 법정 기한 (BK-8) */}
+      <BankruptcyKeyDates caseData={caseData} clientId={clientId} onCaseUpdated={onCaseUpdated} />
 
       {/* 파산·면책 절차 타임라인 */}
       <section aria-labelledby="bk-timeline-title" className="rounded-3xl border border-slate-200 bg-white p-5 sm:p-6 space-y-4">
@@ -177,7 +181,7 @@ export default function BankruptcyCompanionDashboard({
               파산관재인 제출 서류 기록
             </h2>
             <p className="mt-0.5 text-sm text-slate-600 leading-relaxed break-keep">
-              제출할 서류의 이름과 날짜를 이 기기에 기록해요. 파일은 관재인에게 자동으로 제출되지 않아요.
+              제출할 서류의 이름과 날짜만 기록해요(로그인하면 다른 기기에서도 보여요). 파일 자체는 올리지 않고, 관재인에게 자동으로 제출되지도 않아요.
             </p>
           </div>
           <label className={buttonClassName('secondary', 'md', 'shrink-0 cursor-pointer focus-within:ring-2 focus-within:ring-brand focus-within:ring-offset-2')}>
