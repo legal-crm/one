@@ -148,6 +148,26 @@ describe('회생 부속·면책·파산 서식 채움 (H-1 2·3묶음)', () => {
     expect(courtFormGuard('D5116', m, '').ok).toBe(false);
     expect(courtFormGuard('D5116', master(1), '9001011234567').warns.some(w => /D5115/.test(w.message))).toBe(true);
   });
+  it('D5111 변제계획안(재산처분 포함): 가용소득 표·별표(1)·청산가치, 채권자 17명이면 행을 늘림', async () => {
+    const xml = await xmlOf('D5111', master(17), '');
+    expect(xml).toContain('2026개회1234  개인회생');
+    expect(xml).toContain('TEST채권자17');
+    expect(xml).toContain('(G) 153,000,000');
+    expect(xml).toContain('3,000,000');
+    expect(courtFormGuard('D5111', master(2), '').warns.some(w => /재산처분 부분/.test(w.message))).toBe(true);
+    expect(courtFormGuard('D5111', master(0), '').ok).toBe(false);
+  });
+  it('파산 뒤 따로 내는 면책신청서: 성명·주민번호·연락처·법원, 하단 사건번호만 신청 이유에', async () => {
+    const m = master(1); m.court.caseType = '하단'; m.court.courtName = '서울회생법원';
+    const xml = await xmlOf('BKD', m);
+    expect(xml).toContain('(주민등록번호 : 900101-1234567)');
+    expect(xml).toContain('휴대전화(010-1111-2222)');
+    expect(xml).toContain('귀원 2026하단1234호 파산선고 사건');
+    expect(xml).toContain('서울회생법원     귀중');
+    const plain = await xmlOf('BKD', master(1));
+    expect(plain).toContain('귀원 20○○하단○○○호 파산선고 사건');
+    expect(courtFormGuard('BKD', master(1), '').ok).toBe(false);
+  });
   it('D5122 변제계획 변경안 제출서: 사건·채무자·대리인, 사건번호 없으면 막음', async () => {
     const xml = await xmlOf('D5122', master(1), '');
     expect(xml).toContain('2026개회1234  개인회생');

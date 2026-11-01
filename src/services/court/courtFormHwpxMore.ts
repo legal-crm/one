@@ -165,3 +165,32 @@ export function d5122(d: CourtFilingMasterData): HwpxEdit[] {
     { kind: 'text', label: '관할 법원', find: '법원 귀중', replace: court(d) ? `${court(d)} 귀중` : '법원 귀중' },
   ];
 }
+
+// ── 면책신청서 (파산 따로 신청한 뒤 면책만 신청할 때, 서울회생법원 실무준칙 별지 제10호) ──
+// 파산 및 면책 동시 신청(BKP)을 했다면 내지 않는다. 파산선고 사건번호(하단)가 사건 정보에 있으면 신청 이유에 넣고,
+// 선고일·면책 사건번호(하면)는 사건 자료에 없어 원래 빈칸을 둔다(출력 전 경고)
+export function bankruptcyDischargeOnly(d: CourtFilingMasterData, rrn: string): HwpxEdit[] {
+  const debtor = d.debtor;
+  const n = caseNo(d);
+  const bkNo = /하단/.test(n) ? n : '';
+  const resident = debtor.residentAddress || debtor.currentAddress || '';
+  const other = debtor.currentAddress && debtor.currentAddress !== debtor.residentAddress ? debtor.currentAddress : '';
+  const reasonOrig = ' 신청인은 귀원 20○○하단○○○호 파산선고 사건에서 20○○. ○. ○. 파산선고결정을 받고 면책결정을 받기 위하여 이 사건 신청에 이르렀습니다.';
+  return [
+    { kind: 'text', label: '신청인 성명', find: '        ', replace: `  ${debtor.name}  `, occurrence: 0 },
+    { kind: 'text', label: '주민등록번호', find: '(주민등록번호 :         -          )', replace: `(주민등록번호 : ${rrnFmt(rrn)})` },
+    { kind: 'text', label: '주소', find: '주  소 :                                    ', replace: `주  소 : ${resident}  ` },
+    { kind: 'text', label: '거소', find: '  거  소 :                                                        ', replace: `  거  소 : ${other}  ` },
+    { kind: 'text', label: '송달장소', find: '송달장소 :                          ', replace: `송달장소 : ${debtor.serviceAddress || ''}  ` },
+    { kind: 'text', label: '송달영수인', find: '   송달영수인 :            ', replace: `   송달영수인 : ${debtor.serviceRecipient || ''}  ` },
+    { kind: 'text', label: '연락처', find: '연락처 : 휴대전화(                ), 집전화(                 ), e-mail(                )',
+      replace: `연락처 : 휴대전화(${debtor.phone || '                '}), 집전화(${debtor.homePhone || '                 '}), e-mail(                )` },
+    { kind: 'text', label: '신청 이유', find: reasonOrig, replace: bkNo ? reasonOrig.replace('20○○하단○○○호', `${bkNo}호`) : reasonOrig },
+    { kind: 'text', label: '문자 알림 휴대전화', find: ' :', replace: ` : ${debtor.phone || ''}` },
+    { kind: 'text', label: '문자 알림 신청인', find: '신청인  채무자                       (날인 또는 서명)', replace: `신청인  채무자   ${debtor.name}   (날인 또는 서명)` },
+    { kind: 'text', label: '신청인 서명', find: '                신 청 인            ', replace: `                신 청 인   ${debtor.name}   ` },
+    { kind: 'text', label: '관할 법원', find: '◯◯회생(지방)법원     귀중', replace: court(d) ? `${court(d)}     귀중` : '◯◯회생(지방)법원     귀중' },
+    { kind: 'text', label: '진술서 법원', find: '◯◯지방법원    귀중', replace: court(d) ? `${court(d)}    귀중` : '◯◯지방법원    귀중' },
+    { kind: 'text', label: '진술서 신청인', find: '                                           신청인(채무자)              (인)  ', replace: `                                           신청인(채무자)   ${debtor.name}   (인)  ` },
+  ];
+}

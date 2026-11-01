@@ -12,10 +12,10 @@ import type { HwpxEdit } from './hwpxBuilder';
 import { buildHwpx, fetchTemplate } from './hwpxBuilder';
 import { guard, runGuard, RRN_RE, type GuardIssue } from './courtDocGuard';
 import { d5101, d5103, d5105 } from './courtFormHwpxAttachments';
-import { bankruptcyPetition, d5108, d5109, d5116, d5122, discharge, exemptAssetRows, svc } from './courtFormHwpxMore';
+import { bankruptcyDischargeOnly, bankruptcyPetition, d5108, d5109, d5116, d5122, discharge, exemptAssetRows, svc } from './courtFormHwpxMore';
 
-export type FilledFormCode = 'D5100' | 'D5106' | 'D5101' | 'D5103' | 'D5105' | 'D5110' | 'D5113' | 'D5114' | 'POA'
-  | 'SVC' | 'D5108' | 'D5109' | 'D5116' | 'D5122' | 'DISCH' | 'BKP';
+export type FilledFormCode = 'D5100' | 'D5106' | 'D5101' | 'D5103' | 'D5105' | 'D5110' | 'D5111' | 'D5113' | 'D5114' | 'POA'
+  | 'SVC' | 'D5108' | 'D5109' | 'D5116' | 'D5122' | 'DISCH' | 'BKP' | 'BKD';
 
 /** 묶음: rehab = 회생 신청 핵심(기본 선택) · rehab_extra = 회생 부속·면책(필요할 때 고름) · bankruptcy = 파산·면책 */
 export type FilledFormGroup = 'rehab' | 'rehab_extra' | 'bankruptcy';
@@ -27,6 +27,7 @@ export const FILLED_FORMS: Record<FilledFormCode, { title: string; path: string;
   D5103: { title: '수입 및 지출에 관한 목록', path: '/court-forms/hwpx/수입 및 지출에 관한 목록(D5103).hwpx', order: 4, group: 'rehab' },
   D5105: { title: '진술서', path: '/court-forms/hwpx/진술서(D5105).hwpx', order: 5, group: 'rehab' },
   D5110: { title: '변제계획안(가용소득만으로 변제)', path: '/court-forms/hwpx/변제계획안(가용소득만으로 변제하는 경우)(D5110) (1).hwpx', order: 6, group: 'rehab' },
+  D5111: { title: '변제계획안(가용소득과 재산처분으로 변제)', path: '/court-forms/hwpx/변제계획안(가용소득과 재산처분으로 변제에 제공하는 경우)(D5111) (1).hwpx', order: 7, group: 'rehab_extra' },
   D5114: { title: '금지명령 신청서', path: '/court-forms/hwpx/금지명령 신청서(D5114).hwpx', order: 8, group: 'rehab' },
   D5113: { title: '중지명령 신청서', path: '/court-forms/hwpx/중지명령 신청서(D5113).hwpx', order: 9, group: 'rehab' },
   POA: { title: '위임장', path: '/court-forms/hwpx/위임장.hwpx', order: 10, group: 'rehab' },
@@ -37,6 +38,7 @@ export const FILLED_FORMS: Record<FilledFormCode, { title: string; path: string;
   D5122: { title: '변제계획 변경안 제출서', path: '/court-forms/hwpx/변제계획 변경안 제출서(D5122).hwpx', order: 21, group: 'rehab_extra' },
   DISCH: { title: '개인회생 면책신청서', path: '/court-forms/hwpx/개인회생 면책신청서.hwpx', order: 20, group: 'rehab_extra' },
   BKP: { title: '파산 및 면책 신청서', path: '/court-forms/hwpx/1.파산및면책신청서.hwpx', order: 1, group: 'bankruptcy' },
+  BKD: { title: '면책신청서(파산 뒤 따로 신청)', path: '/court-forms/hwpx/10.면책신청서.hwpx', order: 2, group: 'bankruptcy' },
 };
 
 const won = (n?: number) => (Number.isFinite(n) ? `${Math.round(n as number).toLocaleString('ko-KR')}` : '');
@@ -60,6 +62,50 @@ const court = (d: CourtFilingMasterData) => (d.court.courtName || '').trim();
 const today = () => ymdDots(new Date().toISOString().slice(0, 10));
 const principal = (c: any): number => c.principal ?? c.currentPrincipal ?? 0;
 const interest = (c: any): number => c.interest ?? c.currentInterest ?? 0;
+
+/**
+ * 채권자별 변제예정액 표 (D5110 표 7 · D5111 별표(1) 표 10):
+ * 빈 행 blankRows줄 중 앞쪽은 칸으로 채우고, 넘치면 마지막 빈 행을 늘린다. 그 아래 소계·총계 행.
+ * 월 변제예정액 = 저장된 변제계획의 채권자별 값, 없으면 원금 비율로 월 실제 가용소득을 나눈 값(올림)
+ */
+function creditorPlanTableEdits(d: CourtFilingMasterData, { table, firstRow, blankRows }: { table: number; firstRow: number; blankRows: number }): HwpxEdit[] {
+  const r = d.repaymentSummary;
+  const list = d.creditors || [];
+  const totalP = list.reduce((s, c) => s + principal(c), 0);
+  const months = r.repaymentMonths || 0;
+  const monthly = r.monthlyDisposableIncome || 0;
+  const n = list.length;
+  const monthlyOf = (c: any) => c.monthlyRepayment ?? Math.ceil(monthly * (totalP > 0 ? principal(c) / totalP : 0));
+  const isUnd = (c: any) => !!c.isUndetermined || !!c.isSecured;
+  const rowVals = list.map((c: any) => {
+    const p = principal(c);
+    const m = monthlyOf(c);
+    const und = isUnd(c);
+    return [String(c.displayNumber || c.creditorNumber || ''), c.name || '',
+      und ? '' : won(p), und ? won(p) : '',
+      und ? '' : won(m), und ? won(m) : '',
+      und ? '' : won(m * months), und ? won(m * months) : ''];
+  });
+  const edits: HwpxEdit[] = [];
+  rowVals.slice(0, blankRows - 1).forEach((vals, i) => vals.forEach((v, col) => edits.push({ kind: 'cell', table, row: firstRow + i, col, text: v, label: `변제예정액 ${i + 1}` })));
+  if (n > blankRows - 1) edits.push({ kind: 'rows', table, templateRow: firstRow + blankRows - 1, rows: rowVals.slice(blankRows - 1), label: '변제예정액 행 늘리기' });
+  const sumRow = firstRow + blankRows + Math.max(0, n - blankRows);
+  const det = list.filter((c: any) => !isUnd(c));
+  const und = list.filter(isUnd);
+  const sumOf = (arr: any[], f: (c: any) => number) => arr.reduce((s, c) => s + f(c), 0);
+  edits.push(
+    { kind: 'cell', table, row: sumRow, col: 2, text: won(sumOf(det, principal)), label: '합계 확정 원금' },
+    { kind: 'cell', table, row: sumRow, col: 3, text: won(sumOf(und, principal)), label: '합계 미확정 원금' },
+    { kind: 'cell', table, row: sumRow, col: 4, text: won(sumOf(det, monthlyOf)), label: '합계 확정 월' },
+    { kind: 'cell', table, row: sumRow, col: 5, text: won(sumOf(und, monthlyOf)), label: '합계 미확정 월' },
+    { kind: 'cell', table, row: sumRow, col: 6, text: won(sumOf(det, c => monthlyOf(c) * months)), label: '합계 확정 총' },
+    { kind: 'cell', table, row: sumRow, col: 7, text: won(sumOf(und, c => monthlyOf(c) * months)), label: '합계 미확정 총' },
+    { kind: 'cell', table, row: sumRow + 1, col: 2, text: `(G) ${won(totalP)}`, label: '총계 (G)' },
+    { kind: 'cell', table, row: sumRow + 1, col: 4, text: `(H) ${won(sumOf(list, monthlyOf))}`, label: '총계 (H)' },
+    { kind: 'cell', table, row: sumRow + 1, col: 6, text: `(I) ${won(sumOf(list, c => monthlyOf(c) * months))}`, label: '총계 (I)' },
+  );
+  return edits;
+}
 
 // ── D5100 개시신청서 ──
 function d5100(d: CourtFilingMasterData, rrn: string): HwpxEdit[] {
@@ -137,12 +183,9 @@ function d5106(d: CourtFilingMasterData): HwpxEdit[] {
 // ── D5110 변제계획안 (가용소득): 제출서 머리·가용소득 표·채권자별 변제예정액 표·청산가치 비교 ──
 function d5110(d: CourtFilingMasterData): HwpxEdit[] {
   const r = d.repaymentSummary;
-  const list = d.creditors || [];
-  const totalP = list.reduce((s, c) => s + principal(c), 0);
   const months = r.repaymentMonths || 0;
   const monthly = r.monthlyDisposableIncome || 0;
   const trusteeMonthly = r.isExternalTrustee ? Math.round(monthly * 0.01) : 0;
-  const n = list.length;
   const edits: HwpxEdit[] = [
     { kind: 'text', label: '사건번호', find: '    사    건     20    개회       개인회생', replace: caseLine(d, '    사    건     20    개회       개인회생', '    사    건     ') },
     { kind: 'text', label: '채무자', find: '    채 무 자     ', replace: `    채 무 자     ${d.debtor.name}` },
@@ -168,39 +211,56 @@ function d5110(d: CourtFilingMasterData): HwpxEdit[] {
     { kind: 'cell', table: 6, row: 0, col: 7, text: won(monthly * months), label: '(C) 총 실제 가용소득' },
   ];
   // 채권자별 변제예정액 (표 7: 빈 행 2~6 = 5줄, 넘치면 6행을 늘림)
-  const rowsFor = (c: any) => {
-    const p = principal(c);
-    const share = totalP > 0 ? p / totalP : 0;
-    const m = c.monthlyRepayment ?? Math.ceil(monthly * share);
-    const undetermined = !!c.isUndetermined || !!c.isSecured;
-    return [String(c.displayNumber || c.creditorNumber || ''), c.name || '',
-      undetermined ? '' : won(p), undetermined ? won(p) : '',
-      undetermined ? '' : won(m), undetermined ? won(m) : '',
-      undetermined ? '' : won(m * months), undetermined ? won(m * months) : ''];
-  };
-  const rowVals = list.map(rowsFor);
-  rowVals.slice(0, 4).forEach((vals, i) => vals.forEach((v, col) => edits.push({ kind: 'cell', table: 7, row: 2 + i, col, text: v, label: `변제예정액 ${i + 1}` })));
-  if (n > 4) edits.push({ kind: 'rows', table: 7, templateRow: 6, rows: rowVals.slice(4), label: '변제예정액 행 늘리기' });
-  const sumRow = 7 + Math.max(0, n - 5);
-  const det = list.filter((c: any) => !(c.isUndetermined || c.isSecured));
-  const und = list.filter((c: any) => c.isUndetermined || c.isSecured);
-  const sumOf = (arr: any[], f: (c: any) => number) => arr.reduce((s, c) => s + f(c), 0);
-  const monthlyOf = (c: any) => c.monthlyRepayment ?? Math.ceil(monthly * (totalP > 0 ? principal(c) / totalP : 0));
+  edits.push(...creditorPlanTableEdits(d, { table: 7, firstRow: 2, blankRows: 5 }));
   edits.push(
-    { kind: 'cell', table: 7, row: sumRow, col: 2, text: won(sumOf(det, principal)), label: '합계 확정 원금' },
-    { kind: 'cell', table: 7, row: sumRow, col: 3, text: won(sumOf(und, principal)), label: '합계 미확정 원금' },
-    { kind: 'cell', table: 7, row: sumRow, col: 4, text: won(sumOf(det, monthlyOf)), label: '합계 확정 월' },
-    { kind: 'cell', table: 7, row: sumRow, col: 5, text: won(sumOf(und, monthlyOf)), label: '합계 미확정 월' },
-    { kind: 'cell', table: 7, row: sumRow, col: 6, text: won(sumOf(det, c => monthlyOf(c) * months)), label: '합계 확정 총' },
-    { kind: 'cell', table: 7, row: sumRow, col: 7, text: won(sumOf(und, c => monthlyOf(c) * months)), label: '합계 미확정 총' },
-    { kind: 'cell', table: 7, row: sumRow + 1, col: 2, text: `(G) ${won(totalP)}`, label: '총계 (G)' },
-    { kind: 'cell', table: 7, row: sumRow + 1, col: 4, text: `(H) ${won(sumOf(list, monthlyOf))}`, label: '총계 (H)' },
-    { kind: 'cell', table: 7, row: sumRow + 1, col: 6, text: `(I) ${won(sumOf(list, c => monthlyOf(c) * months))}`, label: '총계 (I)' },
     { kind: 'text', label: '변제율', find: '원금의 [    ]% 상당액 ', replace: `원금의 [ ${r.repaymentRatio ? r.repaymentRatio.toFixed(2) : '    '} ]% 상당액 ` },
     { kind: 'cell', table: 8, row: 0, col: 1, text: won(r.liquidationValue), label: '(J) 청산가치' },
     { kind: 'cell', table: 8, row: 0, col: 4, text: won(r.totalRepaymentAmount), label: '(K) 총변제예정액' },
     { kind: 'cell', table: 8, row: 1, col: 4, text: won(r.presentValue), label: '(L) 현재가치' },
   );
+  return edits;
+}
+
+// ── D5111 변제계획안 (가용소득 + 재산처분): 가용소득 부분은 D5110과 같은 값으로 채우고,
+//    재산처분 부분(처분대상 재산 표·변제투입예정액·별표(2)·(M)·(N))은 사건 자료에 없어 비워 둔다(출력 전 경고)
+function d5111(d: CourtFilingMasterData): HwpxEdit[] {
+  const r = d.repaymentSummary;
+  const months = r.repaymentMonths || 0;
+  const monthly = r.monthlyDisposableIncome || 0;
+  const trusteeMonthly = r.isExternalTrustee ? Math.round(monthly * 0.01) : 0;
+  const n = caseNo(d);
+  const lawyer = d.lawyer.lawyerName || '';
+  const edits: HwpxEdit[] = [
+    { kind: 'text', label: '사건번호', find: '사    건     20    개회       개인회생', replace: n ? `사    건     ${n}  개인회생` : '사    건     20    개회       개인회생' },
+    { kind: 'text', label: '채무자', find: '    채 무 자     ', replace: `    채 무 자     ${d.debtor.name}` },
+    { kind: 'text', label: '대리인', find: '    대 리 인     ', replace: `    대 리 인     ${lawyer ? `변호사 ${lawyer}` : ''}` },
+    { kind: 'text', label: '제출일', find: '20    .    .    .  ', replace: ymdDots(d.court.applicationDate) || '20    .    .    .  ' },
+    { kind: 'text', label: '채무자 서명', find: '채무자       ', replace: `채무자   ${d.debtor.name}   ` },
+    { kind: 'text', label: '대리인 서명', find: '          대리인 변호사              (서명 또는 날인)', replace: `          대리인 변호사   ${lawyer}   (서명 또는 날인)` },
+    { kind: 'text', label: '관할 법원', find: '법원 귀중', replace: court(d) ? `${court(d)} 귀중` : '법원 귀중' },
+    { kind: 'text', label: '계획안 머리', find: '20    개회       채무자 ', replace: `${n ? `${n}호` : '20    개회      '}  채무자 ${d.debtor.name}` },
+    { kind: 'text', label: '작성일', find: '20   .   .   . 작성', replace: `${ymdDots(d.court.applicationDate) || today()} 작성` },
+    // 가용소득 표 (표 1)
+    { kind: 'cell', table: 1, row: 1, col: 0, text: won(r.monthlyNetIncome), label: '월 평균 수입' },
+    { kind: 'cell', table: 1, row: 1, col: 1, text: won((r.monthlyLivingCost || 0) + (r.additionalLivingCost || 0)), label: '월 평균 생계비' },
+    { kind: 'cell', table: 1, row: 1, col: 2, text: won(monthly + trusteeMonthly), label: '월 평균 가용소득' },
+    { kind: 'cell', table: 1, row: 1, col: 3, text: won(trusteeMonthly), label: '월 회생위원 보수' },
+    { kind: 'cell', table: 1, row: 1, col: 4, text: won(monthly), label: '월 실제 가용소득' },
+    { kind: 'cell', table: 1, row: 1, col: 5, text: months ? String(months) : '', label: '변제 횟수' },
+    { kind: 'cell', table: 1, row: 1, col: 6, text: won(monthly * months), label: '총 실제 가용소득' },
+    // 변제예정액표 1. 기초 사항 (표 6·7)
+    { kind: 'cell', table: 6, row: 0, col: 1, text: won(monthly + trusteeMonthly), label: '③ 월 평균가용소득' },
+    { kind: 'cell', table: 6, row: 0, col: 4, text: won(trusteeMonthly), label: '④ 월 회생위원 보수' },
+    { kind: 'cell', table: 7, row: 0, col: 1, text: won(monthly), label: '(A) 월 실제 가용소득' },
+    { kind: 'cell', table: 7, row: 0, col: 4, text: months ? `${months}회` : '회', label: '(B) 변제 횟수' },
+    { kind: 'cell', table: 7, row: 0, col: 7, text: won(monthly * months), label: '(C) 총 실제 가용소득' },
+    // 청산가치 비교 (표 9): 가용소득 쪽만
+    { kind: 'cell', table: 9, row: 0, col: 1, text: won(r.liquidationValue), label: '(J) 청산가치' },
+    { kind: 'cell', table: 9, row: 0, col: 4, text: won(r.totalRepaymentAmount), label: '(K) 가용소득 총변제예정액' },
+    { kind: 'cell', table: 9, row: 1, col: 4, text: won(r.presentValue), label: '(L) 현재가치' },
+  ];
+  // 별표(1) 가용소득에 의한 변제내역 (표 10: 빈 행 2~16 = 15줄, 넘치면 16행을 늘림)
+  edits.push(...creditorPlanTableEdits(d, { table: 10, firstRow: 2, blankRows: 15 }));
   return edits;
 }
 
@@ -264,6 +324,7 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
     case 'D5103': return d5103(d);
     case 'D5105': return d5105(d);
     case 'D5110': return d5110(d);
+    case 'D5111': return d5111(d);
     case 'D5113': return stayOrBan(d, rrn, 'D5113');
     case 'D5114': return stayOrBan(d, rrn, 'D5114');
     case 'POA': return poa(d, rrn);
@@ -274,12 +335,13 @@ export function courtFormEdits(code: FilledFormCode, d: CourtFilingMasterData, r
     case 'D5122': return d5122(d);
     case 'DISCH': return discharge(d, rrn);
     case 'BKP': return bankruptcyPetition(d, rrn);
+    case 'BKD': return bankruptcyDischargeOnly(d, rrn);
   }
 }
 
 /** 출력 전 검사 (H-3): 필수 항목·합계·주민번호 형식 */
 export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, rrn: string): { blocks: GuardIssue[]; warns: GuardIssue[]; ok: boolean } {
-  const needsRrn = ['D5100', 'D5113', 'D5114', 'POA', 'D5116', 'DISCH', 'BKP'].includes(code);
+  const needsRrn = ['D5100', 'D5113', 'D5114', 'POA', 'D5116', 'DISCH', 'BKP', 'BKD'].includes(code);
   const leaseExempt = Number((d.assets as any)?.leaseDeposit?.exemptDeposit) || 0;
   const list = d.creditors || [];
   const r = d.repaymentSummary;
@@ -289,8 +351,10 @@ export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, r
     needsRrn ? guard.pattern(rrn, RRN_RE, 'rrn', '주민등록번호 13자리를 확인해 주세요.') : null,
     guard.required(court(d), 'court', '관할 법원'),
     code === 'D5100' || code === 'D5113' || code === 'D5114' ? guard.required(d.debtor.residentAddress || d.debtor.currentAddress, 'address', '채무자 주소') : null,
-    code === 'D5106' || code === 'D5110' ? (list.length ? null : { level: 'block', message: '채권자목록이 비어 있어요.' }) : null,
-    code === 'D5110' && !(r.repaymentMonths > 0) ? { level: 'block', message: '변제계획안(기간·월 변제금)을 먼저 저장해 주세요.' } : null,
+    code === 'D5106' || code === 'D5110' || code === 'D5111' ? (list.length ? null : { level: 'block', message: '채권자목록이 비어 있어요.' }) : null,
+    (code === 'D5110' || code === 'D5111') && !(r.repaymentMonths > 0) ? { level: 'block', message: '변제계획안(기간·월 변제금)을 먼저 저장해 주세요.' } : null,
+    code === 'D5111' ? { level: 'warn', message: '재산처분 부분(처분대상 재산·변제기한·변제투입예정액 표, 별표(2), (M)·(N))과 본문의 기간·변제율 칸은 사건 자료에 없어 비워 뒀어요. 한글에서 채우고, 청산가치는 가용소득과 재산처분 변제를 합쳐 비교해 주세요.' } : null,
+    code === 'BKD' ? { level: 'warn', message: '파산 및 면책을 함께 신청했다면 이 서류는 내지 않아요. 파산선고일·면책 사건번호·등록기준지·우편번호는 한글에서 채워 주세요.' } : null,
     code === 'D5110' && r.liquidationValue > 0 && (r.presentValue ?? 0) > 0 && (r.presentValue ?? 0) < r.liquidationValue
       ? { level: 'block', message: '현재가치가 청산가치보다 적어요. 변제계획을 다시 확인해 주세요.' } : null,
     code === 'D5110' && r.meetsStatutoryMinimum === false ? { level: 'block', message: '최저변제액 기준을 채우지 못해요. 변제계획을 다시 확인해 주세요.' } : null,
@@ -309,7 +373,7 @@ export function courtFormGuard(code: FilledFormCode, d: CourtFilingMasterData, r
     code === 'DISCH' ? { level: 'warn', message: '면책신청서 날짜는 비워 뒀어요. 변제를 마친 뒤 접수하는 날로 적어 주세요.' } : null,
     code === 'DISCH' && !caseNo(d) ? { level: 'block', message: '사건번호가 없어요. 면책신청서는 사건번호를 등록한 뒤 만들 수 있어요.' } : null,
     code === 'BKP' ? { level: 'warn', message: '등록기준지·우편번호·지원기관 칸은 한글에서 채워 주세요.' } : null,
-    !caseNo(d) && code !== 'D5100' && code !== 'BKP' && code !== 'DISCH' && code !== 'D5122' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
+    !caseNo(d) && code !== 'D5100' && code !== 'BKP' && code !== 'BKD' && code !== 'DISCH' && code !== 'D5122' ? { level: 'warn', message: '사건번호가 아직 없어요. 접수 전 서류면 그대로 두고, 접수 뒤 서류면 사건번호를 먼저 등록하세요.' } : null,
   ]);
 }
 

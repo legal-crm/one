@@ -19,7 +19,8 @@ export default function HwpxBatchSection({ clientRequest, crmExt, lawyerName, ki
   const codes = (Object.keys(FILLED_FORMS) as FilledFormCode[])
     .filter(c => groups.includes(FILLED_FORMS[c].group))
     .sort((a, b) => (groups.indexOf(FILLED_FORMS[a].group) - groups.indexOf(FILLED_FORMS[b].group)) || FILLED_FORMS[a].order - FILLED_FORMS[b].order);
-  const [picked, setPicked] = useState<Record<string, boolean>>(() => Object.fromEntries(codes.map(c => [c, FILLED_FORMS[c].group !== 'rehab_extra' && c !== 'D5113'])));
+  // 기본 선택: 신청 핵심 서류만 (부속·면책, 중지명령, 파산 뒤 따로 내는 면책신청서는 필요할 때 고름)
+  const [picked, setPicked] = useState<Record<string, boolean>>(() => Object.fromEntries(codes.map(c => [c, FILLED_FORMS[c].group !== 'rehab_extra' && c !== 'D5113' && c !== 'BKD'])));
   const [rrn, setRrn] = useState('');
   const [busy, setBusy] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
